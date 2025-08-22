@@ -104,6 +104,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Dependencies
 
+- Updated lower bound for Torch, MLFlow and ONNX packages to address CVEs
+
 ## [1.1.1] - 2025-06-16
 
 ### Fixed
