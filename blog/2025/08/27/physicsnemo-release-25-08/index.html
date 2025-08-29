@@ -20,7 +20,7 @@
     
     
       
-        <title>PhysiceNeMo 25.08 - New Release Announcement - NVIDIA PhysicsNeMo</title>
+        <title>PhysicsNeMo 25.08 - New Release Announcement - NVIDIA PhysicsNeMo</title>
       
     
     
@@ -61,7 +61,7 @@
       
         <meta  property="og:type"  content="website" >
       
-        <meta  property="og:title"  content="PhysiceNeMo 25.08 - New Release Announcement - NVIDIA PhysicsNeMo" >
+        <meta  property="og:title"  content="PhysicsNeMo 25.08 - New Release Announcement - NVIDIA PhysicsNeMo" >
       
         <meta  property="og:description"  content="PhysicsNeMo blog" >
       
@@ -77,7 +77,7 @@
       
         <meta  name="twitter:card"  content="summary_large_image" >
       
-        <meta  name="twitter:title"  content="PhysiceNeMo 25.08 - New Release Announcement - NVIDIA PhysicsNeMo" >
+        <meta  name="twitter:title"  content="PhysicsNeMo 25.08 - New Release Announcement - NVIDIA PhysicsNeMo" >
       
         <meta  name="twitter:description"  content="PhysicsNeMo blog" >
       
@@ -104,7 +104,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#physicenemo-2508-new-release-announcement" class="md-skip">
+        <a href="#physicsnemo-2508-new-release-announcement" class="md-skip">
           Skip to content
         </a>
       
@@ -138,7 +138,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              PhysiceNeMo 25.08 - New Release Announcement
+              PhysicsNeMo 25.08 - New Release Announcement
             
           </span>
         </div>
@@ -954,7 +954,7 @@
   
 
 
-<h1 id="physicenemo-2508-new-release-announcement">PhysiceNeMo 25.08 - New Release Announcement</h1>
+<h1 id="physicsnemo-2508-new-release-announcement">PhysicsNeMo 25.08 - New Release Announcement</h1>
 <p>We're excited to announce the latest PhysicsNeMo release! It's packed with powerful new workflows and recipes for CAE application developers. With a key emphasis on the developer experience, this update is designed to help you build, train, and deploy state-of-the-art Physics AI solutions with unprecedented speed and simplicity. We've streamlined every step of the process, from data prep to model evaluation, so you can focus on innovation, not infrastructure. Here are some key highlights of this release:</p>
 <!-- more -->
 
@@ -962,9 +962,9 @@
 <p>As PhysicsNeMo continues to grow exponentially with new functionality, we are constantly working to make onboarding and getting started easy for new developers. We have simplified the getting started step and created a <a href="https://docs.nvidia.com/physicsnemo/latest/index.html">unified documentation</a> experience for the PhysicsNeMo framework, adding even more documentation to aid new developers. For instance, the user guide now includes how-tos for every step of the process from data prep to model evaluation. This will ensure PhysicsNeMo fits seamlessly and incrementally into your PyTorch projects.</p>
 <p>We have also added a bunch of new recipes and workflows to give CAE developers an ideal starting point for custom solution development. By providing an easy, replicable proof of concept samples and guidance on how to adapt for custom use cases, these samples can save you months of development time and engineering effort that you’d otherwise spend building from scratch in PyTorch. In this release, we have introduced new training recipes for developing AI surrogates for:</p>
 <ul>
-<li><a href="https://github.com/NVIDIA/physicsnemo/blob/main/examples/structural_mechanics/deforming_plate/README.md">Large deformation problems</a>, </li>
-<li><a href="https://github.com/physicsnemo/examples/geophysics/diffusion_fwi/README.md">Full waveform inversion</a> and </li>
-<li><a href="https://github.com/NVIDIA/physicsnemo/tree/main/examples/cfd/external_aerodynamics/transolver">CFD applications using transformers</a>. </li>
+<li><a href="https://github.com/NVIDIA/physicsnemo/blob/main/examples/structural_mechanics/deforming_plate/README.md">Large deformation problems</a></li>
+<li>Full waveform inversion</li>
+<li><a href="https://github.com/NVIDIA/physicsnemo/tree/main/examples/cfd/external_aerodynamics/transolver">CFD applications using transformers</a></li>
 </ul>
 <p>We also added new training content for beginners for using <a href="https://github.com/openhackathons-org/End-to-End-AI-for-Science/tree/main/workspace/python/jupyter_notebook/CommunityModelsAndIntegrations">pretrained models from Hugging face in PhysicsNeMo</a> as well as for problems involving <a href="https://github.com/openhackathons-org/End-to-End-AI-for-Science/blob/main/workspace/python/jupyter_notebook/MagnetoHydrodynamics/magneto-hydrodynamics.ipynb">magneto hydrodynamics</a>.</p>
 <h2 id="confidence-scores-and-reliability">Confidence scores and reliability</h2>
@@ -1002,6 +1002,7 @@ In this release, we have introduced a new workflow to enable CAE developers to v
 <p>Beyond all these new workflows, we have also introduced a new downstream workflow showcasing use of surrogate models for design optimization. This workflow shows how to use AI models for Design Sensitivity Prediction. The reference sample provides a template for using AI surrogate to predict not just the performance of a design, but also its sensitivities—how that performance will change with small modifications to the geometry. This can dramatically accelerate a critical and traditionally slow part of the engineering design process.</p>
 <p>This new sample uses the external automotive aerodynamics use case model to demonstrate how the DoMINO model architecture can accurately predict the sensitivity of the drag coefficient to changes in the vehicle's shape.
 This is a game-changer for CAE application developers who can now allow their users, the engineers to rapidly identify which geometric features have the most significant impact on aerodynamic performance. This sample provides a workflow for CAE application developers to use their own custom models in building such functionality using PhysicsNeMo. You can get started with this <a href="https://github.com/NVIDIA/physicsnemo-cfd/blob/main/workflows/domino_design_sensitivities/main.ipynb">Jupyter notebook</a> and <a href="https://github.com/NVIDIA/physicsnemo-cfd/tree/main/workflows/domino_design_sensitivities">detailed documentation</a>.</p>
+<p><img alt="DoMINO Design Sensitivities" src="../../../../../images/domino_design_sensitivities.png" /></p>
 <h2 id="performance-optimizations-gnn-transformers">Performance Optimizations - GNN, Transformers</h2>
 <p>This release also delivers performance improvements for GNNs and Transformer architectures. By adding support for PyTorch Geometric (PyG) and optimizing core layers through the transformer engine, we have seen significant speedups. For instance, training  the MeshGraphNet model on meshes up to 200k nodes and 1.2M edges in a single graph shows approximately 1/3 reduction in runtime. With Pytorch Geometric, the latency for the training iteration is cut in half. For Transformer based architectures such as Transolver, we see strong out of the box performance. Additionally, the Transovler example for external aerodynamics enables fp8 training and inference using NVIDIA's optimized Transformer Engine backend. So just by importing PhysicsNeMo with your existing GNN or transformer models in PyTorch, you will see such optimized performance and scalability benefits. For more details, please refer to the <a href="https://docs.nvidia.com/physicsnemo/latest/user-guide/performance.html">detailed documentation</a>.</p>
 <p><img alt="Performance Optimizations to Graph and Transformer Layers" src="../../../../../images/torch.float16_training_time.png" title="Performance Optimizations to Graph and Transformer Layers" /></p>
@@ -1014,7 +1015,7 @@ This is a game-changer for CAE application developers who can now allow their us
 <li><a href="https://github.com/NVIDIA/physicsnemo/blob/main/examples/README.md">Reference Samples</a></li>
 <li><a href="https://docs.nvidia.com/physicsnemo/latest/index.html">User Guide Documentation</a></li>
 </ul>
-<p><a class="md-button" href="https://twitter.com/intent/tweet?text=PhysiceNeMo%2025.08%20-%20New%20Release%20Announcement%0A&amp;url=http://www.example.com/blog/2025/08/27/physicsnemo-release-25-08/">Share on <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z"/></svg></span></a>
+<p><a class="md-button" href="https://twitter.com/intent/tweet?text=PhysicsNeMo%2025.08%20-%20New%20Release%20Announcement%0A&amp;url=http://www.example.com/blog/2025/08/27/physicsnemo-release-25-08/">Share on <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z"/></svg></span></a>
 <a class="md-button" href="https://www.facebook.com/sharer/sharer.php?u=http://www.example.com/blog/2025/08/27/physicsnemo-release-25-08/">Share on <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.101 23.691v-7.98H6.627v-3.667h2.474v-1.58c0-4.085 1.848-5.978 5.858-5.978.401 0 .955.042 1.468.103a9 9 0 0 1 1.141.195v3.325a9 9 0 0 0-.653-.036 27 27 0 0 0-.733-.009c-.707 0-1.259.096-1.675.309a1.7 1.7 0 0 0-.679.622c-.258.42-.374.995-.374 1.752v1.297h3.919l-.386 2.103-.287 1.564h-3.246v8.245C19.396 23.238 24 18.179 24 12.044c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.628 3.874 10.35 9.101 11.647"/></svg></span></a>
 <a class="md-button" href="https://www.linkedin.com/sharing/share-offsite/?url=http://www.example.com/blog/2025/08/27/physicsnemo-release-25-08/">Share on LinkedIn</a></p>
 
