@@ -622,80 +622,13 @@
   <div class="md-post__content md-typeset">
     <h2 id="highly-scalable-and-optimized-transolver-architecture"><a class="toclink" href="2025/09/29/physicsnemo-transolver/">Highly scalable and optimized Transolver architecture</a></h2>
 <p><a href="https://arxiv.org/abs/2402.02366">Transolver</a>, a <a href="https://icml.cc/virtual/2024/poster/33751">highlight at ICML 2024</a> and a leading CFD surrogate model, is now significantly enhanced within PhysicsNeMo. Originally integrated by co-author Huakun Luo, these updates empower AI-Physics developers to rapidly prototype, scale, and apply surrogate models to enterprise applications like automotive aerodynamics.</p>
-<p>This novel approach adapts the Attention Mechanism to effectively learn mappings of physical states and their interrelationships, resulting in exceptional surrogate model capabilities. As illustrated by the original authors, Transolver's slice mechanism maps to physical states, while a scaled dot-product attention mechanism establishes relationships between these states (<a href="https://github.com/thuml/Transolver/blob/main/pic/Transolver.png">image source</a>):</p>
-<p><img alt="Transolver PhysicsAttention" src="../images/Transolver.png" />
-<em>Fig 1: Transolver model architecture.</em></p>
-<p>In PhysicsNeMo, you can use Transolver on 2D or 3D regular data, or on an
-unstructured mesh.  To use an unstructured mesh, construct the Transolver
-with <code>structured_shape=None</code>, and pass the spatial shape instead for 2D or 3D
-data.</p>
-<pre><code class="language-python">from physicsnemo.models.transolver import Transolver
 
-model = Transolver(
-    functional_dim = 5, # How many features are in your input feature space?
-    out_dim = 1, # How many features should the model predict, per point?
-    embedding_dim = 3, # How many features are in the spatial embedding?
-    n_layers = 12, # How many layers will the model use?
-    n_hidden = 256, # What's the output size of hidden layers?
-    n_head = 1, # How many heads in the attention layers?
-    mlp_ratio = 4, # How much should MLP hidden layers expand the features size?
-    slice_num = 512, # How many &quot;slices&quot; should the model use in each layer?
-    structured_shape = None, # None for unstructured data
-    use_te = USE_TE, # Use transformer engine?
-    time_input = False, # Use time embeddings?
-).cuda()
-
-# Generate synthetic data:
-feature_data = torch.randn(2, 128000, 5, device=&quot;cuda&quot;)
-pos_embedding = torch.randn(2, 128000, 3, device=&quot;cuda&quot;)
-
-# Run the model:
-output = model(feature_data, pos_embedding)
-
-# Output shape will be [2, 128000, 1]
-
-</code></pre>
-<h3 id="stabilizing-reduced-precision"><a class="toclink" href="2025/09/29/physicsnemo-transolver/#stabilizing-reduced-precision">Stabilizing Reduced Precision</a></h3>
-<p>The physics attention mechanism in transolver relies on a Linear layer to compute
-a score to map input points to slices.  The slices are normalized over all the
-input points which can, when used to produce the slice tokens, overflow in
-half precision.  In PhysicsNeMo, we've enhanced the computation of the weights
-and tokens to be more stable even in lower precision, opening the door to
-reduced precision training even with massive input sizes.</p>
-<h3 id="accelerating-transolver-with-transformerengine"><a class="toclink" href="2025/09/29/physicsnemo-transolver/#accelerating-transolver-with-transformerengine">Accelerating Transolver with TransformerEngine</a></h3>
-<p>When it comes to transformer architectures and performance, it's advantageous
-to use the optimized layers from NVIDIA's
-<a href="https://docs.nvidia.com/deeplearning/transformer-engine/user-guide/index.html">TransformerEngine</a>
-package. In PhysicsNeMo, starting in the 25.08 release,
-we've enabled TransformerEngine as the backbone of Transolver.  Just set
-<code>use_te=True</code> in the model constructor to do so.  For larger models and datasets,
-you should see a performance improvement in inference and end-to-end training
-latency.</p>
-<p><img alt="Transolver with or without TransformerEngine" src="../images/transolver_gb200_training.png" title="Training Performance Optimizations to Graph and Transformer Layers" />
-<em>Fig 2: Chart showing the improved training latency of Transolver in PhysicsNeMo - lower latency is better.</em></p>
-<p><img alt="Transolver with or without TransformerEngine" src="../images/transolver_gb200_inference.png" title="Training Performance Optimizations to Graph and Transformer Layers" />
-<em>Fig 3: Chart showing the improved inference latency of Transolver in PhysicsNeMo - lower latency is better.</em></p>
-<h3 id="enabling-fp8-computation"><a class="toclink" href="2025/09/29/physicsnemo-transolver/#enabling-fp8-computation">Enabling fp8 Computation</a></h3>
-<p>Unique to PhysicsNeMo is the ability to train and inference
-the Transolver model with fp8 precision, leveraging the hardward capabilities
-of Hopper and Blackwell architectures.  Using transformer engine as the
-computational backend, Transolver can automatically autocast linear, normalization,
-and attention layers to fp8 computations.</p>
-<h3 id="drivaer-ml-surface-training"><a class="toclink" href="2025/09/29/physicsnemo-transolver/#drivaer-ml-surface-training">Drivaer ML Surface Training</a></h3>
-<p>For large surface meshes, Transolver excels as a surrogate model for CFD simulations.
-In PhysicsNeMo, you can explore our training and inference
-<a href="https://github.com/NVIDIA/physicsnemo/tree/main/examples/cfd/external_aerodynamics/transolver">reference recipe</a> 
-solving the surface components of DrivaerML with an Irregular Mesh Transolver.
-Future updates to the example may include extensions of Transolver to volumetric
-meshes as well as optimized, Domain Parallel training examples.</p>
-<h3 id="takeaways"><a class="toclink" href="2025/09/29/physicsnemo-transolver/#takeaways">Takeaways</a></h3>
-<p>Transolver is one of the best state of the art surrogate models available for
-PDEs today.  We welcome you to try the implementation in PhysicsNeMo, which
-out-of-the box provides better reduced precision stability, fp8 training, transformer engine
-support, and high-resolution training examples on mesh data.</p>
-<p><a class="md-button" href="https://twitter.com/intent/tweet?text=Highly%20scalable%20and%20optimized%20Transolver%20architecture%0A&amp;url=http://www.example.com/blog/2025/09/29/physicsnemo-transolver/">Share on <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z"/></svg></span></a>
-<a class="md-button" href="https://www.facebook.com/sharer/sharer.php?u=http://www.example.com/blog/2025/09/29/physicsnemo-transolver/">Share on <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.101 23.691v-7.98H6.627v-3.667h2.474v-1.58c0-4.085 1.848-5.978 5.858-5.978.401 0 .955.042 1.468.103a9 9 0 0 1 1.141.195v3.325a9 9 0 0 0-.653-.036 27 27 0 0 0-.733-.009c-.707 0-1.259.096-1.675.309a1.7 1.7 0 0 0-.679.622c-.258.42-.374.995-.374 1.752v1.297h3.919l-.386 2.103-.287 1.564h-3.246v8.245C19.396 23.238 24 18.179 24 12.044c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.628 3.874 10.35 9.101 11.647"/></svg></span></a>
-<a class="md-button" href="https://www.linkedin.com/sharing/share-offsite/?url=http://www.example.com/blog/2025/09/29/physicsnemo-transolver/">Share on LinkedIn</a></p>
+    
+      <nav class="md-post__action">
+        <a href="2025/09/29/physicsnemo-transolver/">
+          Continue reading
+        </a>
+      </nav>
     
   </div>
 </article>
