@@ -843,7 +843,7 @@ geometry informed Machine Learning surrogate solver by combining stencil-like
 query operations with learnable embedding and projection layers.  One feature
 of DoMINO is its ability to simultaneously learn and predict both surface and
 volumetric data, as shown in Fig. 1.</p>
-<p><img alt="DoMINO Model" src="../../../../../images/domino/domino-model.jpg" />
+<p><a href="../../../../../images/domino/domino-model.jpg"><img alt="DoMINO Model" src="../../../../../images/domino/domino-model.jpg" /></a>
 <em>Fig 1: DoMINO model architecture.</em></p>
 <p>One key component of DoMINO is the dynamic radius search operation: during both
 embedding of input features, and projecting learned states to output features,
@@ -857,7 +857,7 @@ operation, in both GPU memory and computation speed.  In PhysicsNeMo, we
 leverage the NVIDIA-Warp library and dynamic HashMaps to accelerate this.</p>
 <p>In Fig. 2, compare the performance of DoMINO with and without the Warp-accelerated radius
 search, on a GH200 GPU with synthetic data.</p>
-<p><img alt="DoMINO with and without Warp" src="../../../../../images/domino/domino_pn_vs_pytorch.png" />
+<p><a href="../../../../../images/domino/domino_pn_vs_pytorch.png"><img alt="DoMINO with and without Warp" src="../../../../../images/domino/domino_pn_vs_pytorch.png" /></a>
 <em>Fig 2: DoMINO Synthetic comparison with and without Warp Acceleration</em></p>
 <blockquote>
 <p>The PhysicsNeMo implementation of this operation is available for you
@@ -872,7 +872,7 @@ based latent space, where grid resolution can be set by the user.</p>
 are first created with all optimizations in place. To get a picture of where we started 
 from a performance perspective, let's look at a profile of the model for 10 iterations
 in the 25.03 release, in Fig. 3:</p>
-<p><img alt="DoMINO DataPipe Acceleration" src="../../../../../images/domino/25.03/full-nsys-profile.png" />
+<p><a href="../../../../../images/domino/25.03/full-nsys-profile.png"><img alt="DoMINO DataPipe Acceleration" src="../../../../../images/domino/25.03/full-nsys-profile.png" /></a>
 <em>Fig 3: DoMINO Profile in 25.03 Release</em></p>
 <p>If you're experienced with profiling, you'll see problems straight away here.
 If not, draw your attention to the one line table towards the bottom of the image
@@ -880,7 +880,7 @@ that shows "GPU Utilization: 1.6%".</p>
 <p>Let's zoom in on one iteration's worth of processing, and look at the Python 
 "top-down" view of the stack trace in Fig. 4.  The calls are nested in the top
 down view, and this is zoomed in over just one iteration for about 30 seconds.</p>
-<p><img alt="DoMINO DataPipe Acceleration" src="../../../../../images/domino/25.03/iteration_zoom.png" />
+<p><a href="../../../../../images/domino/25.03/iteration_zoom.png"><img alt="DoMINO DataPipe Acceleration" src="../../../../../images/domino/25.03/iteration_zoom.png" /></a>
 <em>Fig 4: DoMINO Zoomed Profile in 25.03 Release</em></p>
 <p>Let's note a few things in this profile:</p>
 <ul>
@@ -1183,7 +1183,7 @@ utilities from physicsnemo in your own models and codes. Check out
 <p>Finally, by using Zarr for asynchronous data streaming,
 the total data pipeline on a single GPU reaches 30x speedup over baseline, as seen
 in Fig. 5.</p>
-<p><img alt="DoMINO DataPipe Acceleration" src="../../../../../images/domino/dataloader_improvements_ratio_combined.png" />
+<p><a href="../../../../../images/domino/dataloader_improvements_ratio_combined.png"><img alt="DoMINO DataPipe Acceleration" src="../../../../../images/domino/dataloader_improvements_ratio_combined.png" /></a>
 <em>Fig 5: DoMINO datapipe acceleration over baseline</em></p>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
@@ -1200,7 +1200,7 @@ on a single GPU.  Immediately, the most obvious change is the total time and
 GPU utilization: this time, the GPU utilization is approximately 50%, and the time
 per iteration has changed from about 30s to about 2.2s - a 10x jump!  Not bad,
 but we can do better still.</p>
-<p><img alt="DoMINO DataPipe Acceleration" src="../../../../../images/domino/25.06/two-iterations-bottom-up.png" />
+<p><a href="../../../../../images/domino/25.06/two-iterations-bottom-up.png"><img alt="DoMINO DataPipe Acceleration" src="../../../../../images/domino/25.06/two-iterations-bottom-up.png" /></a>
 <em>Fig 6: DoMINO in the 25.06 release</em></p>
 <p>There are a couple obvious issues here.  First, there is a big period of
 inactivity between each iteration.  We see high CPU utilization in the first period,
@@ -1211,7 +1211,7 @@ in the XArray blog, which we encourage you to check out to learn more about
 this.</p>
 <p>You can see the challenges with the dataloading pipeline even more clearly with
 the pytorch profiler:</p>
-<p><img alt="DoMINO 25.06 Torch Profiler" src="../../../../../images/domino/25.06/torch-prof-dataloader.png" />
+<p><a href="../../../../../images/domino/25.06/torch-prof-dataloader.png"><img alt="DoMINO 25.06 Torch Profiler" src="../../../../../images/domino/25.06/torch-prof-dataloader.png" /></a>
 <em>Fig 6: DoMINO in the 25.06 release (PyTorch Profiler)</em></p>
 <div class="admonition tip">
 <p class="admonition-title">Tip</p>
@@ -1265,7 +1265,7 @@ of 8xH100 gpus shows this clearly, measuring the time to read 48 images
 (which is the validation set) in Fig. 7.  While the "full" read stalls out
 at 4 GPUs, the "partial" read continues to show throughput improvements at a full
 node's worth of GPUs.</p>
-<p><img alt="DoMINO DataPipe Acceleration" src="../../../../../images/domino/domino-partial_read_speedup.png" />
+<p><a href="../../../../../images/domino/domino-partial_read_speedup.png"><img alt="DoMINO DataPipe Acceleration" src="../../../../../images/domino/domino-partial_read_speedup.png" /></a>
 <em>Fig 7: DoMINO IO latency reduction with shuffling and partial reads</em></p>
 <p>This doesn't affect the data sampled to feed into the network: you still have
 a random subset of the full mesh, but now it's without having to stall your GPU
@@ -1275,13 +1275,13 @@ waiting for IO.</p>
 is virtually no gap between the end of one backwards pass and the start of the next
 forward pass - exactly what we want.  The IO copies to GPU are completely
 asynchronous and happen ahead of time, and the total iteration time is under 1 second.</p>
-<p><img alt="DoMINO DataPipe Acceleration" src="../../../../../images/domino/25.11/torch_profile_fwd_bwd.png" />
+<p><a href="../../../../../images/domino/25.11/torch_profile_fwd_bwd.png"><img alt="DoMINO DataPipe Acceleration" src="../../../../../images/domino/25.11/torch_profile_fwd_bwd.png" /></a>
 <em>Fig 8: DoMINO in the 25.11 Release (PyTorch)</em></p>
 <p>We also moved the entire data processing pipeline to PyTorch, with a few exceptions
 like the kNN and signed distance field.  You can even see that the kNN, once
 taking 10+ seconds on the CPU, now is the dominant preprocessing operation but
 almost 100x faster (Figure 9):</p>
-<p><img alt="DoMINO DataPipe Acceleration" src="../../../../../images/domino/25.11/preprocessing_knn.png" />
+<p><a href="../../../../../images/domino/25.11/preprocessing_knn.png"><img alt="DoMINO DataPipe Acceleration" src="../../../../../images/domino/25.11/preprocessing_knn.png" /></a>
 <em>Fig 9: DoMINO Preprocessing in the 25.11 Release (PyTorch)</em></p>
 <p>To summarize the performance gains we've brought to DoMINO, let's take
 a look at release to release gains for the 2025 releases.  (Since no
