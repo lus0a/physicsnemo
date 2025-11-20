@@ -83,19 +83,15 @@ def validation_step(model, dataloader, epoch):
 
     # plotting
     for t in range(outvar.shape[2]):
-        # Get the shape of the 3D data
         data_shape = outvar[0, 0, t, ...].shape
         
-        # Create ImageData (structured grid) with dimensions
-        grid = pv.ImageData(dimensions=data_shape)
+        grid = pv.ImageData(dimensions=(data_shape[0] + 1, data_shape[1] + 1, data_shape[2] + 1))
         
-        # Add cell data (flatten in Fortran order to match VTK ordering)
         grid.cell_data["outvar_chan0"] = outvar[0, 0, t, ...].flatten(order='F')
         grid.cell_data["outvar_chan1"] = outvar[0, 1, t, ...].flatten(order='F')
         grid.cell_data["predvar_chan0"] = predvar[0, 0, t, ...].flatten(order='F')
         grid.cell_data["predvar_chan1"] = predvar[0, 1, t, ...].flatten(order='F')
         
-        # Save to VTK file
         grid.save(f"./test_{t}.vti")
 
 
