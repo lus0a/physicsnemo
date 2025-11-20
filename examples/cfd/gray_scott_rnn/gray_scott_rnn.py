@@ -30,7 +30,7 @@ from typing import Union
 from physicsnemo.launch.utils import load_checkpoint, save_checkpoint
 from physicsnemo.launch.logging import PythonLogger, LaunchLogger
 from hydra.utils import to_absolute_path
-from pyevtk.hl import imageToVTK
+import pyvista as pv
 
 
 def prepare_data(
@@ -83,13 +83,20 @@ def validation_step(model, dataloader, epoch):
 
     # plotting
     for t in range(outvar.shape[2]):
-        cellData = {
-            "outvar_chan0": outvar[0, 0, t, ...],
-            "outvar_chan1": outvar[0, 1, t, ...],
-            "predvar_chan0": predvar[0, 0, t, ...],
-            "predvar_chan1": predvar[0, 1, t, ...],
-        }
-        imageToVTK(f"./test_{t}", cellData=cellData)
+        # Get the shape of the 3D data
+        data_shape = outvar[0, 0, t, ...].shape
+        
+        # Create ImageData (structured grid) with dimensions
+        grid = pv.ImageData(dimensions=data_shape)
+        
+        # Add cell data (flatten in Fortran order to match VTK ordering)
+        grid.cell_data["outvar_chan0"] = outvar[0, 0, t, ...].flatten(order='F')
+        grid.cell_data["outvar_chan1"] = outvar[0, 1, t, ...].flatten(order='F')
+        grid.cell_data["predvar_chan0"] = predvar[0, 0, t, ...].flatten(order='F')
+        grid.cell_data["predvar_chan1"] = predvar[0, 1, t, ...].flatten(order='F')
+        
+        # Save to VTK file
+        grid.save(f"./test_{t}.vti")
 
 
 class HDF5MapStyleDataset(Dataset):
