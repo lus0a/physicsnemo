@@ -49,7 +49,7 @@ for steady-state analysis, applying the SST K-omega turbulence model. These simu
 consist of 7.2 million mesh points on average, but we use the surface mesh as the input
 to training which is roughly around 70k mesh nodes.
 
-You can download the full Ahmed body dataset from Huging Face [here](https://huggingface.co/datasets/nvidia/PhysicsNeMo-CFD-Ahmed-Body). You can modify the PhysicsNeMo-Curator script to automate the download : [download_hugging_face_dataset.sh](./download_hugging_face_dataset.sh)
+You can download the full Ahmed body dataset from Hugging Face [here](https://huggingface.co/datasets/nvidia/PhysicsNeMo-CFD-Ahmed-Body). You can modify the PhysicsNeMo-Curator script to automate the download : [download_hugging_face_dataset.sh](./download_hugging_face_dataset.sh)
 
 ### DrivAerNet
 
