@@ -14,10 +14,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from dataclasses import dataclass
+from typing import Optional
+
 import torch
+from jaxtyping import Float
 from torch import Tensor, nn
 from torch.nn import LayerNorm
 
+from physicsnemo.core.meta import ModelMetaData
+from physicsnemo.core.module import Module
 from physicsnemo.nn.gnn_layers.mesh_graph_mlp import MeshGraphMLP
 from physicsnemo.nn.transformer_decoder import (
     DecoderOnlyLayer,
@@ -25,34 +31,67 @@ from physicsnemo.nn.transformer_decoder import (
 )
 
 
-class Sequence_Model(torch.nn.Module):
-    """Decoder-only multi-head attention architecture
+@dataclass
+class MetaData(ModelMetaData):
+    # Keep consistent defaults with other models
+    jit: bool = False
+    cuda_graphs: bool = False
+    amp_cpu: bool = False
+    amp_gpu: bool = True
+    torch_fx: bool = False
+    onnx: bool = False
+    func_torch: bool = True
+    auto_grad: bool = True
+
+
+class Sequence_Model(Module):
+    r"""Decoder-only multi-head attention temporal model.
+
     Parameters
     ----------
     input_dim : int
-        Number of latent features for the graph (#povital_position x output_decode_dim)
-    input_context_dim: int
-        Number of physical context features
-    dropout_rate: float
-        Dropout value for attention decoder, by default 2
-    num_layers_decoder: int
-        Number of sub-decoder-layers in the attention decoder by default 3
-    num_heads: int
-        Number of heads in the attention decoder, by default 8
-    dim_feedforward_scale: int
-        The ration between the dimension of the feedforward network model and input_dim
-    num_layers_context_encoder: int
-        Number of MLP layers for the physical context feature encoder, by default 2
-    num_layers_input_encoder: int
-        Number of MLP layers for the input feature encoder, by default 2
-    num_layers_output_encoder: int
-        Number of MLP layers for the output feature encoder, by default 2
-    activation: str
-        Activation function of the attention decoder, can be 'relu' or 'gelu', by default 'gelu'
-    Note
-    ----
+        Number of latent features per token (e.g., :math:`N_{pivotal} \times D_{enc}` flattened or projected).
+    input_context_dim : int
+        Number of physical context features per token.
+    dist : Any
+        Distribution or device handle; must provide ``dist.device`` attribute.
+    dropout_rate : float, optional, default=0.0
+        Dropout probability for the decoder.
+    num_layers_decoder : int, optional, default=3
+        Number of sub-layers in the transformer decoder.
+    num_heads : int, optional, default=8
+        Number of attention heads.
+    dim_feedforward_scale : int, optional, default=4
+        Scale factor for the FFN dimension relative to ``input_dim``.
+    num_layers_context_encoder : int, optional, default=2
+        MLP layers for context feature encoder.
+    num_layers_input_encoder : int, optional, default=2
+        MLP layers for input feature encoder.
+    num_layers_output_encoder : int, optional, default=2
+        MLP layers for output feature encoder.
+    activation : str, optional, default="gelu"
+        Activation function for transformer blocks. One of ``"relu"``, ``"gelu"``.
+
+    Forward
+    -------
+    x : torch.Tensor
+        Input token sequence of shape :math:`(B, T, D_{in})`.
+    context : torch.Tensor, optional
+        Optional conditioning tokens of shape :math:`(B, T_c, D_{ctx})` that are
+        concatenated before ``x`` along the sequence dimension.
+
+    Outputs
+    -------
+    torch.Tensor
+        Output token sequence of shape :math:`(B, T, D_{in})`.
+
+    Notes
+    -----
     Reference: Han, Xu, et al. "Predicting physics in mesh-reduced space with temporal attention."
     arXiv preprint arXiv:2201.09113 (2022).
+
+    See also :class:`~physicsnemo.nn.transformer_decoder.TransformerDecoder`
+    and :class:`~physicsnemo.nn.gnn_layers.mesh_graph_mlp.MeshGraphMLP`.
     """
 
     def __init__(
@@ -69,7 +108,7 @@ class Sequence_Model(torch.nn.Module):
         num_layers_output_encoder: int = 2,
         activation: str = "gelu",
     ):
-        super().__init__()
+        super().__init__(meta=MetaData())
         self.dist = dist
         decoder_layer = DecoderOnlyLayer(
             input_dim,
@@ -86,6 +125,10 @@ class Sequence_Model(torch.nn.Module):
         self.decoder = TransformerDecoder(
             decoder_layer, num_layers_decoder, decoder_norm
         )
+
+        self.input_dim = input_dim
+        self.input_context_dim = input_context_dim
+
         self.input_encoder = MeshGraphMLP(
             input_dim,
             output_dim=input_dim,
@@ -114,29 +157,61 @@ class Sequence_Model(torch.nn.Module):
             recompute_activation=False,
         )
 
-    def forward(self, x, context=None):
+    def forward(
+        self,
+        x: Float[Tensor, "batch time input_dim"],
+        context: Optional[Float[Tensor, "batch time_ctx input_context_dim"]] = None,
+    ) -> Float[Tensor, "batch time input_dim"]:
+        """Run decoder-only transformer with optional context tokens."""
+        if not torch.compiler.is_compiling():
+            if x.ndim != 3 or x.shape[-1] != self.input_dim:
+                raise ValueError(
+                    f"Expected tensor of shape (B, T, {self.input_dim}) but got tensor of shape {tuple(x.shape)}"
+                )
+            if context is not None:
+                if context.ndim != 3 or context.shape[-1] != self.input_context_dim:
+                    raise ValueError(
+                        f"Expected context shape (B, T_c, {self.input_context_dim}) but got tensor of shape {tuple(context.shape)}"
+                    )
+
         if context is not None:
             context = self.context_encoder(context)
             x = torch.cat([context, x], dim=1)
+
         x = self.input_encoder(x)
         tgt_mask = self.generate_square_subsequent_mask(
             x.size()[1], device=self.dist.device
         )
         output = self.decoder(x, tgt_mask=tgt_mask)
-
         output = self.output_encoder(output)
-
         return output[:, 1:]
 
     @torch.no_grad()
-    def sample(self, z0, step_size, context=None):
-        """
-        Samples a sequence starting from the initial input `z0` for a given number of steps using
-        the model's `forward` method.
-        """
-        z = z0  # .unsqueeze(1)
+    def sample(
+        self,
+        z0: Float[Tensor, "batch 1 input_dim"],
+        step_size: int,
+        context: Optional[Float[Tensor, "batch time_ctx input_context_dim"]] = None,
+    ) -> Float[Tensor, "batch time_total input_dim"]:
+        r"""Autoregressively sample a sequence starting from ``z0``.
 
-        for i in range(step_size):
+        Parameters
+        ----------
+        z0 : torch.Tensor
+            Initial token(s) of shape :math:`(B, 1, D_{in})`.
+        step_size : int
+            Number of autoregressive steps to generate.
+        context : torch.Tensor, optional
+            Optional context tokens of shape :math:`(B, T_c, D_{ctx})`.
+
+        Returns
+        -------
+        torch.Tensor
+            Concatenated sequence including ``z0`` and generated tokens,
+            of shape :math:`(B, 1 + T_{gen}, D_{in})`.
+        """
+        z = z0
+        for _ in range(step_size):
             prediction = self.forward(z, context)[:, -1].unsqueeze(1)
             z = torch.concat([z, prediction], dim=1)
         return z
@@ -147,8 +222,22 @@ class Sequence_Model(torch.nn.Module):
         device: torch.device = torch.device(torch._C._get_default_device()),
         dtype: torch.dtype = torch.get_default_dtype(),
     ) -> Tensor:
-        """Generates a square mask for the sequence. The mask shows which entries should not be used."""
+        r"""Generate a causal mask for an autoregressive decoder.
 
+        Parameters
+        ----------
+        sz : int
+            Sequence length.
+        device : torch.device, optional
+            Device of the returned mask.
+        dtype : torch.dtype, optional
+            Dtype of the returned mask.
+
+        Returns
+        -------
+        torch.Tensor
+            Upper-triangular mask of shape :math:`(T, T)` with :math:`-\infty` above the diagonal.
+        """
         return torch.triu(
             torch.full((sz, sz), float("-inf"), dtype=dtype, device=device),
             diagonal=1,
