@@ -38,6 +38,7 @@ try:
 except Exception:  # pragma: no cover
     pyg = None  # type: ignore
 
+
 @dataclass
 class MetaData(ModelMetaData):
     jit: bool = False
