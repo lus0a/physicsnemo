@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2023 - 2025 NVIDIA CORPORATION & AFFILIATES.
+# SPDX-FileCopyrightText: Copyright (c) 2023 - 2026 NVIDIA CORPORATION & AFFILIATES.
 # SPDX-FileCopyrightText: All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -22,76 +22,59 @@ from jaxtyping import Float
 from torch import Tensor, nn
 from torch.nn import LayerNorm
 
-from physicsnemo.core.meta import ModelMetaData
-from physicsnemo.core.module import Module
-from physicsnemo.nn.gnn_layers.mesh_graph_mlp import MeshGraphMLP
-from physicsnemo.nn.transformer_decoder import (
+from physicsnemo.nn.module.gnn_layers.mesh_graph_mlp import MeshGraphMLP
+from physicsnemo.nn.module.transformer_decoder import (
     DecoderOnlyLayer,
     TransformerDecoder,
 )
 
-
-@dataclass
-class MetaData(ModelMetaData):
-    # Keep consistent defaults with other models
-    jit: bool = False
-    cuda_graphs: bool = False
-    amp_cpu: bool = False
-    amp_gpu: bool = True
-    torch_fx: bool = False
-    onnx: bool = False
-    func_torch: bool = True
-    auto_grad: bool = True
-
-
-class Sequence_Model(Module):
-    r"""Decoder-only multi-head attention temporal model.
-
+class Sequence_Model(torch.nn.Module):
+    r"""Decoder-only multi-head attention architecture.
     Parameters
     ----------
     input_dim : int
-        Number of latent features per token (e.g., :math:`N_{pivotal} \times D_{enc}` flattened or projected).
+        Latent feature dimension :math:`D` for each time step
+        (typically ``#pivotal_positions * output_decode_dim``).
     input_context_dim : int
-        Number of physical context features per token.
+        Number of physical context features.
     dist : Any
-        Distribution or device handle; must provide ``dist.device`` attribute.
+        Distributed manager or device wrapper containing the target ``device``.
     dropout_rate : float, optional, default=0.0
-        Dropout probability for the decoder.
+        Dropout value used in the attention decoder.
     num_layers_decoder : int, optional, default=3
-        Number of sub-layers in the transformer decoder.
+        Number of decoder-only transformer layers.
     num_heads : int, optional, default=8
-        Number of attention heads.
+        Number of attention heads in the decoder.
     dim_feedforward_scale : int, optional, default=4
-        Scale factor for the FFN dimension relative to ``input_dim``.
+        Scale factor for the decoder MLP (FFN) hidden dimension, i.e.
+        hidden size is ``dim_feedforward_scale * input_dim``.
     num_layers_context_encoder : int, optional, default=2
-        MLP layers for context feature encoder.
+        Number of MLP layers for encoding the physical context.
     num_layers_input_encoder : int, optional, default=2
-        MLP layers for input feature encoder.
+        Number of MLP layers for encoding input sequence features.
     num_layers_output_encoder : int, optional, default=2
-        MLP layers for output feature encoder.
+        Number of MLP layers for encoding output sequence features.
     activation : str, optional, default="gelu"
-        Activation function for transformer blocks. One of ``"relu"``, ``"gelu"``.
+        Activation function used in the decoder (``"relu"`` or ``"gelu"``).
 
     Forward
     -------
     x : torch.Tensor
-        Input token sequence of shape :math:`(B, T, D_{in})`.
+        Input sequence tensor of shape :math:`(B, T, D)` with batch-first layout.
     context : torch.Tensor, optional
-        Optional conditioning tokens of shape :math:`(B, T_c, D_{ctx})` that are
-        concatenated before ``x`` along the sequence dimension.
+        Optional physical context. When provided it is encoded and concatenated
+        along the temporal axis; it should broadcast or match to a shape compatible
+        with :math:`(B, 1, D)` after encoding.
 
     Outputs
     -------
     torch.Tensor
-        Output token sequence of shape :math:`(B, T, D_{in})`.
+        Predicted sequence tensor of shape :math:`(B, T-1, D)`. The first token is
+        treated as a prompt and excluded from the returned sequence.
 
     Notes
     -----
-    Reference: Han, Xu, et al. "Predicting physics in mesh-reduced space with temporal attention."
-    arXiv preprint arXiv:2201.09113 (2022).
-
-    See also :class:`~physicsnemo.nn.transformer_decoder.TransformerDecoder`
-    and :class:`~physicsnemo.nn.gnn_layers.mesh_graph_mlp.MeshGraphMLP`.
+    Reference: `Predicting physics in mesh-reduced space with temporal attention <https://arxiv.org/pdf/2201.09113>`_
     """
 
     def __init__(
@@ -159,10 +142,9 @@ class Sequence_Model(Module):
 
     def forward(
         self,
-        x: Float[Tensor, "batch time input_dim"],
-        context: Optional[Float[Tensor, "batch time_ctx input_context_dim"]] = None,
-    ) -> Float[Tensor, "batch time input_dim"]:
-        """Run decoder-only transformer with optional context tokens."""
+        x: Tensor,
+        context: Optional[Tensor] = None,
+    ) -> Tensor:
         if not torch.compiler.is_compiling():
             if x.ndim != 3 or x.shape[-1] != self.input_dim:
                 raise ValueError(
@@ -187,29 +169,25 @@ class Sequence_Model(Module):
         return output[:, 1:]
 
     @torch.no_grad()
-    def sample(
-        self,
-        z0: Float[Tensor, "batch 1 input_dim"],
-        step_size: int,
-        context: Optional[Float[Tensor, "batch time_ctx input_context_dim"]] = None,
-    ) -> Float[Tensor, "batch time_total input_dim"]:
+    def sample(self, z0, step_size, context=None):
         r"""Autoregressively sample a sequence starting from ``z0``.
 
         Parameters
         ----------
         z0 : torch.Tensor
-            Initial token(s) of shape :math:`(B, 1, D_{in})`.
+            Initial prompt sequence of shape :math:`(B, T_0, D)`.
         step_size : int
-            Number of autoregressive steps to generate.
+            Number of future steps to generate.
         context : torch.Tensor, optional
-            Optional context tokens of shape :math:`(B, T_c, D_{ctx})`.
+            Optional physical context passed to :meth:`forward`.
 
         Returns
         -------
         torch.Tensor
-            Concatenated sequence including ``z0`` and generated tokens,
-            of shape :math:`(B, 1 + T_{gen}, D_{in})`.
+            Concatenated sequence including the prompt and generated steps, of shape
+            :math:`(B, T_0 + \mathrm{step\_size}, D)`.
         """
+
         z = z0
         for _ in range(step_size):
             prediction = self.forward(z, context)[:, -1].unsqueeze(1)
@@ -222,21 +200,21 @@ class Sequence_Model(Module):
         device: torch.device = torch.device(torch._C._get_default_device()),
         dtype: torch.dtype = torch.get_default_dtype(),
     ) -> Tensor:
-        r"""Generate a causal mask for an autoregressive decoder.
+        r"""Generate a causal (future-masking) square attention mask.
 
         Parameters
         ----------
         sz : int
-            Sequence length.
+            Sequence length :math:`T`.
         device : torch.device, optional
-            Device of the returned mask.
+            Target device for the mask tensor.
         dtype : torch.dtype, optional
-            Dtype of the returned mask.
+            Data type for the mask tensor.
 
         Returns
         -------
         torch.Tensor
-            Upper-triangular mask of shape :math:`(T, T)` with :math:`-\infty` above the diagonal.
+            Causal mask of shape :math:`(T, T)` with ``-inf`` above the main diagonal.
         """
         return torch.triu(
             torch.full((sz, sz), float("-inf"), dtype=dtype, device=device),

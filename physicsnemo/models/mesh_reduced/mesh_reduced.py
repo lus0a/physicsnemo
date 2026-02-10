@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2023 - 2025 NVIDIA CORPORATION & AFFILIATES.
+# SPDX-FileCopyrightText: Copyright (c) 2023 - 2026 NVIDIA CORPORATION & AFFILIATES.
 # SPDX-FileCopyrightText: All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -18,42 +18,20 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Literal, Optional, Tuple
+import importlib
 
 import torch
-from jaxtyping import Float, Int
+from torch import Tensor
 
-from physicsnemo import ModelMetaData, Module
-from physicsnemo.core.version_check import check_version_spec
+from physicsnemo.core.meta import ModelMetaData
+from physicsnemo.core.module import Module
+from physicsnemo.core.version_check import require_version_spec
 from physicsnemo.models.meshgraphnet.meshgraphnet import MeshGraphNet
-from physicsnemo.nn.gnn_layers.graph_types import GraphType
-
-Tensor = torch.Tensor
-
-_TORCH_CLUSTER_AVAILABLE = check_version_spec("torch_cluster", "0.0.0", hard_fail=False)
-_TORCH_SCATTER_AVAILABLE = check_version_spec("torch_scatter", "0.0.0", hard_fail=False)
-
-# Optional PyG import for type checks
-try:
-    import torch_geometric as pyg  # type: ignore
-except Exception:  # pragma: no cover
-    pyg = None  # type: ignore
+from physicsnemo.nn.module.gnn_layers.graph_types import GraphType  # noqa
 
 
-@dataclass
-class MetaData(ModelMetaData):
-    jit: bool = False
-    cuda_graphs: bool = False
-    amp_cpu: bool = False
-    amp_gpu: bool = True
-    torch_fx: bool = False
-    onnx: bool = False
-    func_torch: bool = True
-    auto_grad: bool = True
-
-
-class Mesh_Reduced(Module):
-    r"""PbGMR-GMUS mesh-reduced architecture.
-
+class Mesh_Reduced(torch.nn.Module):
+    r"""PbGMR-GMUS architecture.
     A mesh-reduced architecture that combines encoding and decoding processors
     for physics prediction in reduced mesh space.
 
@@ -115,7 +93,7 @@ class Mesh_Reduced(Module):
         Per-graph pivotal positions of shape :math:`(N_{pivotal}, D_{pos})`.
         These positions are repeated internally across the batch.
 
-    Outputs
+    Returns
     -------
     torch.Tensor
         Decoded node features of shape :math:`(N_{nodes}^{batch}, D_{out}^{decode})`.
@@ -227,22 +205,18 @@ class Mesh_Reduced(Module):
         self.output_encode_dim = output_encode_dim
         self.output_decode_dim = output_decode_dim
 
-    @torch.no_grad()
+    @require_version_spec("torch_cluster")
+    @require_version_spec("torch_scatter")
     def knn_interpolate(
         self,
-        x: Float[Tensor, "n_x d_x"],
-        pos_x: Float[Tensor, "n_x d_pos"],
-        pos_y: Float[Tensor, "n_y d_pos"],
-        batch_x: Optional[Int[Tensor, "n_x"]] = None,  # noqa: F821
-        batch_y: Optional[Int[Tensor, "n_y"]] = None,  # noqa: F821
+        x: Tensor,
+        pos_x: Tensor,
+        pos_y: Tensor,
+        batch_x: Optional[Tensor] = None,
+        batch_y: Optional[Tensor] = None,
         k: int = 3,
         num_workers: int = 1,
-    ) -> Tuple[
-        Float[Tensor, "n_y d_x"],
-        Int[Tensor, "k_n"],  # noqa: F821
-        Int[Tensor, "k_n"],  # noqa: F821
-        Float[Tensor, "k_n 1"],  # noqa: F821
-    ]:
+    ) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
         r"""Perform k-nearest neighbor interpolation from ``pos_x`` to ``pos_y``.
 
         Parameters
@@ -254,66 +228,60 @@ class Mesh_Reduced(Module):
         pos_y : torch.Tensor
             Target positions of shape :math:`(N_y, D_{pos})`.
         batch_x : torch.Tensor, optional
-            Batch indices for source positions.
+            Batch indices for ``pos_x`` of shape :math:`(N_x,)`. If provided,
+            neighbors are computed per-graph. Default is ``None``.
         batch_y : torch.Tensor, optional
-            Batch indices for target positions.
+            Batch indices for ``pos_y`` of shape :math:`(N_y,)`. If provided,
+            neighbors are computed per-graph. Default is ``None``.
         k : int, optional, default=3
-            Number of nearest neighbors to consider.
+            Number of nearest neighbors.
         num_workers : int, optional, default=1
-            Number of workers for the KNN op.
+            Number of workers for the KNN search.
 
         Returns
         -------
-        torch.Tensor
-            Interpolated features of shape :math:`(N_y, D_x)`.
-        torch.Tensor
-            Source indices.
-        torch.Tensor
-            Target indices.
-        torch.Tensor
-            Interpolation weights.
+        Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]
+            A tuple ``(y, col, row, weights)`` where:
+
+            - ``y``: interpolated features of shape :math:`(N_y, D_x)`
+            - ``col``: indices into ``pos_x`` (source) of shape :math:`(k \cdot N_y,)`
+            - ``row``: indices into ``pos_y`` (target) of shape :math:`(k \cdot N_y,)`
+            - ``weights``: interpolation weights of shape :math:`(k \cdot N_y, 1)`
         """
-        if not (_TORCH_CLUSTER_AVAILABLE and _TORCH_SCATTER_AVAILABLE):
-            raise RuntimeError(
-                "kNN interpolation requires 'torch_cluster' and 'torch_scatter'. "
-                "Install PyTorch Geometric dependencies following: "
-                "https://pytorch-geometric.readthedocs.io/en/latest/install/installation.html"
+        with torch.no_grad():
+            torch_cluster = importlib.import_module("torch_cluster")
+            row, col = torch_cluster.knn(
+                pos_x,
+                pos_y,
+                k,
+                batch_x=batch_x,
+                batch_y=batch_y,
+                num_workers=num_workers,
             )
-        import importlib
+            # row: indices in pos_y, col: indices in pos_x
+            diff = pos_x[col] - pos_y[row]
+            squared_distance = (diff * diff).sum(dim=-1, keepdim=True)
+            weights = 1.0 / torch.clamp(squared_distance, min=1e-16)
 
-        torch_cluster = importlib.import_module("torch_cluster")
         torch_scatter = importlib.import_module("torch_scatter")
-
-        assign_index = torch_cluster.knn(
-            pos_x,
-            pos_y,
-            k,
-            batch_x=batch_x,
-            batch_y=batch_y,
-            num_workers=num_workers,
-        )
-        y_idx, x_idx = assign_index[0], assign_index[1]
-        diff = pos_x[x_idx] - pos_y[y_idx]
-        squared_distance = (diff * diff).sum(dim=-1, keepdim=True)
-        weights = 1.0 / torch.clamp(squared_distance, min=1e-16)
-
         y = torch_scatter.scatter(
-            x[x_idx] * weights, y_idx, 0, dim_size=pos_y.size(0), reduce="sum"
+            x[col] * weights, row, dim=0, dim_size=pos_y.size(0), reduce="sum"
         )
         y = y / torch_scatter.scatter(
-            weights, y_idx, 0, dim_size=pos_y.size(0), reduce="sum"
+            weights, row, dim=0, dim_size=pos_y.size(0), reduce="sum"
         )
 
-        return y.float(), x_idx, y_idx, weights
+        return y.float(), col, row, weights
 
+    @require_version_spec("torch_geometric")
     def encode(
         self,
-        x: Float[Tensor, "n_nodes input_dim_nodes"],
-        edge_features: Float[Tensor, "n_edges input_dim_edges"],
+        x: Tensor,
+        edge_features: Tensor,
         graph: GraphType,
-        position_mesh: Float[Tensor, "n_mesh d_pos"],
-        position_pivotal: Float[Tensor, "n_pivotal d_pos"],
-    ) -> Float[Tensor, "n_pivotal_batched output_encode_dim"]:
+        position_mesh: Tensor,
+        position_pivotal: Tensor,
+    ) -> Tensor:
         r"""Encode mesh features to pivotal space.
 
         Parameters
@@ -323,53 +291,36 @@ class Mesh_Reduced(Module):
         edge_features : torch.Tensor
             Edge features of shape :math:`(N_{edges}^{batch}, D_{in}^{edge})`.
         graph : :class:`~physicsnemo.nn.gnn_layers.utils.GraphType`
-            Graph connectivity/topology container (PyG).
-            Connectivity/topology only. Do not duplicate node or edge features on the graph;
-            pass them via ``node_features`` and ``edge_features``. If present on
-            the graph, they will be ignored by the model.
-            ``node_features.shape[0]`` must equal the number of nodes in the graph ``graph.num_nodes``.
-            ``edge_features.shape[0]`` must equal the number of edges in the graph ``graph.num_edges``.
-            The current :class:`~physicsnemo.nn.gnn_layers.graph_types.GraphType` resolves to
-            PyTorch Geometric objects (``torch_geometric.data.Data`` or ``torch_geometric.data.HeteroData``). See
-            :mod:`physicsnemo.nn.gnn_layers.graph_types` for the exact alias and requirements.
+            PyG graph container with batch information.
         position_mesh : torch.Tensor
-            Per-graph mesh positions of shape :math:`(N_{mesh}, D_{pos})`.
+            Per-graph reference mesh positions of shape :math:`(N_{mesh}, D_{pos})`.
         position_pivotal : torch.Tensor
             Per-graph pivotal positions of shape :math:`(N_{pivotal}, D_{pos})`.
 
         Returns
         -------
         torch.Tensor
-            Encoded features in pivotal space of shape
-            :math:`(N_{pivotal}^{batch}, D_{enc})`.
+            Encoded pivotal features of shape :math:`(N_{pivotal}^{batch}, D_{enc})`.
         """
         if not torch.compiler.is_compiling():
-            if x.ndim != 2 or x.shape[1] != self.input_dim_nodes:
+            if x.ndim != 2:
                 raise ValueError(
-                    f"Expected tensor of shape (N_nodes, {self.input_dim_nodes}) but got tensor of shape {tuple(x.shape)}"
+                    f"Expected 2D node features (N_nodes, D_in) but got shape {tuple(x.shape)}"
                 )
-            if (
-                edge_features.ndim != 2
-                or edge_features.shape[1] != self.input_dim_edges
-            ):
+            if edge_features.ndim != 2:
                 raise ValueError(
-                    f"Expected tensor of shape (N_edges, {self.input_dim_edges}) but got tensor of shape {tuple(edge_features.shape)}"
+                    f"Expected 2D edge features (N_edges, D_in) but got shape {tuple(edge_features.shape)}"
                 )
             if position_mesh.ndim != 2 or position_pivotal.ndim != 2:
                 raise ValueError(
-                    f"Expected position tensors to be 2D, got shapes {tuple(position_mesh.shape)} and {tuple(position_pivotal.shape)}"
+                    f"Expected position tensors to be 2D, got {tuple(position_mesh.shape)} and {tuple(position_pivotal.shape)}"
                 )
-
-        # Encode on the mesh graph
         x = self.encoder_processor(x, edge_features, graph)
-        x = self.PivotalNorm(x)  # (N_nodes^batch, D_enc)
-
-        # Build batched positional tensors and batch ids for KNN interpolation
-        if (pyg is not None) and isinstance(graph, pyg.data.Data):
+        x = self.PivotalNorm(x)
+        pyg = importlib.import_module("torch_geometric")
+        if isinstance(graph, pyg.data.Data):
             batch_mesh = graph.batch
-            batch_size = (
-                int(batch_mesh.max().item()) + 1 if batch_mesh.numel() > 0 else 1
-            )
+            batch_size = int(batch_mesh.max().item()) + 1 if batch_mesh.numel() > 0 else 1
         else:
             raise ValueError(f"Unsupported graph type: {type(graph)}")
 
@@ -380,7 +331,6 @@ class Mesh_Reduced(Module):
             torch.tensor([len(position_pivotal)] * batch_size, device=x.device)
         )
 
-        # Interpolate from mesh to pivotal positions
         x, _, _, _ = self.knn_interpolate(
             x=x,
             pos_x=position_mesh_batch,
@@ -391,14 +341,15 @@ class Mesh_Reduced(Module):
         )
         return x
 
+    @require_version_spec("torch_geometric")
     def decode(
         self,
-        x: Float[Tensor, "n_pivotal_batched output_encode_dim"],
-        edge_features: Float[Tensor, "n_edges input_dim_edges"],
+        x: Tensor,
+        edge_features: Tensor,
         graph: GraphType,
-        position_mesh: Float[Tensor, "n_mesh d_pos"],
-        position_pivotal: Float[Tensor, "n_pivotal d_pos"],
-    ) -> Float[Tensor, "n_nodes output_decode_dim"]:
+        position_mesh: Tensor,
+        position_pivotal: Tensor,
+    ) -> Tensor:
         r"""Decode pivotal features back to mesh space.
 
         Parameters
@@ -442,11 +393,10 @@ class Mesh_Reduced(Module):
                     f"Expected position tensors to be 2D, got shapes {tuple(position_mesh.shape)} and {tuple(position_pivotal.shape)}"
                 )
 
-        if (pyg is not None) and isinstance(graph, pyg.data.Data):
+        pyg = importlib.import_module("torch_geometric")
+        if isinstance(graph, pyg.data.Data):
             batch_mesh = graph.batch
-            batch_size = (
-                int(batch_mesh.max().item()) + 1 if batch_mesh.numel() > 0 else 1
-            )
+            batch_size = int(batch_mesh.max().item()) + 1 if batch_mesh.numel() > 0 else 1
         else:
             raise ValueError(f"Unsupported graph type: {type(graph)}")
 
@@ -457,7 +407,6 @@ class Mesh_Reduced(Module):
             torch.tensor([len(position_pivotal)] * batch_size, device=x.device)
         )
 
-        # Interpolate from pivotal back to mesh positions
         x, _, _, _ = self.knn_interpolate(
             x=x,
             pos_x=position_pivotal_batch,
@@ -467,35 +416,5 @@ class Mesh_Reduced(Module):
             k=self.k,
         )
 
-        # Decode on the mesh graph
         x = self.decoder_processor(x, edge_features, graph)
         return x
-
-    def forward(
-        self,
-        node_features: Float[Tensor, "n_nodes input_dim_nodes"],
-        edge_features: Float[Tensor, "n_edges input_dim_edges"],
-        graph: GraphType,
-        position_mesh: Float[Tensor, "n_mesh d_pos"],
-        position_pivotal: Float[Tensor, "n_pivotal d_pos"],
-    ) -> Float[Tensor, "n_nodes output_decode_dim"]:
-        if not torch.compiler.is_compiling():
-            if (
-                node_features.ndim != 2
-                or node_features.shape[1] != self.input_dim_nodes
-            ):
-                raise ValueError(
-                    f"Expected tensor of shape (N_nodes, {self.input_dim_nodes}) but got tensor of shape {tuple(node_features.shape)}"
-                )
-            if (
-                edge_features.ndim != 2
-                or edge_features.shape[1] != self.input_dim_edges
-            ):
-                raise ValueError(
-                    f"Expected tensor of shape (N_edges, {self.input_dim_edges}) but got tensor of shape {tuple(edge_features.shape)}"
-                )
-        enc = self.encode(
-            node_features, edge_features, graph, position_mesh, position_pivotal
-        )
-        dec = self.decode(enc, edge_features, graph, position_mesh, position_pivotal)
-        return dec

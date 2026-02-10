@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Literal
 
 import torch
 import torch.nn as nn
@@ -54,7 +55,7 @@ def get_activation(name: str) -> nn.Module:
 # 3D AFNO Spectral Layer
 # ---------------------------------------------------------------------------
 class AFNO3DLayer(nn.Module):
-    """Adaptive Fourier Neural Operator 3D spectral mixing layer.
+    r"""Adaptive Fourier Neural Operator 3D spectral mixing layer.
 
     Applies block-diagonal linear transforms in the 3D Fourier domain.
 
@@ -189,7 +190,7 @@ class AFNO3DLayer(nn.Module):
 # Conv 3D MLP
 # ---------------------------------------------------------------------------
 class ConvMlp3D(nn.Module):
-    """3D Convolutional MLP."""
+    r"""3D Convolutional MLP."""
 
     def __init__(self, width: int, mlp_ratio: float, activation: str) -> None:
         super().__init__()
@@ -209,7 +210,7 @@ class ConvMlp3D(nn.Module):
 # Block
 # ---------------------------------------------------------------------------
 class Block3D(nn.Module):
-    """3D AFNO Block: spectral mixing + Conv MLP + (optional) double skip."""
+    r"""3D AFNO Block: spectral mixing + Conv MLP + (optional) double skip."""
 
     def __init__(
         self,
@@ -253,7 +254,7 @@ class Block3D(nn.Module):
 # 3D Patch Embedding
 # ---------------------------------------------------------------------------
 class PatchEmbed3D(nn.Module):
-    """3D patch embedding (voxel embedding).
+    r"""3D patch embedding (voxel embedding).
 
     Parameters
     ----------
@@ -318,10 +319,14 @@ class PatchEmbed3D(nn.Module):
 # Temporal Aggregator (same idea as 2D version)
 # ---------------------------------------------------------------------------
 class TimeAggregator(nn.Module):
-    """Temporal aggregator."""
+    r"""Temporal aggregator."""
 
     def __init__(
-        self, in_channels: int, in_timesteps: int, embed_dim: int, mode: str = "exp_mlp"
+        self,
+        in_channels: int,
+        in_timesteps: int,
+        embed_dim: int,
+        mode: Literal["mlp", "exp_mlp"] = "exp_mlp",
     ) -> None:
         super().__init__()
         self.mode = mode
@@ -358,16 +363,16 @@ class DPOT3DMeta:
 # Main 3D Model
 # ---------------------------------------------------------------------------
 class DPOTNet3D(nn.Module):
-    """3D AFNO-based spatio-temporal predictor.
+    r"""3D AFNO-based spatio-temporal predictor.
 
     Parameters
     ----------
-    inp_shape : int or list
-        Cubic spatial dimension.
-    patch_size : int or list
-        Patch size.
+    inp_shape : int or tuple[int, int, int]
+        Cubic spatial dimension or per-dimension sizes.
+    patch_size : int or tuple[int, int, int]
+        Patch size per dimension.
     mixing_type : str
-        Currently only 'afno'.
+        Currently only ``"afno"``.
     in_channels : int
         Number of input feature channels.
     out_channels : int
@@ -396,15 +401,25 @@ class DPOTNet3D(nn.Module):
         Use adaptive instance normalization.
     activation : str
         Activation name.
-    time_agg : str
-        Temporal aggregation mode ("mlp" or "exp_mlp").
+    time_agg : {"mlp", "exp_mlp"}
+        Temporal aggregation mode.
+
+    Forward
+    -------
+    x : torch.Tensor
+        Tensor of shape :math:`(B, X, Y, Z, T, C_{in})`.
+
+    Outputs
+    -------
+    torch.Tensor
+        Tensor of shape :math:`(B, X, Y, Z, T_{out}, C_{out})`.
     """
 
     def __init__(
         self,
         inp_shape: int = 224,
         patch_size: int = 16,
-        mixing_type: str = "afno",
+        mixing_type: Literal["afno"] = "afno",
         in_channels: int = 1,
         out_channels: int = 3,
         in_timesteps: int = 1,
@@ -418,7 +433,7 @@ class DPOTNet3D(nn.Module):
         mlp_ratio: float = 1.0,
         normalize: bool = False,
         activation: str = "gelu",
-        time_agg: str = "exp_mlp",
+        time_agg: Literal["mlp", "exp_mlp"] = "exp_mlp",
         norm_groups: int = 8,
     ) -> None:
         super().__init__()
@@ -538,17 +553,17 @@ class DPOTNet3D(nn.Module):
 
     # ---------------------------------------------------------------- forward
     def forward(self, x: Tensor) -> Tensor:  # noqa: D401
-        """Forward pass.
+        r"""Forward pass.
 
         Parameters
         ----------
         x : Tensor
-            Shape (B, X, Y, Z, T, C_in)
+            Shape :math:`(B, X, Y, Z, T, C_{in})`
 
         Returns
         -------
         Tensor
-            Shape (B, X, Y, Z, T_out, C_out)
+            Shape :math:`(B, X, Y, Z, T_{out}, C_{out})`
         """
         b, xx, yy, zz, tt, cc = x.shape
         if tt != self.in_timesteps or cc != self.in_channels:
