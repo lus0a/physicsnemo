@@ -1212,6 +1212,3 @@ class VFGNLearnedSimulator(Module):
         ) / acceleration_stats.std
         normalized_acceleration = torch.tile(normalized_acceleration, [predict_length])
         return normalized_acceleration
-
-
- 

@@ -59,7 +59,9 @@ class Diffusion:
 
         self.loss = nn.MSELoss()
 
-    def q_sample(self, x0: torch.Tensor, t: torch.Tensor, noise: torch.Tensor | None = None) -> torch.Tensor:
+    def q_sample(
+        self, x0: torch.Tensor, t: torch.Tensor, noise: torch.Tensor | None = None
+    ) -> torch.Tensor:
         r"""Diffuse the input data (forward process).
 
         Parameters
@@ -89,7 +91,9 @@ class Diffusion:
 
         return x
 
-    def p_sample(self, model, xt: torch.Tensor, t: torch.Tensor, cons: torch.Tensor) -> torch.Tensor:
+    def p_sample(
+        self, model, xt: torch.Tensor, t: torch.Tensor, cons: torch.Tensor
+    ) -> torch.Tensor:
         r"""Predict noise using the model (reverse process).
 
         Parameters

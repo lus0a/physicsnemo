@@ -298,6 +298,7 @@ class Block3D(nn.Module):
         x = x + r
         return x
 
+
 class PatchEmbed3D(nn.Module):
     r"""3D patch embedding (voxel embedding).
 
@@ -370,6 +371,7 @@ class PatchEmbed3D(nn.Module):
             )
         return self.proj(x)
 
+
 class TimeAggregator(nn.Module):
     r"""Temporal aggregator.
 
@@ -428,6 +430,7 @@ class DPOT3DMeta:
     jit: bool = False
     amp: bool = True
     cuda_graphs: bool = False
+
 
 class DPOTNet3D(nn.Module):
     r"""3D AFNO-based spatio-temporal predictor.

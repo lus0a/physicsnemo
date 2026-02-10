@@ -14,11 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from dataclasses import dataclass
 from typing import Optional
 
 import torch
-from jaxtyping import Float
 from torch import Tensor, nn
 from torch.nn import LayerNorm
 
@@ -27,6 +25,7 @@ from physicsnemo.nn.module.transformer_decoder import (
     DecoderOnlyLayer,
     TransformerDecoder,
 )
+
 
 class Sequence_Model(torch.nn.Module):
     r"""Decoder-only multi-head attention architecture.

@@ -14,9 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Generator, Tuple
+
 import numpy as np
 from torch.utils.data import DataLoader, Dataset
-from typing import Generator, Tuple
 
 
 class DatasetTopoDiff(Dataset):

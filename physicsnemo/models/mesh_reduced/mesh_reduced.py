@@ -16,18 +16,21 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Literal, Optional, Tuple
 import importlib
+from typing import Literal, Optional, Tuple
 
 import torch
 from torch import Tensor
 
-from physicsnemo.core.meta import ModelMetaData
-from physicsnemo.core.module import Module
 from physicsnemo.core.version_check import require_version_spec
 from physicsnemo.models.meshgraphnet.meshgraphnet import MeshGraphNet
 from physicsnemo.nn.module.gnn_layers.graph_types import GraphType  # noqa
+
+# Optional dependency: torch_geometric (PyG)
+try:
+    import torch_geometric as pyg  # type: ignore
+except Exception:  # pragma: no cover - optional dependency at import time
+    pyg = None  # type: ignore
 
 
 class Mesh_Reduced(torch.nn.Module):
@@ -158,7 +161,7 @@ class Mesh_Reduced(torch.nn.Module):
         k: int = 3,
         aggregation: Literal["sum", "mean"] = "mean",
     ):
-        super().__init__(meta=MetaData())
+        super().__init__()
         self.knn_encoder_already = False
         self.knn_decoder_already = False
 
@@ -317,10 +320,11 @@ class Mesh_Reduced(torch.nn.Module):
                 )
         x = self.encoder_processor(x, edge_features, graph)
         x = self.PivotalNorm(x)
-        pyg = importlib.import_module("torch_geometric")
         if isinstance(graph, pyg.data.Data):
             batch_mesh = graph.batch
-            batch_size = int(batch_mesh.max().item()) + 1 if batch_mesh.numel() > 0 else 1
+            batch_size = (
+                int(batch_mesh.max().item()) + 1 if batch_mesh.numel() > 0 else 1
+            )
         else:
             raise ValueError(f"Unsupported graph type: {type(graph)}")
 
@@ -393,10 +397,11 @@ class Mesh_Reduced(torch.nn.Module):
                     f"Expected position tensors to be 2D, got shapes {tuple(position_mesh.shape)} and {tuple(position_pivotal.shape)}"
                 )
 
-        pyg = importlib.import_module("torch_geometric")
         if isinstance(graph, pyg.data.Data):
             batch_mesh = graph.batch
-            batch_size = int(batch_mesh.max().item()) + 1 if batch_mesh.numel() > 0 else 1
+            batch_size = (
+                int(batch_mesh.max().item()) + 1 if batch_mesh.numel() > 0 else 1
+            )
         else:
             raise ValueError(f"Unsupported graph type: {type(graph)}")
 
