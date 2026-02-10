@@ -483,6 +483,30 @@ class DPOTNet3D(nn.Module):
     -------
     torch.Tensor
         Tensor of shape :math:`(B, X, Y, Z, T_{out}, C_{out})`.
+
+    Examples
+    --------
+    >>> import torch
+    >>> from physicsnemo.models.dpot.dpot3d import DPOTNet3D
+    >>> x = torch.rand(2, 32, 32, 32, 6, 3)  # (B,X,Y,Z,T,C)
+    >>> net = DPOTNet3D(
+    ...     inp_shape=(32, 32, 32),
+    ...     patch_size=(8, 8, 8),
+    ...     in_channels=3,
+    ...     out_channels=3,
+    ...     in_timesteps=6,
+    ...     out_timesteps=2,
+    ...     embed_dim=96,
+    ...     depth=4,
+    ...     num_blocks=4,
+    ...     modes=16,
+    ...     temporal_modes=6,
+    ...     mlp_ratio=1.5,
+    ...     normalize=True,
+    ... )
+    >>> y = net(x)
+    >>> tuple(y.shape)
+    (2, 32, 32, 32, 2, 3)
     """
 
     def __init__(
@@ -697,24 +721,3 @@ def checkpoint_filter_fn(state_dict: dict, model: DPOTNet3D) -> dict:
             v = resize_pos_embed(v, model.pos_embed)
         out[k] = v
     return out
-
-
-if __name__ == "__main__":
-    x = torch.rand(2, 32, 32, 32, 6, 3)  # (B,X,Y,Z,T,C)
-    net = DPOTNet3D(
-        inp_shape=(32, 32, 32),
-        patch_size=(8, 8, 8),
-        in_channels=3,
-        out_channels=3,
-        in_timesteps=6,
-        out_timesteps=2,
-        embed_dim=96,
-        depth=4,
-        num_blocks=4,
-        modes=16,
-        temporal_modes=6,
-        mlp_ratio=1.5,
-        normalize=True,
-    )
-    y = net(x)
-    print("Output:", y.shape)

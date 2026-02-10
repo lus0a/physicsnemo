@@ -403,9 +403,6 @@ class TimeAggregator(nn.Module):
         return x
 
 
-# ---------------------------------------------------------------------------
-# Model Meta (placeholder for integration)
-# ---------------------------------------------------------------------------
 @dataclass
 class DPOTMeta:
     name: str = "DPOTNet"
@@ -415,9 +412,6 @@ class DPOTMeta:
     # Extend with additional model-zoo metadata fields as needed.
 
 
-# ---------------------------------------------------------------------------
-# Main Model
-# ---------------------------------------------------------------------------
 class DPOTNet(Module):
     r"""DPOTNet with AFNO spectral mixing.
 
@@ -467,6 +461,27 @@ class DPOTNet(Module):
     -------
     torch.Tensor
         Prediction tensor of shape :math:`(B, H, W, T_{out}, C_{out})`.
+
+    Examples
+    --------
+    >>> import torch
+    >>> from physicsnemo.models.dpot.dpot import DPOTNet
+    >>> x = torch.rand(4, 20, 20, 6, 3)  # (B,H,W,T,C)
+    >>> net = DPOTNet(
+    ...     inp_shape=(20, 20),
+    ...     patch_size=(5, 10),
+    ...     in_channels=3,
+    ...     out_channels=3,
+    ...     in_timesteps=6,
+    ...     out_timesteps=1,
+    ...     embed_dim=32,
+    ...     normalize=True,
+    ...     depth=4,
+    ...     num_blocks=4,
+    ... )
+    >>> y = net(x)
+    >>> tuple(y.shape)
+    (4, 20, 20, 1, 3)
     """
 
     def __init__(
@@ -567,7 +582,6 @@ class DPOTNet(Module):
         nn.init.trunc_normal_(self.pos_embed, std=0.02)
         self.apply(self._init_weights)
 
-    # ------------------------------------------------------------------ utils
     def _init_weights(self, m: nn.Module) -> None:
         if isinstance(m, (nn.Linear, nn.Conv2d, nn.ConvTranspose2d)):
             nn.init.trunc_normal_(m.weight, std=0.02)
@@ -597,20 +611,7 @@ class DPOTNet(Module):
         )
         return torch.cat([grid_x, grid_y, grid_t], dim=-1)  # (B,H,W,T,3)
 
-    # ---------------------------------------------------------------- forward
-    def forward(self, x: Tensor) -> Tensor:  # noqa: D401
-        r"""Forward pass.
-
-        Parameters
-        ----------
-        x : Tensor
-            Input tensor of shape :math:`(B, H, W, T, C)`.
-
-        Returns
-        -------
-        Tensor
-            Prediction tensor of shape :math:`(B, H, W, T_{out}, C_{out})`.
-        """
+    def forward(self, x: Tensor) -> Tensor:
         b, h, w, t, c = x.shape
         if t != self.in_timesteps or c != self.in_channels:
             raise ValueError(
@@ -704,24 +705,3 @@ def checkpoint_filter_fn(state_dict: dict, model: DPOTNet) -> dict:
             v = resize_pos_embed(v, model.pos_embed)
         out[k] = v
     return out
-
-
-# ---------------------------------------------------------------------------
-# Example usage
-# ---------------------------------------------------------------------------
-if __name__ == "__main__":
-    x = torch.rand(4, 20, 20, 6, 3)  # (B,H,W,T,C)
-    net = DPOTNet(
-        inp_shape=(20, 20),
-        patch_size=(5, 10),
-        in_channels=3,
-        out_channels=3,
-        in_timesteps=6,
-        out_timesteps=1,
-        embed_dim=32,
-        normalize=True,
-        depth=4,
-        num_blocks=4,
-    )
-    y = net(x)
-    print("Output:", y.shape)
