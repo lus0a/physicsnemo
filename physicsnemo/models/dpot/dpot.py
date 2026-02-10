@@ -356,8 +356,19 @@ class TimeAggregator(nn.Module):
         Number of input timesteps.
     embed_dim : int
         Target embedding dimension after aggregation.
-    mode : {"mlp", "exp_mlp"}, optional, default="exp_mlp"
+    mode : Literal["mlp", "exp_mlp"], optional, default="exp_mlp"
         Aggregation strategy. Allowed values are ``"mlp"`` and ``"exp_mlp"``.
+
+    Forward
+    -------
+    x : Tensor
+        Input tensor of shape :math:`(B, H, W, T, C)`, where :math:`T` is the
+        time dimension to aggregate and :math:`C` is the feature dimension.
+
+    Returns
+    -------
+    Tensor
+        Aggregated tensor of shape :math:`(B, H, W, C)`.
     """
 
     def __init__(
@@ -378,13 +389,6 @@ class TimeAggregator(nn.Module):
             raise ValueError("Unsupported TimeAggregator mode: {mode}")
 
     def forward(self, x: Tensor) -> Tensor:  # noqa: D401
-        r"""Forward aggregation.
-
-        Parameters
-        ----------
-        x : Tensor
-            Input tensor of shape :math:`(B, H, W, T, C)`.
-        """
         if not torch.compiler.is_compiling():
             if x.ndim != 5:
                 raise ValueError(f"Expected 5D tensor, got shape {tuple(x.shape)}")
@@ -451,8 +455,8 @@ class DPOTNet(Module):
         If ``True`` apply adaptive instance normalization based on input stats.
     activation : str
         Activation name.
-    time_agg : {"mlp", "exp_mlp"}
-        Temporal aggregation mode (use ``"mlp"`` or ``"exp_mlp"``).
+    time_agg : Literal["mlp", "exp_mlp"], optional, default="exp_mlp"
+        Temporal aggregation mode. Allowed values are ``"mlp"`` and ``"exp_mlp"``.
 
     Forward
     -------

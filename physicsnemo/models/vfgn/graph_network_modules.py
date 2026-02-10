@@ -2,10 +2,6 @@
 # ruff: noqa: E402
 
 # © Copyright 2023 HP Development Company, L.P.
-# SPDX-FileCopyrightText: Copyright (c) 2023 - 2025 NVIDIA CORPORATION & AFFILIATES.
-# SPDX-FileCopyrightText: All rights reserved.
-# SPDX-License-Identifier: Apache-2.0
-#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -20,7 +16,6 @@
 
 import importlib
 import random
-import warnings
 from dataclasses import dataclass
 from typing import Literal
 
@@ -1219,39 +1214,4 @@ class VFGNLearnedSimulator(Module):
         return normalized_acceleration
 
 
-class LearnedSimulator(VFGNLearnedSimulator):
-    r"""
-    .. deprecated:: 0.5.0
-       ``LearnedSimulator`` is deprecated. Use :class:`VFGNLearnedSimulator` instead.
-
-    Backward-compatible alias for :class:`VFGNLearnedSimulator`.
-    """
-
-    def __init__(
-        self,
-        num_dimensions: int = 3,
-        num_seq: int = 5,
-        boundaries: list[list[float]] = None,
-        num_particle_types: int = 3,
-        particle_type_embedding_size: int = 16,
-        normalization_stats: map = None,
-        graph_mode: Literal["radius", "knn"] = "radius",
-        connectivity_param: float = 0.015,
-    ):
-        warnings.warn(
-            "LearnedSimulator is deprecated and will be removed in a future version. "
-            "Please use VFGNLearnedSimulator instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-
-        super().__init__(
-            num_dimensions=num_dimensions,
-            num_seq=num_seq,
-            boundaries=boundaries,
-            num_particle_types=num_particle_types,
-            particle_type_embedding_size=particle_type_embedding_size,
-            normalization_stats=normalization_stats,
-            graph_mode=graph_mode,
-            connectivity_param=connectivity_param,
-        )
+ 

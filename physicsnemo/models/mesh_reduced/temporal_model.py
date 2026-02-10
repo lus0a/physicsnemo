@@ -91,7 +91,7 @@ class Sequence_Model(torch.nn.Module):
         num_layers_output_encoder: int = 2,
         activation: str = "gelu",
     ):
-        super().__init__(meta=MetaData())
+        super().__init__()
         self.dist = dist
         decoder_layer = DecoderOnlyLayer(
             input_dim,

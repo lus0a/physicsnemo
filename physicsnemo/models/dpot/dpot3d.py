@@ -26,9 +26,6 @@ from einops import rearrange
 
 Tensor = torch.Tensor
 
-# ---------------------------------------------------------------------------
-# Activation factory
-# ---------------------------------------------------------------------------
 _ACTIVATIONS = {
     "gelu": nn.GELU(),
     "tanh": nn.Tanh(),
@@ -51,9 +48,6 @@ def get_activation(name: str) -> nn.Module:
     return _ACTIVATIONS[key]
 
 
-# ---------------------------------------------------------------------------
-# 3D AFNO Spectral Layer
-# ---------------------------------------------------------------------------
 class AFNO3DLayer(nn.Module):
     r"""Adaptive Fourier Neural Operator 3D spectral mixing layer.
 
@@ -77,6 +71,17 @@ class AFNO3DLayer(nn.Module):
         If True expects (B,C,X,Y,Z), else (B,X,Y,Z,C).
     sparsity_threshold : float
         Lambda for optional soft-shrink (kept for experimentation, disabled by default).
+
+    Forward
+    -------
+    x : torch.Tensor
+        Input tensor of shape :math:`(B, C, X, Y, Z)` if ``channel_first`` else
+        :math:`(B, X, Y, Z, C)`.
+
+    Returns
+    -------
+    torch.Tensor
+        Mixed tensor with the same layout and shape as the input.
     """
 
     def __init__(
@@ -186,11 +191,28 @@ class AFNO3DLayer(nn.Module):
         return x_out
 
 
-# ---------------------------------------------------------------------------
-# Conv 3D MLP
-# ---------------------------------------------------------------------------
 class ConvMlp3D(nn.Module):
-    r"""3D Convolutional MLP."""
+    r"""3D Convolutional MLP.
+
+    Parameters
+    ----------
+    width : int
+        Channel dimension of the input/output.
+    mlp_ratio : float
+        Hidden expansion ratio for the MLP.
+    activation : str
+        Activation function name.
+
+    Forward
+    -------
+    x : torch.Tensor
+        Input tensor of shape :math:`(B, C, X, Y, Z)`.
+
+    Returns
+    -------
+    torch.Tensor
+        Output tensor of shape :math:`(B, C, X, Y, Z)`.
+    """
 
     def __init__(self, width: int, mlp_ratio: float, activation: str) -> None:
         super().__init__()
@@ -206,11 +228,38 @@ class ConvMlp3D(nn.Module):
         return x
 
 
-# ---------------------------------------------------------------------------
-# Block
-# ---------------------------------------------------------------------------
 class Block3D(nn.Module):
-    r"""3D AFNO Block: spectral mixing + Conv MLP + (optional) double skip."""
+    r"""3D AFNO Block: spectral mixing + Conv MLP + (optional) double skip.
+
+    Parameters
+    ----------
+    width : int
+        Channel dimension of features.
+    num_blocks : int
+        Number of AFNO block partitions.
+    mlp_ratio : float
+        Hidden expansion ratio in the Conv MLP.
+    modes : int
+        Number of low-frequency spatial modes (x, y).
+    temporal_modes : int
+        Number of low-frequency modes along the z (depth/time) axis.
+    activation : str, optional, default="gelu"
+        Activation function name.
+    double_skip : bool, optional, default=True
+        If ``True``, applies an extra residual connection between sublayers.
+    norm_groups : int, optional, default=8
+        GroupNorm groups.
+
+    Forward
+    -------
+    x : torch.Tensor
+        Input tensor of shape :math:`(B, C, X, Y, Z)`.
+
+    Returns
+    -------
+    torch.Tensor
+        Output tensor of shape :math:`(B, C, X, Y, Z)`.
+    """
 
     def __init__(
         self,
@@ -249,10 +298,6 @@ class Block3D(nn.Module):
         x = x + r
         return x
 
-
-# ---------------------------------------------------------------------------
-# 3D Patch Embedding
-# ---------------------------------------------------------------------------
 class PatchEmbed3D(nn.Module):
     r"""3D patch embedding (voxel embedding).
 
@@ -270,6 +315,17 @@ class PatchEmbed3D(nn.Module):
         Output embedding dimension.
     activation : str
         Activation name.
+
+    Forward
+    -------
+    x : torch.Tensor
+        Input tensor of shape :math:`(B, C_{in}, X, Y, Z)`.
+
+    Returns
+    -------
+    torch.Tensor
+        Patch-embedded tensor of shape :math:`(B, C_{out}, X', Y', Z')`
+        where :math:`(X', Y', Z')` are the downsampled spatial sizes.
     """
 
     def __init__(
@@ -314,12 +370,30 @@ class PatchEmbed3D(nn.Module):
             )
         return self.proj(x)
 
-
-# ---------------------------------------------------------------------------
-# Temporal Aggregator (same idea as 2D version)
-# ---------------------------------------------------------------------------
 class TimeAggregator(nn.Module):
-    r"""Temporal aggregator."""
+    r"""Temporal aggregator.
+
+    Parameters
+    ----------
+    in_channels : int
+        Number of spatial feature channels.
+    in_timesteps : int
+        Number of timesteps to aggregate over.
+    embed_dim : int
+        Target embedding dimension after aggregation.
+    mode : Literal["mlp", "exp_mlp"], optional, default="exp_mlp"
+        Aggregation strategy across time. Allowed values are ``"mlp"`` and ``"exp_mlp"``.
+
+    Forward
+    -------
+    x : torch.Tensor
+        Input tensor of shape :math:`(B, X, Y, Z, T, C)`.
+
+    Returns
+    -------
+    torch.Tensor
+        Aggregated tensor of shape :math:`(B, X, Y, Z, C)`.
+    """
 
     def __init__(
         self,
@@ -348,9 +422,6 @@ class TimeAggregator(nn.Module):
         return x
 
 
-# ---------------------------------------------------------------------------
-# Metadata placeholder
-# ---------------------------------------------------------------------------
 @dataclass
 class DPOT3DMeta:
     name: str = "DPOTNet3D"
@@ -358,10 +429,6 @@ class DPOT3DMeta:
     amp: bool = True
     cuda_graphs: bool = False
 
-
-# ---------------------------------------------------------------------------
-# Main 3D Model
-# ---------------------------------------------------------------------------
 class DPOTNet3D(nn.Module):
     r"""3D AFNO-based spatio-temporal predictor.
 
@@ -401,15 +468,15 @@ class DPOTNet3D(nn.Module):
         Use adaptive instance normalization.
     activation : str
         Activation name.
-    time_agg : {"mlp", "exp_mlp"}
-        Temporal aggregation mode.
+    time_agg : Literal["mlp", "exp_mlp"], optional, default="exp_mlp"
+        Temporal aggregation mode. Allowed values are ``"mlp"`` and ``"exp_mlp"``.
 
     Forward
     -------
     x : torch.Tensor
         Tensor of shape :math:`(B, X, Y, Z, T, C_{in})`.
 
-    Outputs
+    Returns
     -------
     torch.Tensor
         Tensor of shape :math:`(B, X, Y, Z, T_{out}, C_{out})`.
@@ -515,7 +582,6 @@ class DPOTNet3D(nn.Module):
         nn.init.trunc_normal_(self.pos_embed, std=0.02)
         self.apply(self._init_weights)
 
-    # ---------------------------------------------------------------- utils
     def _init_weights(self, m: nn.Module) -> None:
         if isinstance(m, (nn.Linear, nn.Conv3d, nn.ConvTranspose3d)):
             nn.init.trunc_normal_(m.weight, std=0.02)
@@ -551,20 +617,7 @@ class DPOTNet3D(nn.Module):
         )
         return torch.cat([gx, gy, gz, gt], dim=-1)
 
-    # ---------------------------------------------------------------- forward
     def forward(self, x: Tensor) -> Tensor:  # noqa: D401
-        r"""Forward pass.
-
-        Parameters
-        ----------
-        x : Tensor
-            Shape :math:`(B, X, Y, Z, T, C_{in})`
-
-        Returns
-        -------
-        Tensor
-            Shape :math:`(B, X, Y, Z, T_{out}, C_{out})`
-        """
         b, xx, yy, zz, tt, cc = x.shape
         if tt != self.in_timesteps or cc != self.in_channels:
             raise ValueError(
@@ -621,11 +674,6 @@ class DPOTNet3D(nn.Module):
         )
 
 
-# ---------------------------------------------------------------------------
-# Positional embedding resize + checkpoint filter
-# ---------------------------------------------------------------------------
-
-
 def resize_pos_embed(pos_embed: Tensor, new_pos_embed: Tensor) -> Tensor:
     if pos_embed.shape == new_pos_embed.shape:
         return pos_embed
@@ -648,9 +696,6 @@ def checkpoint_filter_fn(state_dict: dict, model: DPOTNet3D) -> dict:
     return out
 
 
-# ---------------------------------------------------------------------------
-# Example
-# ---------------------------------------------------------------------------
 if __name__ == "__main__":
     x = torch.rand(2, 32, 32, 32, 6, 3)  # (B,X,Y,Z,T,C)
     net = DPOTNet3D(
