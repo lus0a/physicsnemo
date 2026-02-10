@@ -14,8 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Optional
-
 import torch
 from torch import Tensor, nn
 from torch.nn import LayerNorm
@@ -142,7 +140,7 @@ class Sequence_Model(torch.nn.Module):
     def forward(
         self,
         x: Tensor,
-        context: Optional[Tensor] = None,
+        context: Tensor | None = None,
     ) -> Tensor:
         if not torch.compiler.is_compiling():
             if x.ndim != 3 or x.shape[-1] != self.input_dim:
@@ -168,7 +166,7 @@ class Sequence_Model(torch.nn.Module):
         return output[:, 1:]
 
     @torch.no_grad()
-    def sample(self, z0, step_size, context=None):
+    def sample(self, z0: Tensor, step_size: int, context: Tensor | None = None):
         r"""Autoregressively sample a sequence starting from ``z0``.
 
         Parameters

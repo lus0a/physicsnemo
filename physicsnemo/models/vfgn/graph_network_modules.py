@@ -14,7 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import importlib
 import random
 from dataclasses import dataclass
 from typing import Literal
@@ -28,7 +27,9 @@ from torch.utils.checkpoint import checkpoint
 
 from physicsnemo.core import Module
 from physicsnemo.core.meta import ModelMetaData
-from physicsnemo.core.version_check import require_version_spec
+from physicsnemo.core.version_check import OptionalImport, require_version_spec
+
+_torch_scatter = OptionalImport("torch_scatter")
 
 STD_EPSILON = 1e-8
 
@@ -345,7 +346,7 @@ class NodeBlock(Module):
 
         dim_size = x.shape[self.node_dim]
 
-        scatter_fn = importlib.import_module("torch_scatter").scatter
+        scatter_fn = _torch_scatter.scatter
 
         # aggregate received edges
         if self.use_received_edges:

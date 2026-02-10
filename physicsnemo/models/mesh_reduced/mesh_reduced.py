@@ -16,15 +16,19 @@
 
 from __future__ import annotations
 
-import importlib
-from typing import Literal, Optional, Tuple
+from typing import Literal, Tuple
 
 import torch
 from torch import Tensor
 
-from physicsnemo.core.version_check import require_version_spec
+from physicsnemo.core.version_check import OptionalImport, require_version_spec
 from physicsnemo.models.meshgraphnet.meshgraphnet import MeshGraphNet
 from physicsnemo.nn.module.gnn_layers.graph_types import GraphType  # noqa
+
+# Optional imports for GNN dependencies (lazy, cached, with helpful errors)
+_torch_geometric = OptionalImport("torch_geometric")
+_torch_cluster = OptionalImport("torch_cluster")
+_torch_scatter = OptionalImport("torch_scatter")
 
 
 class Mesh_Reduced(torch.nn.Module):
@@ -209,8 +213,8 @@ class Mesh_Reduced(torch.nn.Module):
         x: Tensor,
         pos_x: Tensor,
         pos_y: Tensor,
-        batch_x: Optional[Tensor] = None,
-        batch_y: Optional[Tensor] = None,
+        batch_x: Tensor | None = None,
+        batch_y: Tensor | None = None,
         k: int = 3,
         num_workers: int = 1,
     ) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
@@ -246,8 +250,7 @@ class Mesh_Reduced(torch.nn.Module):
             - ``weights``: interpolation weights of shape :math:`(k \cdot N_y, 1)`
         """
         with torch.no_grad():
-            torch_cluster = importlib.import_module("torch_cluster")
-            row, col = torch_cluster.knn(
+            row, col = _torch_cluster.knn(
                 pos_x,
                 pos_y,
                 k,
@@ -260,11 +263,10 @@ class Mesh_Reduced(torch.nn.Module):
             squared_distance = (diff * diff).sum(dim=-1, keepdim=True)
             weights = 1.0 / torch.clamp(squared_distance, min=1e-16)
 
-        torch_scatter = importlib.import_module("torch_scatter")
-        y = torch_scatter.scatter(
+        y = _torch_scatter.scatter(
             x[col] * weights, row, dim=0, dim_size=pos_y.size(0), reduce="sum"
         )
-        y = y / torch_scatter.scatter(
+        y = y / _torch_scatter.scatter(
             weights, row, dim=0, dim_size=pos_y.size(0), reduce="sum"
         )
 
@@ -314,8 +316,7 @@ class Mesh_Reduced(torch.nn.Module):
                 )
         x = self.encoder_processor(x, edge_features, graph)
         x = self.PivotalNorm(x)
-        pyg_mod = importlib.import_module("torch_geometric")
-        if isinstance(graph, pyg_mod.data.Data):
+        if isinstance(graph, _torch_geometric.data.Data):
             batch_mesh = graph.batch
             batch_size = (
                 int(batch_mesh.max().item()) + 1 if batch_mesh.numel() > 0 else 1
@@ -392,8 +393,7 @@ class Mesh_Reduced(torch.nn.Module):
                     f"Expected position tensors to be 2D, got shapes {tuple(position_mesh.shape)} and {tuple(position_pivotal.shape)}"
                 )
 
-        pyg_mod = importlib.import_module("torch_geometric")
-        if isinstance(graph, pyg_mod.data.Data):
+        if isinstance(graph, _torch_geometric.data.Data):
             batch_mesh = graph.batch
             batch_size = (
                 int(batch_mesh.max().item()) + 1 if batch_mesh.numel() > 0 else 1
