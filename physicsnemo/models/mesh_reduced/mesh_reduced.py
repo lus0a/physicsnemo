@@ -18,28 +18,13 @@ import importlib
 
 import torch
 
-from physicsnemo.core.version_check import check_version_spec
+from physicsnemo.core.version_check import require_version_spec
 from physicsnemo.models.meshgraphnet.meshgraphnet import MeshGraphNet
-from physicsnemo.nn.module.gnn_layers.graph_types import (
-    PYG_AVAILABLE,
-    GraphType,  # noqa
-)
-
-TORCH_CLUSTER_AVAILABLE = check_version_spec("torch_cluster", hard_fail=False)
-TORCH_SCATTER_AVAILABLE = check_version_spec("torch_scatter", hard_fail=False)
+from physicsnemo.nn.module.gnn_layers.graph_types import GraphType  # noqa
 
 
-# import torch_cluster
-# import torch_geometric as pyg
-# import torch_scatter
-
-if TORCH_CLUSTER_AVAILABLE and TORCH_SCATTER_AVAILABLE and PYG_AVAILABLE:
-    torch_cluster = importlib.import_module("torch_cluster")
-    torch_scatter = importlib.import_module("torch_scatter")
-    pyg = importlib.import_module("torch_geometric")
-
-    class Mesh_Reduced(torch.nn.Module):
-        """PbGMR-GMUS architecture.
+class Mesh_Reduced(torch.nn.Module):
+        r"""PbGMR-GMUS architecture.
 
         A mesh-reduced architecture that combines encoding and decoding processors
         for physics prediction in reduced mesh space.
@@ -52,37 +37,36 @@ if TORCH_CLUSTER_AVAILABLE and TORCH_SCATTER_AVAILABLE and PYG_AVAILABLE:
             Number of edge features.
         output_decode_dim : int
             Number of decoding outputs (per node).
-        output_encode_dim : int, optional
-            Number of encoding outputs (per pivotal position), by default 3.
-        processor_size : int, optional
-            Number of message passing blocks, by default 15.
-        num_layers_node_processor : int, optional
-            Number of MLP layers for processing nodes in each message passing block, by default 2.
-        num_layers_edge_processor : int, optional
-            Number of MLP layers for processing edge features in each message passing block, by default 2.
-        hidden_dim_processor : int, optional
-            Hidden layer size for the message passing blocks, by default 128.
-        hidden_dim_node_encoder : int, optional
-            Hidden layer size for the node feature encoder, by default 128.
-        num_layers_node_encoder : int, optional
-            Number of MLP layers for the node feature encoder, by default 2.
-        hidden_dim_edge_encoder : int, optional
-            Hidden layer size for the edge feature encoder, by default 128.
-        num_layers_edge_encoder : int, optional
-            Number of MLP layers for the edge feature encoder, by default 2.
-        hidden_dim_node_decoder : int, optional
-            Hidden layer size for the node feature decoder, by default 128.
-        num_layers_node_decoder : int, optional
-            Number of MLP layers for the node feature decoder, by default 2.
-        k : int, optional
-            Number of nodes considered for per pivotal position, by default 3.
-        aggregation : str, optional
-            Message aggregation type, by default "mean".
+        output_encode_dim : int, optional, default=3
+            Number of encoding outputs (per pivotal position).
+        processor_size : int, optional, default=15
+            Number of message passing blocks.
+        num_layers_node_processor : int, optional, default=2
+            Number of MLP layers for processing nodes in each message passing block.
+        num_layers_edge_processor : int, optional, default=2
+            Number of MLP layers for processing edge features in each message passing block.
+        hidden_dim_processor : int, optional, default=128
+            Hidden layer size for the message passing blocks.
+        hidden_dim_node_encoder : int, optional, default=128
+            Hidden layer size for the node feature encoder.
+        num_layers_node_encoder : int, optional, default=2
+            Number of MLP layers for the node feature encoder.
+        hidden_dim_edge_encoder : int, optional, default=128
+            Hidden layer size for the edge feature encoder.
+        num_layers_edge_encoder : int, optional, default=2
+            Number of MLP layers for the edge feature encoder.
+        hidden_dim_node_decoder : int, optional, default=128
+            Hidden layer size for the node feature decoder.
+        num_layers_node_decoder : int, optional, default=2
+            Number of MLP layers for the node feature decoder.
+        k : int, optional, default=3
+            Number of nearest neighbors used for pivotal/mesh interpolation.
+        aggregation : str, optional, default="mean"
+            Message aggregation type.
 
         Notes
         -----
-        Reference: Han, Xu, et al. "Predicting physics in mesh-reduced space with temporal attention."
-        arXiv preprint arXiv:2201.09113 (2022).
+        Reference: `Predicting physics in mesh-reduced space with temporal attention <https://arxiv.org/pdf/2201.09113>`
         """
 
         def __init__(
@@ -144,6 +128,8 @@ if TORCH_CLUSTER_AVAILABLE and TORCH_SCATTER_AVAILABLE and PYG_AVAILABLE:
             self.k = k
             self.PivotalNorm = torch.nn.LayerNorm(output_encode_dim)
 
+        @require_version_spec("torch_cluster")
+        @require_version_spec("torch_scatter")
         def knn_interpolate(
             self,
             x: torch.Tensor,
@@ -154,29 +140,29 @@ if TORCH_CLUSTER_AVAILABLE and TORCH_SCATTER_AVAILABLE and PYG_AVAILABLE:
             k: int = 3,
             num_workers: int = 1,
         ):
-            """Perform k-nearest neighbor interpolation.
+            r"""Perform k-nearest neighbor interpolation.
 
             Parameters
             ----------
             x : torch.Tensor
-                Input features to interpolate.
+                Source features of shape :math:`(N_x, D_x)`.
             pos_x : torch.Tensor
-                Source positions.
+                Source positions of shape :math:`(N_x, D_{pos})`.
             pos_y : torch.Tensor
-                Target positions.
+                Target positions of shape :math:`(N_y, D_{pos})`.
             batch_x : torch.Tensor, optional
-                Batch indices for source positions, by default None.
+                Batch indices for source positions of shape :math:`(N_x,)`, by default ``None``.
             batch_y : torch.Tensor, optional
-                Batch indices for target positions, by default None.
-            k : int, optional
-                Number of nearest neighbors to consider, by default 3.
-            num_workers : int, optional
-                Number of workers for parallel processing, by default 1.
+                Batch indices for target positions of shape :math:`(N_y,)`, by default ``None``.
+            k : int, optional, default=3
+                Number of nearest neighbors to consider.
+            num_workers : int, optional, default=1
+                Number of workers for parallel processing.
 
             Returns
             -------
             torch.Tensor
-                Interpolated features.
+                Interpolated features of shape :math:`(N_y, D_x)`.
             torch.Tensor
                 Source indices.
             torch.Tensor
@@ -185,6 +171,7 @@ if TORCH_CLUSTER_AVAILABLE and TORCH_SCATTER_AVAILABLE and PYG_AVAILABLE:
                 Interpolation weights.
             """
             with torch.no_grad():
+                torch_cluster = importlib.import_module("torch_cluster")
                 assign_index = torch_cluster.knn(
                     pos_x,
                     pos_y,
@@ -198,6 +185,7 @@ if TORCH_CLUSTER_AVAILABLE and TORCH_SCATTER_AVAILABLE and PYG_AVAILABLE:
                 squared_distance = (diff * diff).sum(dim=-1, keepdim=True)
                 weights = 1.0 / torch.clamp(squared_distance, min=1e-16)
 
+            torch_scatter = importlib.import_module("torch_scatter")
             y = torch_scatter.scatter(
                 x[x_idx] * weights, y_idx, 0, dim_size=pos_y.size(0), reduce="sum"
             )
@@ -207,6 +195,7 @@ if TORCH_CLUSTER_AVAILABLE and TORCH_SCATTER_AVAILABLE and PYG_AVAILABLE:
 
             return y.float(), x_idx, y_idx, weights
 
+        @require_version_spec("torch_geometric")
         def encode(
             self,
             x: torch.Tensor,
@@ -215,29 +204,46 @@ if TORCH_CLUSTER_AVAILABLE and TORCH_SCATTER_AVAILABLE and PYG_AVAILABLE:
             position_mesh: torch.Tensor,
             position_pivotal: torch.Tensor,
         ):
-            """Encode mesh features to pivotal space.
+            r"""Encode mesh features to pivotal space.
 
             Parameters
             ----------
             x : torch.Tensor
-                Input node features.
+                Input node features of shape :math:`(N_{nodes}^{batch}, D_{in}^{node})`.
             edge_features : torch.Tensor
-                Edge features.
-            graph : GraphType
-                Input graph.
+                Edge features of shape :math:`(N_{edges}^{batch}, D_{in}^{edge})`.
+            graph : :class:`~physicsnemo.nn.module.gnn_layers.graph_types.GraphType`
+                PyG graph container with batch information.
             position_mesh : torch.Tensor
-                Mesh positions.
+                Per-graph reference mesh positions of shape :math:`(N_{mesh}, D_{pos})`.
+                These positions are repeated internally across the batch.
             position_pivotal : torch.Tensor
-                Pivotal positions.
+                Per-graph pivotal positions of shape :math:`(N_{pivotal}, D_{pos})`.
+                These positions are repeated internally across the batch.
 
             Returns
             -------
             torch.Tensor
-                Encoded features in pivotal space.
+                Encoded features in pivotal space of shape
+                :math:`(N_{pivotal}^{batch}, D_{enc})`.
             """
+            if not torch.compiler.is_compiling():
+                if x.ndim != 2:
+                    raise ValueError(
+                        f"Expected 2D node features (N_nodes, D_in) but got shape {tuple(x.shape)}"
+                    )
+                if edge_features.ndim != 2:
+                    raise ValueError(
+                        f"Expected 2D edge features (N_edges, D_in) but got shape {tuple(edge_features.shape)}"
+                    )
+                if position_mesh.ndim != 2 or position_pivotal.ndim != 2:
+                    raise ValueError(
+                        f"Expected position tensors to be 2D, got {tuple(position_mesh.shape)} and {tuple(position_pivotal.shape)}"
+                    )
             x = self.encoder_processor(x, edge_features, graph)
             x = self.PivotalNorm(x)
             nodes_index = torch.arange(graph.batch_size).to(x.device)
+            pyg = importlib.import_module("torch_geometric")
             if isinstance(graph, pyg.data.Data):
                 batch_mesh = graph.batch
             else:
@@ -258,6 +264,7 @@ if TORCH_CLUSTER_AVAILABLE and TORCH_SCATTER_AVAILABLE and PYG_AVAILABLE:
 
             return x
 
+        @require_version_spec("torch_geometric")
         def decode(
             self,
             x: torch.Tensor,
@@ -266,27 +273,39 @@ if TORCH_CLUSTER_AVAILABLE and TORCH_SCATTER_AVAILABLE and PYG_AVAILABLE:
             position_mesh: torch.Tensor,
             position_pivotal: torch.Tensor,
         ):
-            """Decode pivotal features back to mesh space.
+            r"""Decode pivotal features back to mesh space.
 
             Parameters
             ----------
             x : torch.Tensor
-                Input features in pivotal space.
+                Input features in pivotal space of shape
+                :math:`(N_{pivotal}^{batch}, D_{enc})`.
             edge_features : torch.Tensor
-                Edge features.
-            graph : GraphType
-                Input graph.
+                Edge features of shape :math:`(N_{edges}^{batch}, D_{in}^{edge})`.
+            graph : :class:`~physicsnemo.nn.module.gnn_layers.graph_types.GraphType`
+                PyG graph container with batch information.
             position_mesh : torch.Tensor
-                Mesh positions.
+                Per-graph mesh positions of shape :math:`(N_{mesh}, D_{pos})`.
             position_pivotal : torch.Tensor
-                Pivotal positions.
+                Per-graph pivotal positions of shape :math:`(N_{pivotal}, D_{pos})`.
 
             Returns
             -------
             torch.Tensor
-                Decoded features in mesh space.
+                Decoded features in mesh space of shape
+                :math:`(N_{nodes}^{batch}, D_{out}^{decode})`.
             """
+            if not torch.compiler.is_compiling():
+                if edge_features.ndim != 2:
+                    raise ValueError(
+                        f"Expected 2D edge features (N_edges, D_in) but got shape {tuple(edge_features.shape)}"
+                    )
+                if position_mesh.ndim != 2 or position_pivotal.ndim != 2:
+                    raise ValueError(
+                        f"Expected position tensors to be 2D, got {tuple(position_mesh.shape)} and {tuple(position_pivotal.shape)}"
+                    )
             nodes_index = torch.arange(graph.batch_size).to(x.device)
+            pyg = importlib.import_module("torch_geometric")
             if isinstance(graph, pyg.data.Data):
                 batch_mesh = graph.batch
             else:
@@ -307,14 +326,3 @@ if TORCH_CLUSTER_AVAILABLE and TORCH_SCATTER_AVAILABLE and PYG_AVAILABLE:
 
             x = self.decoder_processor(x, edge_features, graph)
             return x
-
-else:
-
-    class Mesh_Reduced(torch.nn.Module):
-        """Dummy class for when torch_cluster, torch_scatter, and pyg are not available."""
-
-        def __init__(self, *args, **kwargs):
-            raise ImportError(
-                "Mesh_Reduced: torch_cluster, torch_scatter, and pyg are not installed.\n"
-                "Please see https://pytorch-geometric.readthedocs.io/en/latest/notes/installation.html for installation instructions."
-            )

@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""VFGN (Variational Fluid Graph Network) models."""
+
 from .graph_network_modules import LearnedSimulator, VFGNLearnedSimulator
 
 __all__ = ["LearnedSimulator", "VFGNLearnedSimulator"]
