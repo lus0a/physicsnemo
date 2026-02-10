@@ -65,7 +65,7 @@ class Sequence_Model(torch.nn.Module):
         along the temporal axis; it should broadcast or match to a shape compatible
         with :math:`(B, 1, D)` after encoding.
 
-    Outputs
+    Returns
     -------
     torch.Tensor
         Predicted sequence tensor of shape :math:`(B, T-1, D)`. The first token is

@@ -26,12 +26,6 @@ from physicsnemo.core.version_check import require_version_spec
 from physicsnemo.models.meshgraphnet.meshgraphnet import MeshGraphNet
 from physicsnemo.nn.module.gnn_layers.graph_types import GraphType  # noqa
 
-# Optional dependency: torch_geometric (PyG)
-try:
-    import torch_geometric as pyg  # type: ignore
-except Exception:  # pragma: no cover - optional dependency at import time
-    pyg = None  # type: ignore
-
 
 class Mesh_Reduced(torch.nn.Module):
     r"""PbGMR-GMUS architecture.
@@ -320,7 +314,8 @@ class Mesh_Reduced(torch.nn.Module):
                 )
         x = self.encoder_processor(x, edge_features, graph)
         x = self.PivotalNorm(x)
-        if isinstance(graph, pyg.data.Data):
+        pyg_mod = importlib.import_module("torch_geometric")
+        if isinstance(graph, pyg_mod.data.Data):
             batch_mesh = graph.batch
             batch_size = (
                 int(batch_mesh.max().item()) + 1 if batch_mesh.numel() > 0 else 1
@@ -397,7 +392,8 @@ class Mesh_Reduced(torch.nn.Module):
                     f"Expected position tensors to be 2D, got shapes {tuple(position_mesh.shape)} and {tuple(position_pivotal.shape)}"
                 )
 
-        if isinstance(graph, pyg.data.Data):
+        pyg_mod = importlib.import_module("torch_geometric")
+        if isinstance(graph, pyg_mod.data.Data):
             batch_mesh = graph.batch
             batch_size = (
                 int(batch_mesh.max().item()) + 1 if batch_mesh.numel() > 0 else 1
