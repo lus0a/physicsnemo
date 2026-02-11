@@ -130,8 +130,9 @@ class Mesh_Reduced(torch.nn.Module):
     >>> position_mesh = torch.randn(20, 3, device=device)       # (N_mesh, D_pos)
     >>> position_pivotal = torch.randn(5, 3, device=device)     # (N_pivotal, D_pos)
     >>>
-    >>> # Forward pass
-    >>> out = model(node_features, edge_features, graph, position_mesh, position_pivotal)
+    >>> # Encode to pivotal space, then decode back to mesh space
+    >>> enc = model.encode(node_features, edge_features, graph, position_mesh, position_pivotal)
+    >>> out = model.decode(enc, edge_features, graph, position_mesh, position_pivotal)
     >>> out.size()
     torch.Size([10, 2])
 
