@@ -116,7 +116,9 @@ class Mesh_Reduced(torch.nn.Module):
     ... ).to(device)
     >>>
     >>> # Build a simple PyG graph
-    >>> num_nodes, num_edges = 10, 15
+    >>> # Note: num_nodes must match len(position_mesh) for batch alignment
+    >>> num_mesh = 20
+    >>> num_nodes, num_edges = num_mesh, 30
     >>> edge_index = torch.randint(0, num_nodes, (2, num_edges))
     >>> graph = Data(edge_index=edge_index, num_nodes=num_nodes).to(device)
     >>> # For a single graph, set a batch vector of zeros
@@ -127,14 +129,14 @@ class Mesh_Reduced(torch.nn.Module):
     >>> edge_features = torch.randn(num_edges, 3, device=device)
     >>>
     >>> # Per-graph positions (repeated internally across the batch)
-    >>> position_mesh = torch.randn(20, 3, device=device)       # (N_mesh, D_pos)
+    >>> position_mesh = torch.randn(num_mesh, 3, device=device)       # (N_mesh, D_pos)
     >>> position_pivotal = torch.randn(5, 3, device=device)     # (N_pivotal, D_pos)
     >>>
     >>> # Encode to pivotal space, then decode back to mesh space
     >>> enc = model.encode(node_features, edge_features, graph, position_mesh, position_pivotal)
     >>> out = model.decode(enc, edge_features, graph, position_mesh, position_pivotal)
     >>> out.size()
-    torch.Size([10, 2])
+    torch.Size([20, 2])
 
     Notes
     -----
