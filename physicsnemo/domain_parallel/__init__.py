@@ -47,7 +47,13 @@ if ST_AVAILABLE:
     # In minumum versions are met, we can import the shard tensor and spec.
 
     from ._shard_tensor_spec import ShardTensorSpec
-    from .shard_tensor import ShardTensor, scatter_tensor
+    from .shard_tensor import (
+        FSDPOutputTensorAdapter,
+        ShardTensor,
+        distribute_over_domain_for_fsdp,
+        scatter_tensor,
+        wrap_for_fsdp,
+    )
 
     def register_custom_ops():
         # These imports will register the custom ops with the ShardTensor class.
@@ -69,3 +75,6 @@ else:
     ShardTensor = None
     ShardTensorSpec = None
     scatter_tensor = None
+    distribute_over_domain_for_fsdp = None
+    FSDPOutputTensorAdapter = None
+    wrap_for_fsdp = None
