@@ -409,6 +409,11 @@ For a CUDA 12 environment, replace `cu13` with `cu12`:
 uv sync --extra cu12 --extra nn-extras
 ```
 
+> **Note:** If you encounter a CUDA version mismatch (e.g., "The detected
+CUDA version mismatches the version that was used to compile PyTorch") when
+installing extras such as `gnns`, try adding the `--no-build-isolation` flag:
+`uv sync --extra cu13 --extra gnns --no-build-isolation`.
+
 ### NVCR Container
 
 The recommended PhysicsNeMo Docker image can be pulled from the
