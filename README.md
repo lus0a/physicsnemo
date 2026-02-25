@@ -397,22 +397,23 @@ uv sync --extra cu13
 uv run python -c "import physicsnemo; print('PhysicsNeMo version:', physicsnemo.__version__)"
 ```
 
-To install with optional feature extras (e.g., `nn-extras`):
+To install with optional feature extras (e.g., `model-extras`):
 
 ```Bash
-uv sync --extra cu13 --extra nn-extras
+uv sync --extra cu13 --extra model-extras
 ```
 
 For a CUDA 12 environment, replace `cu13` with `cu12`:
 
 ```Bash
-uv sync --extra cu12 --extra nn-extras
+uv sync --extra cu12 --extra model-extras
 ```
 
-> **Note:** If you encounter a CUDA version mismatch (e.g., "The detected
-CUDA version mismatches the version that was used to compile PyTorch") when
-installing extras such as `gnns`, try adding the `--no-build-isolation` flag:
-`uv sync --extra cu13 --extra gnns --no-build-isolation`.
+**Note:** Extras such as `gnns`, `nn-extras`, and `transformer-engine`
+ pull in packages that either ship only source distributions or require
+ wheels built for a specific PyTorch and CUDA version. These should be
+ installed with `--no-build-isolation`,
+ e.g. `uv sync --extra cu13 --extra nn-extras --no-build-isolation`.
 
 ### NVCR Container
 
