@@ -284,11 +284,11 @@ Below is a sample Hydra configuration block (e.g., `conf/model/geotransolver_pip
 # Model Architecture Setup
 model:
   _target_: physicsnemo.experimental.models.geotransolver.GeoTransolver
-  [cite_start]functional_dim: 4      # Input: Coords (3) + Inlet Velocity/Scalar (1) [cite: 22, 24]
-  [cite_start]out_dim: 4             # Output: Velocity (Ux, Uy, Uz) + Pressure (p) [cite: 83]
-  [cite_start]geometry_dim: 3        # 3D internal pipe mesh [cite: 65, 71]
-  [cite_start]slice_num: 64          # Spatial slices for PhysicsAttention [cite: 71]
-  [cite_start]n_layers: 6            # Depth of the transformer backbone [cite: 71]
+  functional_dim: 4      # Input: Coords (3) + Inlet Velocity/Scalar (1) [cite: 22, 24]
+  out_dim: 4             # Output: Velocity (Ux, Uy, Uz) + Pressure (p) [cite: 83]
+  geometry_dim: 3        # 3D internal pipe mesh [cite: 65, 71]
+  slice_num: 64          # Spatial slices for PhysicsAttention [cite: 71]
+  n_layers: 6            # Depth of the transformer backbone [cite: 71]
   use_te: True           # Enable TransformerEngine for speed
   
 # Data Handling & Normalization
@@ -298,15 +298,7 @@ data:
   return_mesh_features: False     # Set to True only for inference
   input_dir: "data/pipe_flow/train"
   input_dir_val: "data/pipe_flow/val"
-
-# Training Strategy
-training:
-  precision: "bfloat16"  # Recommended for stability on modern GPUs
-  num_epochs: 1000       # Internal flow may require longer convergence
-  save_interval: 50      # Checkpoint frequency
-  optimizer: "muon"      # Highly recommended for Transolver backbones
-  [cite_start]learning_rate: 2e-4    # Base LR for the Muon/AdamW optimizer [cite: 37]
-  
+ 
 ```
 
 ---
