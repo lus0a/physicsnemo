@@ -165,6 +165,101 @@ material selected for training the model:
 
 ![Inference Examples](../../../docs/img/lagrangian_meshgraphnet_multi.png "Inference Examples")
 
+## Codebase Architecture
+
+Here is the architectural layout of the codebase and where you should look to make your modifications:
+
+### Component Breakdown for Developers
+
+#### 1. `datapipe.py` (or `dataset.py`) — *Where the Physics Meets the Graph*
+
+This is the most critical file if you are bringing your own data. Because the DeepMind "Learning to Simulate" dataset is stored in `.tfrecord` format, this file uses the `tensorflow` library to parse the raw byte streams into PyTorch tensors.
+
+* **Graph Construction:** This file is responsible for dynamically building the graph at every timestep. It calculates the Euclidean distance and displacement vectors between particles to create **Edge Features**.
+* **Feature Stacking:** It stacks the **Node Features** (current position, historical velocities based on your `num_history` config, and one-hot encoded node types like fluid or boundary).
+
+* **Developer Action:** If you are abandoning `.tfrecord` files for `.csv`, `.h5`, or `.vtp` files, you will completely gut and rewrite the reader logic in this file, ensuring it still returns a PyTorch Geometric (PyG) or DGL graph object.
+
+#### 2. `train.py` — *Training loop*
+
+This is your standard PyTorch entry point. It instantiates the `MeshGraphNet` model, handles distributed data parallel (DDP) scaling, and runs the forward/backward pass.
+
+* **The Loss Function:** By default, the model does *not* predict the next position directly; it predicts the **acceleration** (the difference between the current and next velocity). The loss (usually MSE) is calculated against this normalized acceleration vector.
+
+* **Developer Action:** If you want to add physics-informed constraints (like penalizing mass loss or enforcing incompressibility), you will inject your custom PDE residual loss calculations directly into the training loop inside this file.
+
+#### 3. `conf/` — *Where the Hyperparameters Live*
+
+PhysicsNeMo uses Hydra, meaning you should rarely need to hardcode changes into the Python files.
+
+* **Model Sizing:** You can adjust the Encoder, Processor, and Decoder sizes here. The default sets the hidden dimensionality to 128 and uses 10 message-passing layers in the Processor.
+* **Developer Action:** Need to simulate a more complex, long-range physics problem? Increase the `num_processor_layers` in the config so the graph can propagate information further across the mesh in a single timestep.
+
+#### 4. `inference.py` — *Timestepping*
+
+Training a model is a one-step prediction, but simulating physics requires autoregressive rollout (feeding the prediction of $t_1$ back in as the input for $t_2$).
+
+* **Developer Action:** This script handles that iterative looping. If you need to export your predictions into a specific visualization format like `.vtu` for ParaView, you will add your VTK writer functions at the end of the rollout loop here.
+
+## Customization Guide
+
+While this example demonstrates a water-drop simulation using the DeepMind "Learning to Simulate" dataset, the Lagrangian MeshGraphNet architecture is highly versatile. You can extend it to other use cases to model granular flows or  deformable solids. To adapt the Lagrangian MeshGraphNet (MGN) pipeline for your own datasets and applications, use this guide to adapt the codebase to experiment for your custom use case:
+
+### 1. Swapping the Model Backbone: xxxx
+
+
+### 2. Adapting to Your Own Data
+
+By default, `datapipe.py` uses the `tensorflow` library to parse `.tfrecord` files. If your data is in standard formats like `.h5`, or `.vtp`, you will need to rewrite the data loading logic in `datapipe.py`.
+
+You can import xxx from xxx to create your custom dataloader to dynamically construct a graph at each timestep and output the following core components:
+
+* **Node Features:** A concatenated tensor containing the particle's current position, historical velocities, and a one-hot encoded node type (e.g., fluid, boundary, rigid body).
+* **Edge Features:** Computed dynamically based on particle proximity. This typically includes the 3D displacement vector between two connected nodes and their scalar Euclidean distance.
+* **Targets:** The ground truth for the next timestep. Note that MGN typically predicts **normalized acceleration** (the difference between the current and next velocity), not direct coordinate positions.
+
+**Tip:** If you are building your own graphs from raw point clouds, xxx function is an efficient way to dynamically generate edge indices based on a physical interaction radius.
+
+### 3. Customizing Input Features
+
+If your simulation requires additional physical parameters (like temperature, mass, or viscosity), you must adjust the feature vectors and model dimensions:
+
+1. **Inject Features:** Append your new physical properties to the node feature array in your data pipeline.
+2. **Expand the History Window:** If your physics require a longer temporal context, increase the `data.num_history` parameter in your configuration to look back further in time.
+3. **Update Input Dimensions:** Ensure the `model.input_dim` in your Hydra configuration reflects the new total size of your concatenated node feature vector.
+
+### 4. Scaling & Performance Toggles
+
+Lagrangian simulations involve dynamic graphs where connectivity changes continuously. This is computationally expensive, but PhysicsNeMo provides several Hydra configuration levers to optimize performance and VRAM usage.
+
+You can tweak these settings directly in `conf/config.yaml` to experiment:
+
+```yaml
+# Architecture Sizing
+model:
+  hidden_dim: 256              # Default is 128. Increase for complex, multiphase physics.
+  num_processor_layers: 15     # Default is 10. Increase to allow information to propagate further across the mesh per timestep.
+
+# Performance Optimizations
+  do_concat_trick: True        # Replaces slow tensor concatenations in message passing with an optimized MLP + index + sum operation.
+  num_processor_checkpoint_segments: 4  # Enables gradient checkpointing. Increase this if you hit Out-Of-Memory (OOM) errors during training.
+
+# Graph Construction
+data:
+  radius: 0.015                # The spatial cutoff for creating edges between particles. 
+  num_history: 5               # The number of previous timesteps to include in the node features.
+
+```
+
+### 5. Adapting the "Loss function" to New Physics
+
+Data-driven models can occasionally violate fundamental physics. If you want to enforce specific physical laws (like mass conservation or collision penalties), you will need to modify the training loop.
+
+* Navigate to `train.py`.
+* Locate the forward pass and MSE loss calculation (which compares predicted acceleration against ground-truth acceleration).
+* Inject your custom PDE residual or penalty terms here. Calculate the physical constraint violation based on the model's predicted next-step positions, multiply it by a weighting scalar ($\lambda$), and add it to the total training loss.
+
+
 ## References
 
 - [Learning to simulate complex physicswith graph networks](https://arxiv.org/abs/2002.09405)
