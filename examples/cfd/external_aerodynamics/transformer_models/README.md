@@ -214,19 +214,6 @@ mesh is processed.  To enable the mesh to fit into GPU memory, the mesh is chunk
 into pieces that are then processed, and recombined to form the prediction on the
 entire mesh.  The outputs are then saved to .vtp files for downstream analysis. -->
 
-
-## Codebase Architecture
-
-Help builders navigate the repository by mapping logic to files:
-
-* **Model Backbone**: Located in `physicsnemo.models.transolver` and `physicsnemo.experimental.models.geotransolver`. This is where the **PhysicsAttention** and **GALE attention** mechanisms are defined.
-
-* **Training Entry Point**: `train.py` handles the distributed setup, the **Muon optimizer** loop, and checkpointing.
-
-* **Feature Engineering**: `compute_normalizations.py` is where you can modify how input/output fields are scaled (e.g., switching from Standard Scaling to Min-Max).
-
-* **Inference Logic**: `inference_on_zarr.py` and `inference_on_vtp.py` demonstrate how to handle full-resolution mesh chunking to fit into GPU memory.
-
 ## Customization Guide
 
 To adapt these models beyond the **DrivaerML dataset**, builders can try out the following steps. These steps have not been tested and are meant to guide custom training experiments:
@@ -235,38 +222,21 @@ To adapt these models beyond the **DrivaerML dataset**, builders can try out the
 
 * **Surface vs. Volume**: Use the `transolver_surface` or `transolver_volume` configuration names to toggle the dimensionality of the input point cloud.
 
-* **Input Dimensions**: If your CFD data includes temperature or humidity, update the configuration to reflect the new feature space `f`. The model expects inputs in shapes of `[1, K, f]`.
+* **Input Dimensions**: If your CFD data includes temperature update the "geotransolver.yaml" configuration file if you are using GeoTransolver, to reflect the new feature space `f`. The model expects inputs in shapes of `[1, K, f]`.
+  
+* **Data Pipe**: TBD
 
-* **GALE Conditioning**: For complex geometries, you can modify the global geometry encodings in **GeoTransolver** to capture different radii for multi-scale ball queries.
+#### **B. Physics-Informing**
 
-
-#### **B. Physics-Informed Regularization**
-
-* The **GALE attention** mechanism projects geometry and global features into physical state spaces. Builders can extend this by injecting custom PDE-based constraints (e.g., mass conservation) as context in every transformer block.
-
-
-### **C. Performance & Scaling Toggles**
-
-For builders working on large-scale industrial meshes, you can try toggling these "levers":
-
-* **Memory Management**: Adjust `data.resolution=N` in the config to control on-the-fly downsampling during training.
-
-* **FP8 Training**: Enable `model.use_te=True` and `training.precision="float8"` to leverage **TransformerEngine** on Hopper or Blackwell GPUs.
-
-* **Optimization Strategy**: While the **Muon optimizer** is recommended for these architectures, builders can revert to `AdamW` by modifying the optimizer configuration in `src/conf`.
-
+* Builders can Physics Inform their training by injecting custom PDE-based constraints (e.g., mass conservation) as context by using the physicsnemo.physicsinformer module.
 
 ## Integration Checklist for New CFD Domains
 
 If you are moving from External Aerodynamics to a different irregular mesh problem (e.g., Internal Flow or Heat Transfer), ensure you:
 
-* [ ] **Compute New Normalizations**: Run `compute_normalizations.py` on your specific dataset to prevent gradient explosion.
+* [ ] **Compute New Normalizations**: Run `compute_normalizations.py` on your specific dataset.
 
-* [ ] **Update Target Labels**: Modify the normalization script if your labels (e.g., Pressure, Shear) differ from the DrivaerML defaults.
-
-* [ ] **Verify Precision Compatibility**: If using **fp8**, ensure your hardware supports it (Hopper/Ada Lovelace).
-
-* [ ] **Enable Mesh Features**: Set `data.return_mesh_features=True` during inference to compute domain-specific metrics like drag/lift or custom R^2 scores.
+* [ ] **Update Target Labels**: Modify the metrics.py script if your labels (e.g., Pressure, Shear) differ from the DrivaerML defaults.
 
 ## Adapting to Internal Pipe flow 
 
@@ -284,11 +254,11 @@ Below is a sample Hydra configuration block (e.g., `conf/model/geotransolver_pip
 # Model Architecture Setup
 model:
   _target_: physicsnemo.experimental.models.geotransolver.GeoTransolver
-  functional_dim: 4      # Input: Coords (3) + Inlet Velocity/Scalar (1) [cite: 22, 24]
-  out_dim: 4             # Output: Velocity (Ux, Uy, Uz) + Pressure (p) [cite: 83]
-  geometry_dim: 3        # 3D internal pipe mesh [cite: 65, 71]
-  slice_num: 64          # Spatial slices for PhysicsAttention [cite: 71]
-  n_layers: 6            # Depth of the transformer backbone [cite: 71]
+  functional_dim: 4      # Input: Coords (3) + Inlet Velocity/Scalar (1)
+  out_dim: 4             # Output: Velocity (Ux, Uy, Uz) + Pressure (p)
+  geometry_dim: 3        # 3D internal pipe mesh
+  slice_num: 64          # Spatial slices for PhysicsAttention
+  n_layers: 6            # Depth of the transformer backbone
   use_te: True           # Enable TransformerEngine for speed
   
 # Data Handling & Normalization
@@ -306,6 +276,4 @@ data:
 ### Key Adjustments for Internal Pipe Flow
 
 * **Input/Output Mapping**: While external aerodynamics focuses on `Pressure` and `Wall-Shear-Stress`, internal pipe flow typically prioritizes the full **velocity field** ($U_x, U_y, U_z$) to monitor flow profiles and pressure drops. Adjust `out_dim` accordingly.
-* **Geometry Sensitivity (GALE)**: For internal flow, the boundary layer at the pipe wall is critical. 
-* **GeoTransolver’s** multi-scale ball queries should be tuned in the model settings to capture the fine-grained locality near the walls while maintaining global context for pressure gradients.
 * **Normalization**: Since pipe flow variables (like pressure) can scale differently depending on the pipe length, ensure you rerun `compute_normalizations.py` specifically on your pipe dataset to generate the required `.npz` file.
