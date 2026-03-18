@@ -16,44 +16,42 @@
 
 """Utility functions for string-formatting Mesh representations."""
 
+from typing import TYPE_CHECKING
+
 import torch
 from tensordict import TensorDict
 
-from physicsnemo.mesh.utilities._cache import CACHE_KEY
+if TYPE_CHECKING:
+    from physicsnemo.mesh.mesh import Mesh
 
 
-def format_mesh_repr(mesh, exclude_cache: bool = False) -> str:
+def format_mesh_repr(mesh: "Mesh") -> str:
     """Format a complete Mesh representation.
 
     Parameters
     ----------
     mesh : Mesh
         The Mesh instance to format.
-    exclude_cache : bool
-        If True, exclude _cache subdictionaries from output.
 
     Returns
     -------
     str
         Formatted string representation of the mesh.
     """
-    ### Build the first line with class name and key properties
-    # These properties are guaranteed by __post_init__
+    ### Build the first line: Mesh[manifold, spatial](n_points=..., n_cells=..., ...)
     class_name = mesh.__class__.__name__
+    dim_sig = f"[n_manifold_dims={mesh.n_manifold_dims}, n_spatial_dims={mesh.n_spatial_dims}]"
+
     parts = [
-        f"manifold_dim={mesh.n_manifold_dims}",
-        f"spatial_dim={mesh.n_spatial_dims}",
         f"n_points={mesh.n_points}",
         f"n_cells={mesh.n_cells}",
     ]
 
-    # Add device if it's explicitly set (not None)
-    # mesh.device is None by default and only set when user calls .to(device)
     device = mesh.device
     if device is not None:
         parts.append(f"device={device}")
 
-    first_line = f"{class_name}({', '.join(parts)})"
+    first_line = f"{class_name}{dim_sig}({', '.join(parts)})"
 
     ### Format the data fields with proper alignment
     # We need to align the colons for point_data, cell_data, and global_data
@@ -69,7 +67,6 @@ def format_mesh_repr(mesh, exclude_cache: bool = False) -> str:
             td,
             batch_dims=len(td.batch_size) if hasattr(td, "batch_size") else 0,
             indent_level=1,
-            exclude_cache=exclude_cache,
         )
 
         # Add the field line with aligned colon
@@ -79,7 +76,7 @@ def format_mesh_repr(mesh, exclude_cache: bool = False) -> str:
     return "\n".join(lines)
 
 
-def _count_tensordict_fields(td: TensorDict, exclude_cache: bool = False) -> int:
+def _count_tensordict_fields(td: TensorDict) -> int:
     """Recursively count total number of fields in a TensorDict.
 
     Counts both leaf tensors and intermediate (nested) TensorDict entries.
@@ -88,16 +85,13 @@ def _count_tensordict_fields(td: TensorDict, exclude_cache: bool = False) -> int
     ----------
     td : TensorDict
         TensorDict to count fields in.
-    exclude_cache : bool
-        If True, skip _cache keys.
 
     Returns
     -------
     int
         Total number of fields including nested fields.
     """
-    filtered = td.exclude(CACHE_KEY) if exclude_cache else td
-    return len(list(filtered.keys(include_nested=True)))
+    return len(list(td.keys(include_nested=True)))
 
 
 def _get_trailing_shape(tensor: torch.Tensor, batch_dims: int) -> tuple:
@@ -121,7 +115,7 @@ def _get_trailing_shape(tensor: torch.Tensor, batch_dims: int) -> tuple:
 
 
 def _format_tensordict_repr(
-    td: TensorDict, batch_dims: int, indent_level: int = 0, exclude_cache: bool = False
+    td: TensorDict, batch_dims: int, indent_level: int = 0
 ) -> str:
     """Format a TensorDict with proper indentation and colon alignment.
 
@@ -133,36 +127,26 @@ def _format_tensordict_repr(
         Number of batch dimensions (for computing trailing shapes).
     indent_level : int
         Current indentation level.
-    exclude_cache : bool
-        If True, skip _cache entries.
 
     Returns
     -------
     str
         Formatted string representation.
     """
-    # Get top-level keys, excluding _cache if requested
-    # (Intentionally top-level only: this function recurses for nested TensorDicts.)
-    filtered = td.exclude(CACHE_KEY) if exclude_cache else td
-    all_keys = list(filtered.keys())
+    keys = sorted(list(td.keys()))
 
-    if len(all_keys) == 0:
+    if len(keys) == 0:
         return "{}"
 
-    # Sort alphabetically, but always put _cache at the end
-    regular_keys = sorted([k for k in all_keys if k != CACHE_KEY])
-    cache_keys = [k for k in all_keys if k == CACHE_KEY]
-    keys = regular_keys + cache_keys
-
     # Count total fields to decide on single-line vs multi-line
-    total_fields = _count_tensordict_fields(td, exclude_cache=exclude_cache)
+    total_fields = _count_tensordict_fields(td)
     use_multiline = total_fields > 3
 
     if not use_multiline:
         # Single-line format
         items = []
         for key in keys:
-            value = filtered[key]
+            value = td[key]
             if isinstance(value, TensorDict):
                 # Recursively format nested TensorDict
                 nested_repr = _format_tensordict_repr(
@@ -171,7 +155,6 @@ def _format_tensordict_repr(
                     if hasattr(value, "batch_size")
                     else batch_dims,
                     indent_level=indent_level + 1,
-                    exclude_cache=exclude_cache,
                 )
                 items.append(f"{key}: {nested_repr}")
             else:
@@ -193,7 +176,7 @@ def _format_tensordict_repr(
     # Build field lines
     field_lines = []
     for i, key in enumerate(keys):
-        value = filtered[key]
+        value = td[key]
         padded_key = str(key).ljust(max_key_len)
         is_last = i == len(keys) - 1
 
@@ -205,7 +188,6 @@ def _format_tensordict_repr(
                 if hasattr(value, "batch_size")
                 else batch_dims,
                 indent_level=indent_level + 1,
-                exclude_cache=exclude_cache,
             )
 
             # Check if nested repr is multiline

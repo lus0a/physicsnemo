@@ -6,7 +6,50 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.0.0a0] - 2026-XX-YY
+## [2.1.0a0] - 2026-XX-YY
+
+### Added
+
+- Adds GLOBE model (`physicsnemo.experimental.models.globe.model.GLOBE`)
+- Adds GLOBE AirFRANS example case (`examples/cfd/external_aerodynamics/globe/airfrans`)
+- PhysicsNeMo-Mesh now supports conversion from PyVista/VTK/VTU meshes that may
+  contain polyhedral cells.
+- In PhysicsNeMo-Mesh, adds `Mesh.to_point_cloud()`, `.to_edge_graph()`, and
+  `.to_dual_graph()` methods. These allow Mesh conversion to 0D point clouds, 1D
+  edge graphs, and 1D dual graphs, respectively, when connectivity information
+  is not needed.
+- Adds `physicsnemo.mesh.generate` subpackage with `marching_cubes` for
+  isosurface extraction from 3D scalar fields, returning a `Mesh` object.
+  Supports the NVIDIA Warp backend.
+- Adds a type system to PhysicsNeMo-Mesh, allowing annotation of Mesh dimensions
+  using notation like `Mesh[2, 3]` for a 2D manifold in 3D space.
+- Adds adjacency caching to PhysicsNeMo-Mesh `Mesh` objects, allowing efficient
+  reuse of neighbor information.
+
+### Changed
+
+- Improved crash recipe with configurable stats directory.
+
+### Deprecated
+
+- `physicsnemo.utils.mesh` is deprecated and will be removed in v2.2.0. For
+  isosurface extraction, use `physicsnemo.mesh.generate.marching_cubes` instead
+  of `sdf_to_stl`. For VTP/OBJ/STL file conversion (`combine_vtp_files`,
+  `convert_tesselated_files_in_directory`), use VTK or PyVista directly.
+
+### Removed
+
+### Fixed
+
+- Fixed bug in Pangu, FengWu attention window shift for asymmetric longitudes
+- Fixed a bug in `mesh.sampling.find_nearest_cells`, where a mixup between L2 and L-inf norms
+  could cause slightly incorrect nearest-neighbor assignments in highly skewed meshes.
+
+### Security
+
+### Dependencies
+
+## [2.0.0] - 2026-03-09
 
 ### Added
 
@@ -27,15 +70,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - DiT (Diffusion Transformer) has been moved from `physicsnemo.experimental.models.dit`
   to `physicsnemo.models.dit`.
 
-### Deprecated
-
-### Removed
-
 ### Fixed
 
 - Shape mistmatch bug in the Lennard Jones example
-
-### Security
 
 ### Dependencies
 
