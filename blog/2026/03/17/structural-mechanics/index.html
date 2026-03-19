@@ -1,0 +1,1085 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="PhysicsNeMo blog">
+      
+      
+      
+        <link rel="canonical" href="http://www.example.com/blog/2026/03/17/structural-mechanics/">
+      
+      
+        <link rel="prev" href="../../../../2025/10/21/physicsnemo-domino-opt/">
+      
+      
+      
+      <link rel="icon" href="../../../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.18">
+    
+    
+      
+        <title>Training AI Physics Models for Transient Structural Mechanics Simulations such as Automotive Crash - NVIDIA PhysicsNeMo</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../../../assets/stylesheets/main.7e37652d.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../../../stylesheets/color-scheme.css">
+    
+      <link rel="stylesheet" href="../../../../../stylesheets/custom-material.css">
+    
+      <link rel="stylesheet" href="../../../../../stylesheets/fonts.css">
+    
+    <script>__md_scope=new URL("../../../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+      
+        <meta  property="og:type"  content="website" >
+      
+        <meta  property="og:title"  content="Training AI Physics Models for Transient Structural Mechanics Simulations such as Automotive Crash - NVIDIA PhysicsNeMo" >
+      
+        <meta  property="og:description"  content="PhysicsNeMo blog" >
+      
+        <meta  property="og:image"  content="http://www.example.com/assets/images/social/blog/posts/crash_recipe.png" >
+      
+        <meta  property="og:image:type"  content="image/png" >
+      
+        <meta  property="og:image:width"  content="1200" >
+      
+        <meta  property="og:image:height"  content="630" >
+      
+        <meta  property="og:url"  content="http://www.example.com/blog/2026/03/17/structural-mechanics/" >
+      
+        <meta  name="twitter:card"  content="summary_large_image" >
+      
+        <meta  name="twitter:title"  content="Training AI Physics Models for Transient Structural Mechanics Simulations such as Automotive Crash - NVIDIA PhysicsNeMo" >
+      
+        <meta  name="twitter:description"  content="PhysicsNeMo blog" >
+      
+        <meta  name="twitter:image"  content="http://www.example.com/assets/images/social/blog/posts/crash_recipe.png" >
+      
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="light" data-md-color-primary="custom" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#training-ai-physics-models-for-transient-structural-mechanics-simulations-such-as-automotive-crash" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../../../.." title="NVIDIA PhysicsNeMo" class="md-header__button md-logo" aria-label="NVIDIA PhysicsNeMo" data-md-component="logo">
+      <img id="logo_dark_mode" src="../../../../../assets/images/NVIDIA-Logo-Black.svg" alt="logo">
+<img id="logo_light_mode" src="../../../../../assets/images/NVIDIA-Logo-White.svg" alt="logo">
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            NVIDIA PhysicsNeMo
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Training AI Physics Models for Transient Structural Mechanics Simulations such as Automotive Crash
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="light" data-md-color-primary="custom" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="dark" data-md-color-primary="custom" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/NVIDIA/physicsnemo" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.0.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path fill="currentColor" d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../../../.." title="NVIDIA PhysicsNeMo" class="md-nav__button md-logo" aria-label="NVIDIA PhysicsNeMo" data-md-component="logo">
+      <img id="logo_dark_mode" src="../../../../../assets/images/NVIDIA-Logo-Black.svg" alt="logo">
+<img id="logo_light_mode" src="../../../../../assets/images/NVIDIA-Logo-White.svg" alt="logo">
+    </a>
+    NVIDIA PhysicsNeMo
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/NVIDIA/physicsnemo" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.0.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path fill="currentColor" d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Home
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../../" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Blog
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2" id="__nav_2_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Blog
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Archive
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            Archive
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+    
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../archive/2026/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    March 2026
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../archive/2025/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    October 2025
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_3" id="__nav_2_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Categories
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_3">
+            <span class="md-nav__icon md-icon"></span>
+            Categories
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+    
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../category/physicsnemo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    PhysicsNeMo
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#developing-ai-surrogates-for-crash-using-physicsnemo" class="md-nav__link">
+    <span class="md-ellipsis">
+      Developing AI surrogates for Crash using PhysicsNeMo
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Developing AI surrogates for Crash using PhysicsNeMo">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#data-curation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Data Curation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#choosing-the-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      Choosing the Architecture
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-training-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      The Training Configuration
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Validation
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#takeaways" class="md-nav__link">
+    <span class="md-ellipsis">
+      Takeaways
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+  <div class="md-content md-content--post" data-md-component="content">
+    <div class="md-sidebar md-sidebar--post" data-md-component="sidebar" data-md-type="navigation">
+      <div class="md-sidebar__scrollwrap">
+        <div class="md-sidebar__inner md-post">
+          <nav class="md-nav md-nav--primary">
+            <div class="md-post__back">
+              <div class="md-nav__title md-nav__container">
+                <a href="../../../../" class="md-nav__link">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+                  <span class="md-ellipsis">
+                    Back to index
+                  </span>
+                </a>
+              </div>
+            </div>
+            
+              <div class="md-post__authors md-typeset">
+                
+                  <div class="md-profile md-post__profile">
+                    <span class="md-author md-author--long">
+                      <img src="../../../../../author-images/mohammad_headshot.png" alt="Mohammad Nabian">
+                    </span>
+                    <span class="md-profile__description">
+                      <strong>
+                        
+                          Mohammad Nabian
+                        
+                      </strong>
+                      <br>
+                      Senior Software Engineer, AI-HPC
+                    </span>
+                  </div>
+                
+              </div>
+            
+            <ul class="md-post__meta md-nav__list">
+              <li class="md-nav__item md-nav__item--section">
+                <div class="md-post__title">
+                  <span class="md-ellipsis">
+                    Metadata
+                  </span>
+                </div>
+                <nav class="md-nav">
+                  <ul class="md-nav__list">
+                    <li class="md-nav__item">
+                      <div class="md-nav__link">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 19H5V8h14m-3-7v2H8V1H6v2H5c-1.11 0-2 .89-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-1V1m-1 11h-5v5h5z"/></svg>
+                        <time datetime="2026-03-17 00:00:00+00:00" class="md-ellipsis">March 17, 2026</time>
+                      </div>
+                    </li>
+                    
+                    
+                      <li class="md-nav__item">
+                        <div class="md-nav__link">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9 3v15h3V3zm3 2 4 13 3-1-4-13zM5 5v13h3V5zM3 19v2h18v-2z"/></svg>
+                          <span class="md-ellipsis">
+                            in
+                            
+                              <a href="../../../../category/physicsnemo/">PhysicsNeMo</a></span>
+                        </div>
+                      </li>
+                    
+                    
+                      
+                      <li class="md-nav__item">
+                        <div class="md-nav__link">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 20a8 8 0 0 0 8-8 8 8 0 0 0-8-8 8 8 0 0 0-8 8 8 8 0 0 0 8 8m0-18a10 10 0 0 1 10 10 10 10 0 0 1-10 10C6.47 22 2 17.5 2 12A10 10 0 0 1 12 2m.5 5v5.25l4.5 2.67-.75 1.23L11 13V7z"/></svg>
+                          <span class="md-ellipsis">
+                            
+                              5 min read
+                            
+                          </span>
+                        </div>
+                      </li>
+                    
+                  </ul>
+                </nav>
+              </li>
+            </ul>
+            
+              <ul class="md-post__meta md-nav__list">
+                <li class="md-nav__item md-nav__item--section">
+                  <div class="md-post__title">
+                    <span class="md-ellipsis">
+                      Related links
+                    </span>
+                  </div>
+                  <nav class="md-nav">
+                    <ul class="md-nav__list">
+                      
+                        
+                        
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Homepage
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+                      
+                        
+                        
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Blog index
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+                      
+                        
+                        
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__ref_3" >
+        
+          
+          <label class="md-nav__link" for="__ref_3" id="__ref_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    External links
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__ref_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__ref_3">
+            <span class="md-nav__icon md-icon"></span>
+            External links
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/NVIDIA/physicsnemo" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    PhysicsNeMo GitHub
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/NVIDIA/physicsnemo/tree/main/physicsnemo/mesh" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    PhysicsNeMo-Mesh Source
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/NVIDIA/physicsnemo/tree/main/examples/minimal/mesh" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Mesh Tutorials
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+                      
+                    </ul>
+                  </nav>
+                </li>
+              </ul>
+            
+          </nav>
+          
+        </div>
+      </div>
+    </div>
+    <article class="md-content__inner md-typeset">
+      
+        
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+        <a href="../../../../tags/#tag:blog" class="md-tag">Blog</a>
+      
+    
+      
+      
+      
+        <a href="../../../../tags/#tag:gpu" class="md-tag">GPU</a>
+      
+    
+      
+      
+      
+        <a href="../../../../tags/#tag:scientific-computing" class="md-tag">Scientific Computing</a>
+      
+    
+      
+      
+      
+        <a href="../../../../tags/#tag:structural-mechanics" class="md-tag">Structural Mechanics</a>
+      
+    
+  </nav>
+
+
+  
+  
+
+
+<h1 id="training-ai-physics-models-for-transient-structural-mechanics-simulations-such-as-automotive-crash">Training AI Physics Models for Transient Structural Mechanics Simulations such as Automotive Crash</h1>
+<p>Simulating automotive crash is one of the most complex computational workloads in computer-aided engineering (CAE). Crash simulation is a highly non-linear, dynamic event that happens in milliseconds. Therefore automotive crash simulations face significant bottlenecks in both human-driven workflows and raw computational demands. These challenges stem from the need to model highly non-linear, split-second events with extreme accuracy to meet strict regulatory standards (like NHTSA or Euro NCAP).</p>
+<!-- more -->
+
+<p><a href="../../../../../images/structural_mechanics/ai_crash_prediction_view1.gif"><img alt="ai_crash_prediction_view1" src="../../../../../images/structural_mechanics/ai_crash_prediction_view1.gif" /></a>
+<em>Fig 1: Results of commercial crash simulation and predictions from AI surrogate model trained using PhysicsNeMo for vehicle crash dynamics.</em></p>
+<p>Automotive engineers encounter significant challenges when simulating vehicle crashes, such as:</p>
+<ul>
+<li>
+<p><strong>Degree of Non-Linearity</strong> — Unlike most other engineering simulations, crash is a highly non-linear event. You have geometric non-linearity with parts not just bending but undergoing massive catastrophic deformations, material non-linearity where materials enter their "plastic" regime and also exhibit strain-rate sensitivity, and, last but not least, you have to deal with material fracture (incredibly difficult as it often depends on microscopic manufacturing defects).</p>
+</li>
+<li>
+<p><strong>Complexity of Contact Modeling</strong> — During a crash, thousands of car parts interact in milliseconds. The simulation must accurately detect and calculate forces for part-to-part contact (e.g., the engine block hitting the wall or the wheel smashing into the footwell), self-contact (parts folding onto themselves, like the metal of a crush rail crumpling), and finally simulating an airbag that explosively expands in 20–30 milliseconds, requiring complex fluid-structure interaction algorithms to model the gas expanding inside the unfolding cloth.</p>
+</li>
+<li>
+<p><strong>The Time-Step Problem</strong> — Crash simulations use explicit time integration solvers, and these solvers must take tiny time steps for simulations to be stable, of the order of microseconds. Simulating just 150 milliseconds of a real crash might require millions of time steps coupled with high-fidelity models with tens of millions of elements, which can take days to run even on massive HPC clusters.</p>
+</li>
+</ul>
+<h2 id="developing-ai-surrogates-for-crash-using-physicsnemo">Developing AI surrogates for Crash using PhysicsNeMo</h2>
+<p>In the last couple of releases, we have <a href="https://github.com/NVIDIA/physicsnemo/tree/main/examples/structural_mechanics/crash">published training recipes</a> that enable developers to train AI surrogates to predict the dynamics of structural mechanics problems like deformation and automotive crash. Similar to other AI Physics applications, the automotive crash recipe in PhysicsNeMo showcases the step-by-step methodology for developers to build and test with their own datasets, solvers and modeling experiments with some simple configuration changes.</p>
+<h3 id="data-curation">Data Curation</h3>
+<p>The input data comes from simulations that entail complex 3D meshes representing vehicle components (bumpers, rails, chassis) and their material properties. In the recipe we showcase the use of PhysicsNeMo Curator, a specialized module to streamline the Extraction, Transformation, and Loading (ETL) of structural mechanics datasets.</p>
+<ul>
+<li><strong>Ingestion</strong>: The pipeline reads raw simulation output files (such as d3plot files from LS-DYNA or other Finite Element solvers).</li>
+<li><strong>Transformation</strong>: It extracts the "undeformed" mesh geometry (initial state) and the "deformed" mesh geometry (ground truth) over time.</li>
+<li><strong>Formatting</strong>: The data is converted into machine-learning-optimized formats like <strong>Zarr</strong> or other formats like <strong>VTP</strong>. Zarr is particularly useful for large-scale training because it supports chunked, compressed data storage that is efficiently readable by GPUs.</li>
+</ul>
+<h3 id="choosing-the-architecture">Choosing the Architecture</h3>
+<p>The model is trained to predict the spatiotemporal evolution of the mesh. It takes the initial state ($t=0$) and predicts the deformation at subsequent time steps ($t+1$, $t+2$, etc.).</p>
+<p>The crash recipe supports multiple advanced architectures specifically designed for AI Physics applications:</p>
+<ul>
+<li>
+<p><strong>MeshGraphNet (Graph Neural Networks)</strong>: This model treats the vehicle mesh as a graph, where nodes represent physical points on the car parts and edges represent connections. The model uses "message passing" to simulate how forces propagate through the structure, predicting how each node moves and deforms based on its neighbors.</p>
+</li>
+<li>
+<p><strong>Transolver (Transformer-based)</strong>: Adapted from the Transformers that power Large Language Models (LLMs), Transolver handles the spatial dependencies in the crash data. It is particularly effective at capturing global interactions across the vehicle structure that might be missed by local graph connections.</p>
+</li>
+<li>
+<p><strong>GeoTransolver (Transformer-based)</strong>: An enhanced transformer that builds on Transolver by explicitly incorporating geometric context — learned from multi-scale neighborhoods across the mesh — and injecting it into every layer of the model. This persistent geometric grounding allows the model to stay anchored to the physical domain throughout its forward pass, improving accuracy and robustness compared to standard attention-based approaches. The recipe includes two variants: one using Physics-Attention (the slice-based mechanism from Transolver) and one using FLARE attention.</p>
+</li>
+<li>
+<p><strong>FIGConvUNet (Factorized Implicit Global Convolution UNet)</strong>: Rather than processing the 3D mesh directly, FIGConvUNet projects the point cloud onto a set of compact 2D implicit grids — one per spatial axis — and performs global convolutions on these factorized representations. This decomposition dramatically reduces computational complexity compared to full 3D convolution, enabling efficient processing of large, high-resolution meshes. A U-Net architecture then integrates multi-scale information across encoder and decoder stages for accurate field prediction.</p>
+</li>
+</ul>
+<p><a href="../../../../../images/structural_mechanics/geotransolver_with_flare.png"><img alt="geotransolver_with_flare" src="../../../../../images/structural_mechanics/geotransolver_with_flare.png" /></a>
+<em>Fig 2: The GeoTransolver architecture with FLARE attention.</em></p>
+<h3 id="the-training-configuration">The Training Configuration</h3>
+<p>The unified training recipe provides the configurations that define the entire training pipeline in YAML configuration files (powered by Hydra). This includes specifying the data reader (Zarr or VTP), the datapipe (point-cloud or graph), the model architecture (MeshGraphNet, Transolver, GeoTransolver, or FigConvUNet), and the training and inference configs. Switching between architectures, readers, datapipes, or temporal schemes is as simple as changing the hydra configs for each run. The pipeline is optimized for NVIDIA GPUs, allowing it to handle the massive memory requirements of large meshes typical in automotive engineering.</p>
+<p>A key design decision in crash surrogate modeling is how to handle temporal progression. The recipe provides four strategies, each with different trade-offs:</p>
+<ul>
+<li><strong>One-shot</strong>: The model predicts the entire deformation sequence in a single forward pass. Use one-shot when you need fast iteration or have limited compute resources.</li>
+<li><strong>Time-conditional</strong>: The model predicts the state at an arbitrary time given the initial condition and a time parameter. Use time-conditional over one-shot when prediction quality during validation matters most.</li>
+<li><strong>Autoregressive with rollout training</strong>: The model is trained over multi-step trajectories with backpropagation through time, explicitly learning to correct accumulated errors. Enforces temporal causality but is the most expensive to train.</li>
+<li><strong>Single-step Autoregressive Training</strong>: Uses ground-truth states as inputs during training for efficiency, but suffers from covariate shift at inference. Predictions degrade over long rollouts due to error accumulation.</li>
+</ul>
+<p>The recipe uses gradient checkpointing during rollout training to keep memory usage manageable across the full time sequence. Training supports multi-GPU distributed execution via PyTorch DDP and mixed-precision (AMP) training.</p>
+<h3 id="validation">Validation</h3>
+<p>The recipe was validated on a Body-in-White (BIW) dataset derived from a public-domain NHTSA vehicle model, simplified to ~400,000 nodes and ~380,000 elements, simulated under a 56 kph frontal crash scenario using a commercial solver. A design of experiments was conducted by varying the thickness of 33 front-end components within ±20% of nominal values, yielding 150 unique designs. The dataset was split 90/5/5 for train/validation/test.</p>
+<p>Results show that the overall spatio-temporal deformation trends are captured with reasonable fidelity. Displacement predictions align closely with finite element ground truth throughout the crash sequence. Velocity and acceleration predictions at critical probe points (driver and passenger toe pans) show good quantitative agreement.</p>
+<p><a href="../../../../../images/structural_mechanics/ai_crash_prediction_view2.gif"><img alt="ai_crash_prediction_view2" src="../../../../../images/structural_mechanics/ai_crash_prediction_view2.gif" /></a>
+<em>Fig 3: Results of commercial crash simulation and predictions from AI surrogate model trained using GeoTransolver architecture (with FLARE attention) in PhysicsNeMo.</em></p>
+<p><a href="../../../../../images/structural_mechanics/ai_crash_prediction_toepan.png"><img alt="ai_crash_prediction_toepan" src="../../../../../images/structural_mechanics/ai_crash_prediction_toepan.png" /></a>
+<em>Fig 4: Comparison between the predicted and ground-truth velocity and acceleration at the driver and passenger toe pans.</em></p>
+<p>The recipe also supports other structural mechanics use cases, including modeling bumper beam crash, demonstrating that the same pipeline generalizes to different use cases or structural subassemblies with minimal configuration changes.</p>
+<p><a href="../../../../../images/structural_mechanics/bumper_beam.gif"><img alt="bumper_beam" src="../../../../../images/structural_mechanics/bumper_beam.gif" /></a>
+<em>Fig 5: Comparison of simulation and PhysicsNeMo predictions for bumper beam dynamics.</em></p>
+<h2 id="takeaways">Takeaways</h2>
+<p>If you are a SciML developer or a Physics AI researcher or an AI practitioner, PhysicsNeMo is a powerful tool in your arsenal to supercharge and extend your PyTorch stack. </p>
+<p>Instead of building everything from scratch, you can import PhysicsNeMo modules to develop enterprise-scale Physics AI solutions with unprecedented speed and simplicity. You can use the training recipes to quickly build your first surrogate model and then customize it to your own application.</p>
+<p>You can get started easily and step by step using these resources:</p>
+<ul>
+<li><a href="https://github.com/NVIDIA/physicsnemo/tree/main/examples/structural_mechanics/crash">Crash training recipes</a></li>
+<li><a href="https://arxiv.org/pdf/2510.15201">arXiv paper</a></li>
+<li><a href="https://docs.nvidia.com/physicsnemo/latest/getting-started/installation.html">Getting Started Guide</a></li>
+<li><a href="https://github.com/NVIDIA/physicsnemo/blob/main/examples/README.md">Other domain reference samples</a></li>
+<li><a href="https://docs.nvidia.com/physicsnemo/latest/index.html">User Guide Documentation</a></li>
+</ul>
+<p><a class="md-button" href="https://twitter.com/intent/tweet?text=Training%20AI%20Physics%20Models%20for%20Transient%20Structural%20Mechanics%20Simulations%20such%20as%20Automotive%20Crash%0A&amp;url=http://www.example.com/blog/2026/03/17/structural-mechanics/">Share on <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z"/></svg></span></a>
+<a class="md-button" href="https://www.facebook.com/sharer/sharer.php?u=http://www.example.com/blog/2026/03/17/structural-mechanics/">Share on <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.101 23.691v-7.98H6.627v-3.667h2.474v-1.58c0-4.085 1.848-5.978 5.858-5.978.401 0 .955.042 1.468.103a9 9 0 0 1 1.141.195v3.325a9 9 0 0 0-.653-.036 27 27 0 0 0-.733-.009c-.707 0-1.259.096-1.675.309a1.7 1.7 0 0 0-.679.622c-.258.42-.374.995-.374 1.752v1.297h3.919l-.386 2.103-.287 1.564h-3.246v8.245C19.396 23.238 24 18.179 24 12.044c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.628 3.874 10.35 9.101 11.647"/></svg></span></a>
+<a class="md-button" href="https://www.linkedin.com/sharing/share-offsite/?url=http://www.example.com/blog/2026/03/17/structural-mechanics/">Share on LinkedIn</a></p>
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+      
+    </article>
+  </div>
+
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      © Copyright 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "../../../../..", "features": ["navigation.indexes"], "search": "../../../../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../../../assets/javascripts/bundle.92b07e13.min.js"></script>
+      
+    
+  </body>
+</html>
