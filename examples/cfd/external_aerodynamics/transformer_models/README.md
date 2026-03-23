@@ -220,9 +220,9 @@ To adapt these models beyond the **DrivaerML dataset**, builders can try out the
 
 #### **A. Customizing the Feature Space**
 
-* **Surface vs. Volume**: Use the `transolver_surface` or `transolver_volume` configuration names to toggle the dimensionality of the input point cloud.
+* **Surface vs. Volume**: For training on surface data use the `geotransolver_surface` and for voulmetric data use `geotransolver_volume` configuration files.
 
-* **Input Dimensions**: If your CFD data includes temperature update the "geotransolver.yaml" configuration file if you are using GeoTransolver, to reflect the new feature space `f`. The model expects inputs in shapes of `[1, K, f]`.
+* **Input Dimensions**: If your CFD data includes additional fields, say temperature, update the "geotransolver.yaml" configuration file if you are using GeoTransolver, to reflect the new feature space `f`. The model expects inputs in shapes of `[1, K, f]`.
   
 * **Data Pipe**: TBD
 
