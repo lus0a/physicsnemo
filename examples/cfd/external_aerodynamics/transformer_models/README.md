@@ -222,7 +222,7 @@ To adapt these models beyond the **DrivaerML dataset**, builders can try out the
 
 * **Surface vs. Volume**: For training on surface data use the `geotransolver_surface` and for voulmetric data use `geotransolver_volume` configuration files.
 
-* **Input Dimensions**: If your CFD data includes additional fields, say temperature, update the "geotransolver.yaml" configuration file if you are using GeoTransolver, to reflect the new feature space `f`. The model expects inputs in shapes of `[1, K, f]`.
+* **Input Dimensions**: If your CFD data includes additional fields, say temperature, update the out_dim key in "model/geotransolver.yaml" configuration file if you are using GeoTransolver, to reflect the new feature space `f`. The model expects inputs in shapes of `[1, K, f]`, K represents the mesh points. Currently, GeoTransolver is configured to run with fixed global parameters, air density and stream velocity.
   
 * **Data Pipe**: TBD
 
@@ -237,6 +237,10 @@ If you are moving from External Aerodynamics to a different irregular mesh probl
 * [ ] **Compute New Normalizations**: Run `compute_normalizations.py` on your specific dataset.
 
 * [ ] **Update Target Labels**: Modify the metrics.py script if your labels (e.g., Pressure, Shear) differ from the DrivaerML defaults.
+
+* [ ] **Update Datapipe for Encoding Global Params**: Modify transolver_datapipe.py to accomodate more global input parameters with different naming conventions.
+
+* [ ] **Modify Non-dimensionalization Schemes**: Based on the schemes used in curator, modify these schemes in inference_on_vtk.py.
 
 ## Adapting to Internal Pipe flow 
 
@@ -254,9 +258,9 @@ Below is a sample Hydra configuration block (e.g., `conf/model/geotransolver_pip
 # Model Architecture Setup
 model:
   _target_: physicsnemo.experimental.models.geotransolver.GeoTransolver
-  functional_dim: 4      # Input: Coords (3) + Inlet Velocity/Scalar (1)
+  functional_dim: 6      # Input: Surface Coords (3) + Surface normals (3) (Volume has SDF and SDF normals)
   out_dim: 4             # Output: Velocity (Ux, Uy, Uz) + Pressure (p)
-  geometry_dim: 3        # 3D internal pipe mesh
+  geometry_dim: 3        # 3D internal pipe mesh points
   slice_num: 64          # Spatial slices for PhysicsAttention
   n_layers: 6            # Depth of the transformer backbone
   use_te: True           # Enable TransformerEngine for speed
