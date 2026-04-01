@@ -347,11 +347,11 @@ def main(cfg: DictConfig):
         logger0.error(f"Parent directory not found: {parent_dir}")
         return
 
-    run_items = []
-    for root, _dirs, files in os.walk(parent_dir):
-        for fname in files:
-            if fname.lower().endswith(".vtp"):
-                run_items.append(os.path.join(root, fname))
+    run_items = [
+        f.path
+        for f in os.scandir(parent_dir)
+        if f.is_file() and f.name.lower().endswith(".vtp")
+    ]
     run_items.sort()
     run_names = [os.path.splitext(os.path.basename(p))[0] for p in run_items]
 

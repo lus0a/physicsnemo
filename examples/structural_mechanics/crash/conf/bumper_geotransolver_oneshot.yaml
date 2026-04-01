@@ -38,9 +38,9 @@ defaults:
 # └───────────────────────────────────────────┘
 
 training:
-  raw_data_dir: /code/datasets/bumper_beam/train/               # set in config or via CLI: training.raw_data_dir=/path/to/train
-  raw_data_dir_validation: /code/datasets/bumper_beam/validation/   # set in config or via CLI: training.raw_data_dir_validation=/path/to/validation
-  global_features_filepath: /code/datasets/bumper_beam/global_features.json  # set in config or via CLI: training.global_features_filepath=/path/to/global_features.json
+  raw_data_dir: ???        # set in config or via CLI: training.raw_data_dir=/path/to/train
+  raw_data_dir_validation: ???   # set in config or via CLI: training.raw_data_dir_validation=/path/to/validation
+  global_features_filepath: ???  # set in config or via CLI: training.global_features_filepath=/path/to/global_features.json
   optimizer: muon
 
   # ┌───────────────────────────────────────────┐
