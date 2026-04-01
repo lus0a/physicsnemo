@@ -23,7 +23,6 @@ structure and global context throughout the forward pass.
 
 from __future__ import annotations
 
-import warnings
 from collections.abc import Sequence
 from dataclasses import dataclass
 

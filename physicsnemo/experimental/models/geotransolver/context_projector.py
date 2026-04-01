@@ -666,6 +666,8 @@ class GlobalContextBuilder(nn.Module):
     ) -> None:
         super().__init__()
 
+        self._last_geometry_context = None
+
         # Set defaults for mutable arguments
         if radii is None:
             radii = [0.05, 0.25]

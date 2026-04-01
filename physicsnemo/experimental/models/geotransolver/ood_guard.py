@@ -142,7 +142,9 @@ class OODGuard(nn.Module):
         store_norm = store / (store.norm(dim=-1, keepdim=True) + 1e-8)
         dists = torch.cdist(store_norm, store_norm)
         dists.fill_diagonal_(float("inf"))
-        k = self.knn_k.item()
+        k = min(self.knn_k.item(), n_valid - 1)
+        if k <= 0:
+            return
         kth_dists = dists.topk(k, largest=False).values[:, -1]
         threshold = torch.quantile(kth_dists, 0.99)
         self.knn_threshold.copy_(threshold)
@@ -198,7 +200,10 @@ class OODGuard(nn.Module):
             return
         pooled = geometry_context.detach().mean(dim=(1, 2))  # (B, D)
         z = pooled / (pooled.norm(dim=-1, keepdim=True) + 1e-8)
-        store = self.geo_embeddings
+        n_valid = min(self.geo_ptr.item(), self.buffer_size)
+        if n_valid == 0:
+            return
+        store = self.geo_embeddings[:n_valid]
         store_norm = store / (store.norm(dim=-1, keepdim=True) + 1e-8)
         dists = torch.cdist(z, store_norm)  # (B, buf_size)
         k = self.knn_k.item()
