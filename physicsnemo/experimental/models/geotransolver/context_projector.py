@@ -811,7 +811,9 @@ class GlobalContextBuilder(nn.Module):
 
         # Tokenize geometry features
         if self.geometry_tokenizer is not None and geometry is not None:
-            context_parts.append(self.geometry_tokenizer(geometry))
+            geometry_context = self.geometry_tokenizer(geometry)
+            self._last_geometry_context = geometry_context
+            context_parts.append(geometry_context)
 
         # Tokenize global embedding
         if self.global_tokenizer is not None and global_embedding is not None:
