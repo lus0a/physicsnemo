@@ -54,6 +54,7 @@ torch.Size([2, 1000, 3])
 from .context_projector import ContextProjector, GlobalContextBuilder
 from .gale import GALE, GALE_block
 from .geotransolver import GeoTransolver, GeoTransolverMetaData
+from .ood_guard import OODGuard
 
 __all__ = [
     "GeoTransolver",
@@ -62,4 +63,5 @@ __all__ = [
     "GALE_block",
     "ContextProjector",
     "GlobalContextBuilder",
+    "OODGuard",
 ]

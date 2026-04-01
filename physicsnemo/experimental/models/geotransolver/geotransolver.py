@@ -23,7 +23,6 @@ structure and global context throughout the forward pass.
 
 from __future__ import annotations
 
-import logging
 import warnings
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -40,6 +39,7 @@ from physicsnemo.models.transolver.transolver import _TransolverMlp
 
 from .context_projector import GlobalContextBuilder
 from .gale import GALE_block
+from .ood_guard import OODGuard
 
 # Check optional dependency availability
 TE_AVAILABLE = check_version_spec("transformer_engine", "0.1.0", hard_fail=False)
@@ -441,55 +441,17 @@ class GeoTransolver(Module):
                 nn.Linear(n_hidden, n_hidden),
             )
 
-        # OOD guard buffers
+        # OOD guard (None when disabled)
         dim_head = n_hidden // n_head
-        self._guard_buffer_size = guard_buffer_size
-
         if guard_buffer_size is not None:
-            # Global parameters: per-dimension bounding box
-            if global_dim is not None:
-                self.register_buffer(
-                    "guard_global_min",
-                    torch.full((global_dim,), float("inf")),
-                )
-                self.register_buffer(
-                    "guard_global_max",
-                    torch.full((global_dim,), float("-inf")),
-                )
-            else:
-                self.register_buffer("guard_global_min", None)
-                self.register_buffer("guard_global_max", None)
-
-            # Geometry context: kNN rolling buffer
-            if geometry_dim is not None:
-                self.register_buffer(
-                    "guard_geo_embeddings",
-                    torch.zeros(guard_buffer_size, dim_head),
-                )
-                self.register_buffer(
-                    "guard_geo_ptr",
-                    torch.zeros(1, dtype=torch.long),
-                )
-                self.register_buffer(
-                    "guard_knn_threshold",
-                    torch.tensor(float("inf")),
-                )
-            else:
-                self.register_buffer("guard_geo_embeddings", None)
-                self.register_buffer("guard_geo_ptr", None)
-                self.register_buffer("guard_knn_threshold", None)
-
-            self.register_buffer(
-                "guard_knn_k",
-                torch.tensor(guard_knn_k, dtype=torch.long),
+            self.ood_guard = OODGuard(
+                buffer_size=guard_buffer_size,
+                global_dim=global_dim,
+                geometry_embed_dim=dim_head if geometry_dim is not None else None,
+                knn_k=guard_knn_k,
             )
         else:
-            self.register_buffer("guard_global_min", None)
-            self.register_buffer("guard_global_max", None)
-            self.register_buffer("guard_geo_embeddings", None)
-            self.register_buffer("guard_geo_ptr", None)
-            self.register_buffer("guard_knn_threshold", None)
-            self.register_buffer("guard_knn_k", None)
+            self.ood_guard = None
 
     def forward(
         self,
@@ -588,11 +550,12 @@ class GeoTransolver(Module):
         )
 
         # --- OOD Guard ---
-        if self._guard_buffer_size is not None:
+        if self.ood_guard is not None:
+            geo_ctx = self.context_builder._last_geometry_context
             if self.training:
-                self._guard_collect(global_embedding, geometry)
+                self.ood_guard.collect(global_embedding, geo_ctx)
             else:
-                self._guard_check(global_embedding, geometry)
+                self.ood_guard.check(global_embedding, geo_ctx)
 
         # Project inputs to hidden dimension: (B, N, C) -> (B, N, n_hidden)
         x = [self.preprocess[i](le) for i, le in enumerate(local_embedding)]
@@ -619,109 +582,8 @@ class GeoTransolver(Module):
 
         return x
 
-    # --- OOD Guard methods ---
-
-    @torch.no_grad()
-    def _guard_collect(
-        self,
-        global_embedding: torch.Tensor | None,
-        geometry: torch.Tensor | None,
-    ) -> None:
-        """Collect OOD guard calibration data during training."""
-        # Update global parameter bounds
-        if global_embedding is not None and self.guard_global_min is not None:
-            batch_min = global_embedding.detach().min(dim=0).values.min(dim=0).values
-            batch_max = global_embedding.detach().max(dim=0).values.max(dim=0).values
-            self.guard_global_min.copy_(
-                torch.minimum(self.guard_global_min, batch_min)
-            )
-            self.guard_global_max.copy_(
-                torch.maximum(self.guard_global_max, batch_max)
-            )
-
-        # Append geometry context embeddings to FIFO buffer
-        if geometry is not None and self.guard_geo_embeddings is not None:
-            geo_ctx = self.context_builder._last_geometry_context  # (B, H, S, D)
-            pooled = geo_ctx.detach().mean(dim=(1, 2))  # (B, D)
-            buf_size = self.guard_geo_embeddings.shape[0]
-            ptr = self.guard_geo_ptr.item()
-            b = pooled.shape[0]
-            for i in range(b):
-                self.guard_geo_embeddings[ptr % buf_size] = pooled[i]
-                ptr += 1
-            self.guard_geo_ptr.fill_(ptr)
-
-    @torch.no_grad()
-    def _guard_check(
-        self,
-        global_embedding: torch.Tensor | None,
-        geometry: torch.Tensor | None,
-    ) -> None:
-        """Run OOD checks during inference and emit warnings."""
-        _RED = "\033[91m"
-        _RESET = "\033[0m"
-
-        # Check global parameter bounds
-        if global_embedding is not None and self.guard_global_min is not None:
-            if not torch.isinf(self.guard_global_min).any():
-                vals = global_embedding.detach()
-                batch_min = vals.min(dim=0).values.min(dim=0).values
-                batch_max = vals.max(dim=0).values.max(dim=0).values
-                for d in range(batch_min.shape[0]):
-                    lo = self.guard_global_min[d].item()
-                    hi = self.guard_global_max[d].item()
-                    if batch_min[d].item() < lo:
-                        logging.warning(
-                            f"{_RED}OOD Guard: global_embedding dim {d} value "
-                            f"{batch_min[d].item():.4f} below training min {lo:.4f}{_RESET}"
-                        )
-                    if batch_max[d].item() > hi:
-                        logging.warning(
-                            f"{_RED}OOD Guard: global_embedding dim {d} value "
-                            f"{batch_max[d].item():.4f} above training max {hi:.4f}{_RESET}"
-                        )
-
-        # Check geometry kNN distance
-        if geometry is not None and self.guard_geo_embeddings is not None:
-            if not torch.isinf(self.guard_knn_threshold):
-                geo_ctx = self.context_builder._last_geometry_context
-                pooled = geo_ctx.detach().mean(dim=(1, 2))  # (B, D)
-                z = pooled / (pooled.norm(dim=-1, keepdim=True) + 1e-8)
-                store = self.guard_geo_embeddings
-                store_norm = store / (store.norm(dim=-1, keepdim=True) + 1e-8)
-                dists = torch.cdist(z, store_norm)  # (B, buf_size)
-                k = self.guard_knn_k.item()
-                kth_dists = dists.topk(k, largest=False).values[:, -1]  # (B,)
-                threshold = self.guard_knn_threshold.item()
-                for i in range(kth_dists.shape[0]):
-                    dist_val = kth_dists[i].item()
-                    if dist_val > threshold:
-                        logging.warning(
-                            f"{_RED}OOD Guard: geometry sample {i} kNN distance "
-                            f"{dist_val:.4f} above threshold {threshold:.4f}{_RESET}"
-                        )
-
-    @torch.no_grad()
-    def compute_guard_threshold(self) -> None:
-        """Compute kNN threshold from accumulated geometry embeddings."""
-        if self.guard_geo_embeddings is None:
-            return
-        ptr = self.guard_geo_ptr.item()
-        if ptr == 0:
-            return
-        buf_size = self.guard_geo_embeddings.shape[0]
-        n_valid = min(ptr, buf_size)
-        store = self.guard_geo_embeddings[:n_valid]
-        store_norm = store / (store.norm(dim=-1, keepdim=True) + 1e-8)
-        dists = torch.cdist(store_norm, store_norm)  # (N, N)
-        dists.fill_diagonal_(float("inf"))
-        k = self.guard_knn_k.item()
-        kth_dists = dists.topk(k, largest=False).values[:, -1]  # (N,)
-        # 99th percentile — near-zero false alarms on in-distribution data
-        threshold = torch.quantile(kth_dists, 0.99)
-        self.guard_knn_threshold.copy_(threshold)
-
     def state_dict(self, *args, **kwargs):
         """Override to compute guard threshold before saving."""
-        self.compute_guard_threshold()
+        if self.ood_guard is not None:
+            self.ood_guard.compute_threshold()
         return super().state_dict(*args, **kwargs)
