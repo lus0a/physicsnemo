@@ -167,7 +167,7 @@ def test_conv_transpose_1d_1dmesh(
 
 
 @pytest.mark.multigpu_static
-@pytest.mark.parametrize("H", [32, 256])
+@pytest.mark.parametrize("H", [128, 256])
 @pytest.mark.parametrize(
     "C_in",
     [
@@ -198,7 +198,7 @@ def test_conv2d_1dmesh(
 
     dm = DistributedManager()
 
-    image = generate_image_like_data(2, C_in, (H, H)).to(dm.device)
+    image = generate_image_like_data(2, C_in, ( H, H)).to(dm.device)
 
     placements = (Shard(2),)
 
@@ -265,7 +265,7 @@ def test_conv_transpose_2d_1dmesh(
         2,
         C_in,
         (
-            H,
+            2 * H,
             H,
         ),
         device=dm.device,
@@ -293,7 +293,7 @@ def test_conv_transpose_2d_1dmesh(
 
 
 @pytest.mark.multigpu_static
-@pytest.mark.parametrize("H", [32, 256])
+@pytest.mark.parametrize("H", [128, 256])
 @pytest.mark.parametrize(
     "C_in",
     [
@@ -405,8 +405,8 @@ def test_conv_transpose_2d_2dmesh(
         2,
         C_in,
         (
-            H,
-            H,
+            2 * H,
+            2 * H,
         ),
         device=dm.device,
     )

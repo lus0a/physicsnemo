@@ -534,20 +534,23 @@ def test_view_trailing_dims_1d_to_3d(
     distributed_mesh,
     backward,
 ):
-    """Test view (6,) -> (2, 3, 1) with Shard(0): trailing dim must stay in group.
+    """Test view (48,) -> (8, 6, 1) with Shard(0): trailing singleton in target.
 
-    With the shard on dim 0, each rank has a contiguous chunk of the 1D tensor.
-    The target shape has a trailing singleton (2, 3, 1). The trailing dimension
-    must be included in the same dimension group so that the local element
-    count is correct (product of local shape equals chunk_size). Without that,
-    the old code produced wrong local shapes (e.g. product 4 instead of 2 or 3).
+    The 1D tensor is sharded on dim 0.  The target shape has a trailing
+    singleton ``(8, 6, 1)`` that falls outside the dimension group matched
+    by ``_match_view_dim_groups`` (which pairs ``(48,)`` with ``(8, 6)``).
+    The trailing ``1`` must be carried through unchanged in the local shape
+    so that ``product(local_shape) == chunk_size``.
+
+    We use a tensor size (48) that divides cleanly across 2-, 4-, and 8-GPU
+    meshes so that every rank's chunk aligns to a row boundary in ``(8, 6)``.
     """
     if not torch.cuda.is_available():
         pytest.skip("CUDA is not available")
 
     dm = DistributedManager()
-    shape = (6,)
-    target_shape = (2, 3, 1)
+    shape = (48,)
+    target_shape = (8, 6, 1)
 
     original_tensor = torch.rand(shape, device=dm.device, requires_grad=backward)
 

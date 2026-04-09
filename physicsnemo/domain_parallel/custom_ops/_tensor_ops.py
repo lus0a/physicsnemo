@@ -80,7 +80,9 @@ def _unbind_output_metadata(
     shards = [s for s in input_placements if isinstance(s, Shard)]
 
     if dim in [i.dim for i in shards]:
-        raise RuntimeError("No implementation for unbinding along sharding axis yet.")
+        raise RuntimeError(
+            "No implementation for unbinding along sharding axis yet."
+        )
 
     new_placements: list = []
     for p in input_placements:
@@ -96,7 +98,8 @@ def _unbind_output_metadata(
 
     out_sharding_shapes: dict[int, list[torch.Size]] = {
         mesh_dim: [
-            torch.Size(list(cs[:dim]) + list(cs[dim + 1 :])) for cs in shard_shapes
+            torch.Size(list(cs[:dim]) + list(cs[dim + 1 :]))
+            for cs in shard_shapes
         ]
         for mesh_dim, shard_shapes in input_spec.sharding_shapes().items()
     }
@@ -104,7 +107,9 @@ def _unbind_output_metadata(
     return dim, new_placements, out_sharding_shapes
 
 
-def _unbind_dispatch(tensor: ShardTensor, dim: int = 0) -> tuple[ShardTensor, ...]:
+def _unbind_dispatch(
+    tensor: ShardTensor, dim: int = 0
+) -> tuple[ShardTensor, ...]:
     r"""Dispatch handler for ``aten.unbind.int`` on :class:`ShardTensor`.
 
     Called at the ``__torch_dispatch__`` level (below autograd).  Operates
@@ -130,7 +135,9 @@ def _unbind_dispatch(tensor: ShardTensor, dim: int = 0) -> tuple[ShardTensor, ..
     models that unbind tensors along non-sharded dimensions.
     """
     input_spec = tensor._spec
-    dim, new_placements, out_sharding_shapes = _unbind_output_metadata(input_spec, dim)
+    dim, new_placements, out_sharding_shapes = _unbind_output_metadata(
+        input_spec, dim
+    )
 
     # We are reducing tensor rank and returning one tensor per slice
     original_shape = list(input_spec.shape)
@@ -144,7 +151,9 @@ def _unbind_dispatch(tensor: ShardTensor, dim: int = 0) -> tuple[ShardTensor, ..
             stride=_stride_from_contiguous_shape_C_style(original_shape),
             dtype=input_spec.tensor_meta.dtype,
         ),
-        _sharding_shapes={k: tuple(v) for k, v in out_sharding_shapes.items()},
+        _sharding_shapes={
+            k: tuple(v) for k, v in out_sharding_shapes.items()
+        },
     )
 
     local_results = aten.unbind.int(tensor._local_tensor, dim)
@@ -192,7 +201,9 @@ def unbind_wrapper(
     dim: int = args[1] if len(args) > 1 else kwargs.get("dim", 0)
 
     input_spec = input_tensor._spec
-    dim, new_placements, out_sharding_shapes = _unbind_output_metadata(input_spec, dim)
+    dim, new_placements, out_sharding_shapes = _unbind_output_metadata(
+        input_spec, dim
+    )
 
     # to_local() / from_local() preserve the autograd graph
     local_input = input_tensor.to_local()
