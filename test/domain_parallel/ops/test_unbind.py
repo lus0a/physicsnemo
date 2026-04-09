@@ -49,9 +49,7 @@ class UnbindSelectWrapper(torch.nn.Module):
 
 @pytest.mark.multigpu_static
 @pytest.mark.parametrize("backward", [False, True])
-@pytest.mark.parametrize(
-    "unbind_dim,index", [(0, 0), (0, 2), (1, 3), (-3, 0), (-2, 3)]
-)
+@pytest.mark.parametrize("unbind_dim,index", [(0, 0), (0, 2), (1, 3), (-3, 0), (-2, 3)])
 def test_unbind(distributed_mesh, backward, unbind_dim, index):
     """Verify forward and backward via ``numerical_shard_tensor_check``."""
 
@@ -62,9 +60,7 @@ def test_unbind(distributed_mesh, backward, unbind_dim, index):
     shape = (4, 6, 128)
     placements = (Shard(2),)
 
-    original_tensor = torch.rand(
-        shape, device=dm.device, requires_grad=backward
-    )
+    original_tensor = torch.rand(shape, device=dm.device, requires_grad=backward)
 
     sharded_tensor = scatter_tensor(
         original_tensor,

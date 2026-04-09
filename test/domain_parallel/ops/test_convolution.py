@@ -198,7 +198,7 @@ def test_conv2d_1dmesh(
 
     dm = DistributedManager()
 
-    image = generate_image_like_data(2, C_in, ( H, H)).to(dm.device)
+    image = generate_image_like_data(2, C_in, (H, H)).to(dm.device)
 
     placements = (Shard(2),)
 

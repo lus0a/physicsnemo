@@ -56,6 +56,11 @@ if ST_AVAILABLE:
     )
 
     def register_custom_ops():
+        """Register all custom ShardTensor ops and shard-aware wrappers.
+
+        Imports are deferred to this function to avoid an import cycle between
+        ``shard_tensor`` and the individual op modules.
+        """
         # These imports will register the custom ops with the ShardTensor class.
         # It's done here to avoid an import cycle.
         from .custom_ops import (

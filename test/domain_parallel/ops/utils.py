@@ -169,7 +169,9 @@ def unparallelize_module(module):
     This function is for testing purposes only. Do not use in production code.
     """
     for name, param in list(module._parameters.items()):
-        if isinstance(param, torch.nn.Parameter) and isinstance(param.data, (ShardTensor, DTensor)):
+        if isinstance(param, torch.nn.Parameter) and isinstance(
+            param.data, (ShardTensor, DTensor)
+        ):
             # gather to replicated then unwrap
             local_tensor = param.data.full_tensor()
             # replace with a normal Parameter

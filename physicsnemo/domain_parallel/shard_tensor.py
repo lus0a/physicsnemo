@@ -20,7 +20,6 @@ import threading
 from collections.abc import Iterable, Mapping
 from contextlib import contextmanager
 from typing import Callable, Sequence, cast
-from warnings import warn
 
 import torch
 import torch.distributed as dist
@@ -142,9 +141,11 @@ class _ShardTensorToDTensor(torch.autograd.Function):
     def backward(ctx, grad_output: DTensor):
         return (_dtensor_to_shard_tensor(grad_output, ctx.shard_tensor_spec),)
 
+
 # ============================================================================
 # Layer 3 -- Smart single-tensor converters (auto-diff when grad_fn present)
 # ============================================================================
+
 
 def _resolve_spec_for_dtensor(
     dtensor: DTensor, input_args: tuple = ()
@@ -175,9 +176,11 @@ def _resolve_spec_for_dtensor(
 # Goal is to prevent recursion into the fallback conversion paths.
 _conversion_guard = threading.local()
 
+
 def _conversion_active() -> bool:
     r"""Return whether ShardTensor<->DTensor conversion is currently active."""
     return getattr(_conversion_guard, "depth", 0) > 0
+
 
 @contextmanager
 def _conversion_scope():
@@ -199,18 +202,21 @@ def _dispatch_fallback_via_dtensor(
     kwargs: dict[str, object] | None = None,
 ) -> object:
     r"""Execute an ATen op through DTensor fallback using PURE data conversion.
-    
-    Native Autograd wraps this hook, so we must NOT build an internal graph 
+
+    Native Autograd wraps this hook, so we must NOT build an internal graph
     using .apply(). We just do the math and let PyTorch track the outer graph.
     """
     with _conversion_scope():
-        converted_args = tuple(_convert_args_to_dtensor(arg, use_autograd=False) for arg in args)
+        converted_args = tuple(
+            _convert_args_to_dtensor(arg, use_autograd=False) for arg in args
+        )
         converted_kwargs = {
-            k: _convert_args_to_dtensor(v, use_autograd=False) for k, v in (kwargs or {}).items()
+            k: _convert_args_to_dtensor(v, use_autograd=False)
+            for k, v in (kwargs or {}).items()
         }
-        
+
     dispatch_res = func(*converted_args, **(converted_kwargs or {}))
-    
+
     with _conversion_scope():
         return _convert_results_to_shard_tensor(dispatch_res, args, use_autograd=False)
 
@@ -222,18 +228,21 @@ def _torch_function_fallback_via_dtensor(
 ) -> object:
     r"""Execute a __torch_function__ fallback through DTensor safely.
 
-    Because this executes at the Python API level (above Autograd), we MUST 
+    Because this executes at the Python API level (above Autograd), we MUST
     use autograd functions (.apply) to bridge the tracking manually.
     """
     with _conversion_scope():
-        converted_args = tuple(_convert_args_to_dtensor(arg, use_autograd=True) for arg in args)
+        converted_args = tuple(
+            _convert_args_to_dtensor(arg, use_autograd=True) for arg in args
+        )
         converted_kwargs = {
-            k: _convert_args_to_dtensor(v, use_autograd=True) for k, v in (kwargs or {}).items()
+            k: _convert_args_to_dtensor(v, use_autograd=True)
+            for k, v in (kwargs or {}).items()
         }
-        
+
     with torch._C.DisableTorchFunctionSubclass():
         result = func(*converted_args, **converted_kwargs)
-        
+
     with _conversion_scope():
         return _convert_results_to_shard_tensor(result, args, use_autograd=True)
 
@@ -242,9 +251,10 @@ def _torch_function_fallback_via_dtensor(
 # Layer 4 -- Recurse utilities (walk args / kwargs / results)
 # ============================================================================
 
+
 def _convert_args_to_dtensor(arg: object, use_autograd: bool = False) -> object:
     r"""Recursively replace ShardTensors with DTensors.
-    
+
     If use_autograd is True, uses Layer 2 to preserve the graph connection.
     """
     match arg:
@@ -256,7 +266,9 @@ def _convert_args_to_dtensor(arg: object, use_autograd: bool = False) -> object:
             # DTensor can be iterable; exit early deliberately
             return arg
         case Mapping():
-            return type(arg)({k: _convert_args_to_dtensor(v, use_autograd) for k, v in arg.items()})
+            return type(arg)(
+                {k: _convert_args_to_dtensor(v, use_autograd) for k, v in arg.items()}
+            )
         case tuple():
             return tuple(_convert_args_to_dtensor(a, use_autograd) for a in arg)
         case list():
@@ -269,7 +281,7 @@ def _convert_results_to_shard_tensor(
     result: object, input_args: tuple, use_autograd: bool = False
 ) -> object:
     r"""Recursively replace DTensors with ShardTensors in an op result.
-    
+
     If use_autograd is True, uses Layer 2 to preserve the graph connection.
     Handles None returns gracefully for inplace ATen operations.
     """
@@ -278,12 +290,16 @@ def _convert_results_to_shard_tensor(
 
     if isinstance(result, DTensor):
         spec = _resolve_spec_for_dtensor(result, input_args)
-        
+
         # If autograd graph connection is requested AND the DTensor actually
         # requires tracking (it has a grad_fn or requires_grad is active)
-        if use_autograd and torch.is_grad_enabled() and (result.grad_fn is not None or result.requires_grad):
+        if (
+            use_autograd
+            and torch.is_grad_enabled()
+            and (result.grad_fn is not None or result.requires_grad)
+        ):
             return _DTensorToShardTensor.apply(result, spec)
-            
+
         return _dtensor_to_shard_tensor(result, spec)
 
     if isinstance(result, Mapping):
@@ -293,14 +309,15 @@ def _convert_results_to_shard_tensor(
                 for k, v in result.items()
             }
         )
-        
+
     if isinstance(result, Iterable) and not isinstance(result, (str, bytes)):
         return type(result)(
             _convert_results_to_shard_tensor(d, input_args, use_autograd)
             for d in result
         )
-        
+
     return result
+
 
 class _ToTorchTensor(torch.autograd.Function):
     r"""Autograd function to convert a ShardTensor to a regular PyTorch tensor.
@@ -334,14 +351,12 @@ class _ToTorchTensor(torch.autograd.Function):
         """
         ctx.shard_tensor_spec = input._spec
         ctx.grad_placements = grad_placements
-        local_tensor = input._local_tensor
-
         # # JUST LIKE DTENSOR:
         # # We need to return a fresh Tensor object there as autograd metadata
         # # will be inplaced into it. So we don't want to pollute the Tensor
         # # object stored in the _local_tensor of this ShardTensor.
         # return local_tensor.view_as(local_tensor)
-        
+
         # Force the local view to inherit the requires_grad state of the ShardTensor
         local_tensor = input._local_tensor
         res = local_tensor.view_as(local_tensor)
@@ -625,71 +640,6 @@ class ShardTensor(torch.Tensor):
         """
         cls._named_function_registry[func_name] = handler
 
-    # @staticmethod
-    # def __new__(
-    #     cls,
-    #     local_tensor: torch.Tensor,
-    #     spec: ShardTensorSpec,
-    #     *,
-    #     requires_grad: bool,
-    # ) -> "ShardTensor":
-    #     r"""Construct a new ShardTensor from a local tensor and specification.
-
-    #     Note that unlike ``DTensor``, ShardTensor will automatically collect
-    #     the shard size information from all participating devices. This enables
-    #     uneven and dynamic sharding.
-
-    #     Parameters
-    #     ----------
-    #     local_tensor : torch.Tensor
-    #         Local tensor to use as the data.
-    #     spec : ShardTensorSpec
-    #         ShardTensorSpec defining the sharding scheme.
-    #     requires_grad : bool
-    #         Whether the tensor requires gradients.
-
-    #     Returns
-    #     -------
-    #     ShardTensor
-    #         A new ShardTensor instance.
-
-    #     Note
-    #     ----
-    #     This implementation is heavily derived from ``torch.distributed.tensor.DTensor``.
-    #     """
-    #     if local_tensor.requires_grad and not requires_grad:
-    #         warn(
-    #             "To construct a new ShardTensor from torch.Tensor, "
-    #             "it's recommended to use local_tensor.detach() and "
-    #             "make requires_grad consistent."
-    #         )
-
-    #     if spec.tensor_meta is None:
-    #         raise ValueError("TensorMeta should not be None!")
-
-    #     ret = torch.Tensor._make_wrapper_subclass(
-    #         cls,
-    #         spec.tensor_meta.shape,
-    #         strides=spec.tensor_meta.stride,
-    #         dtype=local_tensor.dtype,
-    #         device=local_tensor.device,
-    #         layout=local_tensor.layout,
-    #         requires_grad=False,
-    #     )
-
-    #     ret._spec = spec
-    #     ret._local_tensor = local_tensor
-
-    #     # Set requires_grad AFTER _spec/_local_tensor are assigned, using
-    #     # the C-level setter directly (bypassing our Python property
-    #     # override) so the autograd engine sees the correct flag.
-    #     if requires_grad:
-    #         torch.Tensor.requires_grad.__set__(ret, True)
-
-    #     cls._enable_shard_patches = True
-
-    #     return ret
-    
     @staticmethod
     def __new__(
         cls,
@@ -740,10 +690,12 @@ class ShardTensor(torch.Tensor):
 
     @property
     def device_mesh(self) -> DeviceMesh:
+        """Return the :class:`DeviceMesh` that this tensor is distributed over."""
         return self._spec.mesh
 
     @property
     def placements(self) -> tuple[Placement, ...]:
+        """Return the placement strategy for each mesh dimension."""
         return self._spec.placements
 
     def __tensor_flatten__(self):
@@ -781,6 +733,11 @@ class ShardTensor(torch.Tensor):
 
     @property  # type: ignore[override]
     def requires_grad(self) -> bool:  # type: ignore[override]
+        """Whether this tensor requires gradient computation.
+
+        Returns ``True`` if either the wrapper tensor or the underlying local
+        tensor has ``requires_grad`` set.
+        """
         with torch._C.DisableTorchFunctionSubclass():
             if torch.Tensor.requires_grad.__get__(self):
                 return True
@@ -788,11 +745,24 @@ class ShardTensor(torch.Tensor):
 
     @requires_grad.setter
     def requires_grad(self, value: bool) -> None:
+        """Set ``requires_grad`` on both the wrapper and the local tensor."""
         with torch._C.DisableTorchFunctionSubclass():
             torch.Tensor.requires_grad.__set__(self, value)
         self._local_tensor.requires_grad = value
 
     def requires_grad_(self, requires_grad: bool = True) -> "ShardTensor":
+        """Set ``requires_grad`` in-place on both the wrapper and local tensor.
+
+        Parameters
+        ----------
+        requires_grad : bool, optional
+            Whether to enable gradient tracking. Default is ``True``.
+
+        Returns
+        -------
+        ShardTensor
+            ``self``, for method chaining.
+        """
         with torch._C.DisableTorchFunctionSubclass():
             torch.Tensor.requires_grad.__set__(self, requires_grad)
         self._local_tensor.requires_grad_(requires_grad)
@@ -800,11 +770,16 @@ class ShardTensor(torch.Tensor):
 
     @property  # type: ignore[override]
     def is_leaf(self) -> bool:  # type: ignore[override]
+        """Whether this tensor is a leaf in the autograd graph."""
         with torch._C.DisableTorchFunctionSubclass():
             return torch.Tensor.is_leaf.__get__(self)
 
     @property  # type: ignore[override]
     def grad(self) -> "ShardTensor | None":  # type: ignore[override]
+        """Return the accumulated gradient, wrapped as a :class:`ShardTensor`.
+
+        If no gradient has been accumulated yet, returns ``None``.
+        """
         with torch._C.DisableTorchFunctionSubclass():
             c_grad = torch.Tensor.grad.__get__(self)
         if c_grad is not None:
@@ -812,7 +787,9 @@ class ShardTensor(torch.Tensor):
                 return c_grad
             return ShardTensor.__new__(
                 ShardTensor,
-                local_tensor=c_grad._local_tensor if isinstance(c_grad, DTensor) else c_grad,
+                local_tensor=c_grad._local_tensor
+                if isinstance(c_grad, DTensor)
+                else c_grad,
                 spec=self._spec,
                 requires_grad=False,
             )
@@ -828,6 +805,7 @@ class ShardTensor(torch.Tensor):
 
     @grad.setter
     def grad(self, value: "ShardTensor | torch.Tensor | None") -> None:
+        """Set or clear the gradient on both the wrapper and local tensor."""
         if value is None:
             with torch._C.DisableTorchFunctionSubclass():
                 torch.Tensor.grad.__set__(self, None)
@@ -1261,10 +1239,9 @@ def scatter_tensor(
         st = st.redistribute(mesh, placements, async_op=False)
 
     if requires_grad:
-        
         # 1. Ensure the local data is a clean leaf
         local_leaf = st._local_tensor.detach().requires_grad_(True)
-        
+
         # 2. Create the ShardTensor wrapper
         st = ShardTensor.__new__(
             ShardTensor,
@@ -1272,7 +1249,7 @@ def scatter_tensor(
             spec=st._spec,
             requires_grad=True,
         )
-        
+
         # 3. CRITICAL: Force the wrapper itself to be a leaf in the autograd graph
         st = st.detach().requires_grad_(True)
 
