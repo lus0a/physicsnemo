@@ -129,7 +129,9 @@ def scatter_tensor_requires_grad_contract_worker(mesh, requires_grad: bool):
     source = 0
 
     if rank == source:
-        raw_data = torch.randn(global_shape, device=torch.device(f"cuda:{dm.local_rank}"))
+        raw_data = torch.randn(
+            global_shape, device=torch.device(f"cuda:{dm.local_rank}")
+        )
     else:
         raw_data = None
 
@@ -170,7 +172,9 @@ def scatter_tensor_grad_population_worker(mesh):
     source = 0
 
     if rank == source:
-        raw_data = torch.randn(global_shape, device=torch.device(f"cuda:{dm.local_rank}"))
+        raw_data = torch.randn(
+            global_shape, device=torch.device(f"cuda:{dm.local_rank}")
+        )
     else:
         raw_data = None
 
