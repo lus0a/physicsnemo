@@ -275,7 +275,7 @@ def run_dtensor_to_shard_tensor_non_leaf_gradient(mesh):
     loss_ref.backward()
 
     assert dt.grad is not None
-    assert isinstance(dt.grad, DTensor)
+    assert isinstance(dt.grad, (ShardTensor, DTensor))
     assert torch.allclose(dt.grad.full_tensor(), ref.grad)
 
 

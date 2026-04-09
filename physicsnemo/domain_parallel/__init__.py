@@ -61,7 +61,7 @@ if ST_AVAILABLE:
         from .custom_ops import (
             mean_wrapper,
             sum_wrapper,
-            unbind_rules,
+            unbind_wrapper,
         )
         from .shard_utils import register_shard_wrappers
 
