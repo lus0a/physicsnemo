@@ -10,13 +10,11 @@
       
       
       
-        <link rel="canonical" href="http://www.example.com/blog/2025/09/22/accelerate-ai-physics-with-pyt-and-physicsnemo/">
+        <link rel="canonical" href="http://www.example.com/blog/2026/04/10/earth2-deploy/">
       
       
-        <link rel="prev" href="../../../08/27/physicsnemo-release-25-08/">
+        <link rel="prev" href="../../07/physicsnemo-mesh/">
       
-      
-        <link rel="next" href="../../29/physicsnemo-transolver/">
       
       
       <link rel="icon" href="../../../../../assets/images/favicon.png">
@@ -24,7 +22,7 @@
     
     
       
-        <title>Accelerating AI Physics development with PyTorch and PhysicsNeMo - NVIDIA PhysicsNeMo</title>
+        <title>From Scripts to Endpoints: Bridging the Gap in Cloud-Native Inference - NVIDIA PhysicsNeMo</title>
       
     
     
@@ -65,11 +63,11 @@
       
         <meta  property="og:type"  content="website" >
       
-        <meta  property="og:title"  content="Accelerating AI Physics development with PyTorch and PhysicsNeMo - NVIDIA PhysicsNeMo" >
+        <meta  property="og:title"  content="From Scripts to Endpoints: Bridging the Gap in Cloud-Native Inference - NVIDIA PhysicsNeMo" >
       
         <meta  property="og:description"  content="PhysicsNeMo blog" >
       
-        <meta  property="og:image"  content="http://www.example.com/assets/images/social/blog/posts/accelearate_ai_physics_in_pyt_via_physicsnemo.png" >
+        <meta  property="og:image"  content="http://www.example.com/assets/images/social/blog/posts/earth2_inference_api.png" >
       
         <meta  property="og:image:type"  content="image/png" >
       
@@ -77,15 +75,15 @@
       
         <meta  property="og:image:height"  content="630" >
       
-        <meta  property="og:url"  content="http://www.example.com/blog/2025/09/22/accelerate-ai-physics-with-pyt-and-physicsnemo/" >
+        <meta  property="og:url"  content="http://www.example.com/blog/2026/04/10/earth2-deploy/" >
       
         <meta  name="twitter:card"  content="summary_large_image" >
       
-        <meta  name="twitter:title"  content="Accelerating AI Physics development with PyTorch and PhysicsNeMo - NVIDIA PhysicsNeMo" >
+        <meta  name="twitter:title"  content="From Scripts to Endpoints: Bridging the Gap in Cloud-Native Inference - NVIDIA PhysicsNeMo" >
       
         <meta  name="twitter:description"  content="PhysicsNeMo blog" >
       
-        <meta  name="twitter:image"  content="http://www.example.com/assets/images/social/blog/posts/accelearate_ai_physics_in_pyt_via_physicsnemo.png" >
+        <meta  name="twitter:image"  content="http://www.example.com/assets/images/social/blog/posts/earth2_inference_api.png" >
       
     
     
@@ -108,7 +106,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#accelerating-ai-physics-development-with-pytorch-and-physicsnemo" class="md-skip">
+        <a href="#from-scripts-to-endpoints-bridging-the-gap-in-cloud-native-inference" class="md-skip">
           Skip to content
         </a>
       
@@ -142,7 +140,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Accelerating AI Physics development with PyTorch and PhysicsNeMo
+              From Scripts to Endpoints: Bridging the Gap in Cloud-Native Inference
             
           </span>
         </div>
@@ -602,36 +600,93 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#domain-specific-application-developers" class="md-nav__link">
+  <a href="#serving-inference-with-earth2studio" class="md-nav__link">
     <span class="md-ellipsis">
-      Domain - specific application developers
+      Serving inference with Earth2Studio
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Serving inference with Earth2Studio">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-implement-the-workflow-logic" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Implement the Workflow Logic
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#sciml-researchers" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2-define-your-data-structure-with-pydantic" class="md-nav__link">
     <span class="md-ellipsis">
-      SciML Researchers
+      2. Define Your Data Structure with Pydantic
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#sciml-practitioners" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#3-auto-discovery-deployment" class="md-nav__link">
     <span class="md-ellipsis">
-      SciML practitioners
+      3. Auto-Discovery &amp; Deployment
     </span>
   </a>
   
 </li>
+        
+      </ul>
+    </nav>
+  
+</li>
       
         <li class="md-nav__item">
-  <a href="#takeaways" class="md-nav__link">
+  <a href="#deploying-a-forecasting-api" class="md-nav__link">
     <span class="md-ellipsis">
-      Takeaways
+      Deploying a Forecasting API
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Deploying a Forecasting API">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-the-parameter-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. The Parameter Contract
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-the-implementation-logic" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. The Implementation Logic
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-api-accessibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. API Accessibility
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#getting-started" class="md-nav__link">
+    <span class="md-ellipsis">
+      Getting started
     </span>
   </a>
   
@@ -666,6 +721,51 @@
                 
                   <div class="md-profile md-post__profile">
                     <span class="md-author md-author--long">
+                      <img src="../../../../../author-images/sourabh_headshot.jpg" alt="Sourabh Joshi">
+                    </span>
+                    <span class="md-profile__description">
+                      <strong>
+                        
+                          Sourabh Joshi
+                        
+                      </strong>
+                      <br>
+                      Senior System Software Engineer
+                    </span>
+                  </div>
+                
+                  <div class="md-profile md-post__profile">
+                    <span class="md-author md-author--long">
+                      <img src="../../../../../author-images/ramu_headshot.jpg" alt="Ramu Ramamurthy">
+                    </span>
+                    <span class="md-profile__description">
+                      <strong>
+                        
+                          Ramu Ramamurthy
+                        
+                      </strong>
+                      <br>
+                      Senior System Software Engineer
+                    </span>
+                  </div>
+                
+                  <div class="md-profile md-post__profile">
+                    <span class="md-author md-author--long">
+                      <img src="../../../../../author-images/jussi_headshot.jpg" alt="Jussi Leinonen">
+                    </span>
+                    <span class="md-profile__description">
+                      <strong>
+                        
+                          Jussi Leinonen
+                        
+                      </strong>
+                      <br>
+                      Solutions Architect
+                    </span>
+                  </div>
+                
+                  <div class="md-profile md-post__profile">
+                    <span class="md-author md-author--long">
                       <img src="../../../../../author-images/ram_headshot.jpg" alt="Ram Cherukuri">
                     </span>
                     <span class="md-profile__description">
@@ -681,61 +781,16 @@
                 
                   <div class="md-profile md-post__profile">
                     <span class="md-author md-author--long">
-                      <img src="../../../../../author-images/kaustubh_headshot.jpg" alt="Kaustubh Tangsali">
+                      <img src="../../../../../author-images/nick_headshot.jpg" alt="Nicholas Geneva">
                     </span>
                     <span class="md-profile__description">
                       <strong>
                         
-                          Kaustubh Tangsali
+                          Nicholas Geneva
                         
                       </strong>
                       <br>
                       Senior Software Engineer, AI-HPC
-                    </span>
-                  </div>
-                
-                  <div class="md-profile md-post__profile">
-                    <span class="md-author md-author--long">
-                      <img src="../../../../../author-images/peter_h_headshot.jpg" alt="Peter Harrington">
-                    </span>
-                    <span class="md-profile__description">
-                      <strong>
-                        
-                          Peter Harrington
-                        
-                      </strong>
-                      <br>
-                      Senior Scientific Machine Learning Software Engineer
-                    </span>
-                  </div>
-                
-                  <div class="md-profile md-post__profile">
-                    <span class="md-author md-author--long">
-                      <img src="../../../../../author-images/corey_headshot.jpg" alt="Corey Adams">
-                    </span>
-                    <span class="md-profile__description">
-                      <strong>
-                        
-                          Corey Adams
-                        
-                      </strong>
-                      <br>
-                      Senior Software Engineer - Scientific Machine Learning
-                    </span>
-                  </div>
-                
-                  <div class="md-profile md-post__profile">
-                    <span class="md-author md-author--long">
-                      <img src="../../../../../author-images/akshay_headshot.png" alt="Akshay Subramaniam">
-                    </span>
-                    <span class="md-profile__description">
-                      <strong>
-                        
-                          Akshay Subramaniam
-                        
-                      </strong>
-                      <br>
-                      Senior AI Developer Technology Engineer
                     </span>
                   </div>
                 
@@ -753,14 +808,14 @@
                     <li class="md-nav__item">
                       <div class="md-nav__link">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 19H5V8h14m-3-7v2H8V1H6v2H5c-1.11 0-2 .89-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-1V1m-1 11h-5v5h5z"/></svg>
-                        <time datetime="2025-09-22 00:00:00+00:00" class="md-ellipsis">September 22, 2025</time>
+                        <time datetime="2026-04-10 00:00:00+00:00" class="md-ellipsis">April 10, 2026</time>
                       </div>
                     </li>
                     
                       <li class="md-nav__item">
                         <div class="md-nav__link">
                           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15 13h1.5v2.82l2.44 1.41-.75 1.3L15 16.69zm4-5H5v11h4.67c-.43-.91-.67-1.93-.67-3a7 7 0 0 1 7-7c1.07 0 2.09.24 3 .67zM5 21a2 2 0 0 1-2-2V5c0-1.11.89-2 2-2h1V1h2v2h8V1h2v2h1a2 2 0 0 1 2 2v6.1c1.24 1.26 2 2.99 2 4.9a7 7 0 0 1-7 7c-1.91 0-3.64-.76-4.9-2zm11-9.85A4.85 4.85 0 0 0 11.15 16c0 2.68 2.17 4.85 4.85 4.85A4.85 4.85 0 0 0 20.85 16c0-2.68-2.17-4.85-4.85-4.85"/></svg>
-                          <time datetime="2025-09-22 00:00:00+00:00" class="md-ellipsis">September 22, 2025</time>
+                          <time datetime="2026-04-10 00:00:00+00:00" class="md-ellipsis">April 10, 2026</time>
                         </div>
                       </li>
                     
@@ -771,7 +826,7 @@
                           <span class="md-ellipsis">
                             in
                             
-                              <a href="../../../../category/physicsnemo/">PhysicsNeMo</a></span>
+                              <a href="../../../../category/earth2studio/">Earth2Studio</a></span>
                         </div>
                       </li>
                     
@@ -782,7 +837,7 @@
                           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 20a8 8 0 0 0 8-8 8 8 0 0 0-8-8 8 8 0 0 0-8 8 8 8 0 0 0 8 8m0-18a10 10 0 0 1 10 10 10 10 0 0 1-10 10C6.47 22 2 17.5 2 12A10 10 0 0 1 12 2m.5 5v5.25l4.5 2.67-.75 1.23L11 13V7z"/></svg>
                           <span class="md-ellipsis">
                             
-                              8 min read
+                              5 min read
                             
                           </span>
                         </div>
@@ -936,7 +991,19 @@
       
       
       
-        <a href="../../../../tags/#tag:blog" class="md-tag">Blog</a>
+        <a href="../../../../tags/#tag:earth-2" class="md-tag">Earth-2</a>
+      
+    
+      
+      
+      
+        <a href="../../../../tags/#tag:earth2studio" class="md-tag">Earth2Studio</a>
+      
+    
+      
+      
+      
+        <a href="../../../../tags/#tag:inference" class="md-tag">Inference</a>
       
     
   </nav>
@@ -946,87 +1013,83 @@
   
 
 
-<h1 id="accelerating-ai-physics-development-with-pytorch-and-physicsnemo">Accelerating AI Physics development with PyTorch and PhysicsNeMo</h1>
-<p>This tutorial blog is designed for AI researchers and scientific machine learning (SciML) developers who wish to leverage PhysicsNeMo in creating AI Physics models. NVIDIA PhysicsNeMo is built upon PyTorch, the leading standard for AI model development. Organizations can utilize the native PyTorch stack and PhysicsNeMo to go from proof-of-concept development to production-scale training and inference workflows, achieving significant performance and operational efficiencies through enterprise-hardened PhysicsNeMo modules. This blog will demonstrate how AI researchers and SciML developers can progressively integrate PhysicsNeMo modules into their PyTorch stack.</p>
+<h1 id="from-scripts-to-endpoints-bridging-the-gap-in-cloud-native-inference">From Scripts to Endpoints: Bridging the Gap in Cloud-Native Inference</h1>
+<p>For a developer, the journey from working Python scripts to a production-ready cloud solution is often paved with "infrastructure tax." For instance, as a developer you’ve cracked the problem of applying AI models for your weather related application using powerful libraries like Earth2Studio. </p>
 <!-- more -->
 
-<p>Assuming you are already building SciML models with PyTorch, one of PhysicsNeMo's core advantages is its ability to accelerate your model development cycle. It provides enterprise-hardened building blocks that allow you to compose your training and inference pipelines. By selecting performant and scalable modules, you can build models faster with fewer iterations.</p>
-<p>Let's look at the paths different user personas can take to incrementally leverage PhysicsNeMo modules to address the key challenges for their specific needs. Here are three broad user personas:</p>
+<p>But the road to a scalable cloud native pipeline that could serve many users is blocked by a familiar set of challenges:</p>
 <ul>
-<li>Domain - specific application developers where your objective is to develop a custom model that is suited to your own data and customized to the nuances of your specific application</li>
-<li>SciML researchers where your objective is to innovate and discover new model architectures that represent a breakthrough in methodology and application to new problems</li>
-<li>SciML practitioner - any other engineer, scientist or students learning the application of AI for engineering and scientific applications</li>
+<li><em>The "Plumbing" Problem</em>: Writing boilerplate code for asynchronous job queues, status management and error handling.</li>
+<li><em>State Management</em>: Tracking long-running inference tasks across distributed systems without losing progress or results.</li>
+<li><em>Data Management</em>: Converting complex Python objects into validated JSON schemas, efficiently zipping, storing, and serving large output files (like Zarr or NetCDF) via HTTP.</li>
 </ul>
-<h2 id="domain-specific-application-developers">Domain - specific application developers</h2>
-<p>Let's take an example of a CAE developer building an AI augmented CFD application for external automotive aerodynamics. The objective is to train a deep learning surrogate model that can predict the drag coefficient for an automotive geometry.  </p>
-<p>One of the key activities before custom model development is to evaluate the existing pretrained models for its skill. Now instead of writing a model evaluation baseline from scratch, you can import the PhysicsNeMo-CFD python package into your PyTorch environment and evaluate the baseline pretrained models like DoMINO etc with a baseline dataset like DriverML. The pseudo code below outlines the core steps and you can refer to <a href="https://github.com/NVIDIA/physicsnemo-cfd/blob/main/workflows/bench_example/notebooks/surface_benchmarking.ipynb">this Jupyter notebook</a> for benchmarking and <a href="https://docs.nvidia.com/nim/physicsnemo/domino-automotive-aero/latest/quickstart-guide.html#id1">documentation to run DoMINO NIM</a> as a starting point.</p>
-<pre><code class="language-bash"># psuedo code
-pip install physicsnemo-cfd
+<p><a href="../../../../../images/earth2/hpc-corp-blog-earth-2-model-768x432.jpg"><img alt="earth2_open_model_banner" src="../../../../../images/earth2/hpc-corp-blog-earth-2-model-768x432.jpg" /></a></p>
+<h2 id="serving-inference-with-earth2studio">Serving inference with Earth2Studio</h2>
+<p>In the latest release of Earth2Studio, we have introduced a templatized workflow designed to eliminate this "middleman" work. Leveraging the concept of built-in reference recipes in Earth2Studio, this templatized workflow allows you to transform any Earth2Studio recipe into a scalable REST API by following a three-step pattern:</p>
+<h3 id="1-implement-the-workflow-logic">1. Implement the Workflow Logic</h3>
+<p>You subclass the <code>Workflow</code> class and implement a <code>run()</code> method within it. The heavy lifting—managing whether a job is "queued" or "running"—is automatically handled by the system. You simply focus on your logic, using <code>update_execution_data()</code> to send progress heartbeats back to the API.</p>
+<p>For even tighter integration with Earth2Studio and fewer manual steps, you can use <code>Earth2Workflow</code>. This is a Pythonic workflow that can be naturally run also outside the server environments and is automatically assigned an API schema.</p>
+<pre><code class="language-python">class MyForecastWorkflow(Earth2Workflow):
+    def __init__(self):
+        self.model = ...  # initialize your model
+        self.data = ... #initialize your data source
 
-# infer surface data using any other public pre-trained model to generate surface data
-python infer_custom_model.py
-# or
-python infer_domino_nim.py
-
-# benchmark
-python generate_surface_benchmarks.py \
-    ./model_output_data/surface_data \
-    --field-mapping '{&quot;p&quot;:&quot;pMean&quot;, &quot;wallShearStress&quot;:&quot;wallShearStressMean&quot;, &quot;pPred&quot;:&quot;pMeanPred&quot;, &quot;wallShearStressPred&quot;:&quot;wallShearStressMeanPred&quot;}'
+    def __call__(
+        self,
+        io: IOBackend,
+        nsteps: int = 20,
+        model_type: Literal[&quot;dlwp&quot;, &quot;fcn&quot;] = &quot;fcn&quot;
+    ):
+        # workflow logic goes here 
 </code></pre>
-<p>The next step would be to pick a specific model architecture to train on custom data. PhysicsNeMo makes this very simple - start with one of the curated training recipes by installing any additional required packages (requirements.txt) . Each of the recipes in the <a href="https://github.com/NVIDIA/physicsnemo/tree/main/examples">training recipe library</a> provides a how-to for a specific application and has guidance on replicating and customizing the recipe to your custom data. This gets you to a first prototype of your AI solution in a matter of hours.</p>
-<pre><code class="language-bash"># pseudo code
-# each training recipe has additional requiriments
-pip install -r requirements.txt
-
-python train.py
+<h3 id="2-define-your-data-structure-with-pydantic">2. Define Your Data Structure with Pydantic</h3>
+<p>If you’re using <code>Earth2Workflow</code>, you can skip this step - the parameters will be automatically created for your model!</p>
+<p>If you use the lower-level <code>Workflow</code>, instead of manually parsing request bodies, you define a <code>WorkflowParameters</code> class. Using Pydantic, your Python types (strings, ints, lists) are automatically mapped to a JSON API. This provides instant validation and self-documenting parameters for your endpoint. The parameters below correspond to the parameters that would be automatically created for the <code>Earth2Workflow</code> example above:</p>
+<pre><code class="language-python">class MyForecastParameters(WorkflowParameters):
+    nsteps: int = Field(default=20, ge=1, le=100, description=&quot;Forecast steps&quot;)
+    model_type: str = Field(default=&quot;dlwp&quot;, description=&quot;Model type&quot;)
 </code></pre>
-<p>There are other key modules that would be of interest but lets view them in the context of our other user persona - the AI researcher.</p>
-<h2 id="sciml-researchers">SciML Researchers</h2>
-<p>PyTorch serves as an excellent starting point for AI researchers, particularly for those experimenting with new model architectures. Initially, a model might be trained using a novel architecture and a minimal base dataset.</p>
-<p>The subsequent phase of innovation involves retraining the model on a larger and higher-resolution dataset. For example, industrial automotive simulations often utilize meshes with 10 to 100 million nodes. Therefore, a SciML researcher developing an architecture for industrial automotive applications must be able to handle such large-scale input meshes. PhysicsNeMo addresses this by offering a distributed manager that employs a "novel <a href="https://docs.nvidia.com/physicsnemo/latest/user-guide/domain_parallelism/domain_parallelism.html">domain parallel</a>" strategy to parallelize over extensive inputs.</p>
-<p>SciML researchers can achieve scalability by integrating the PhysicsNeMo distributed manager into their PyTorch codebase.Easy to use distributed tooling to initialize and use the torch distributed package in a variety of production environments saves you from the boilerplate of distributed startup, and works across a variety of process launchers and production environments. Furthermore the differentiable distributed functionality, with both differentiable single-layer functions like <code>scatter_v</code> as well as drop-in domain parallel tools like <code>ShardTensor</code> allows you to parallelize over extremely high resolution data, at both training and inference time. This has been described in detail in the <a href="https://docs.nvidia.com/physicsnemo/latest/user-guide/distributed_training.html">documentation here</a>. </p>
-<pre><code class="language-python"># pseudo code
-
-from physicsnemo.distributed import DistributedManager
-from physicsnemo.launch.utils import load_checkpoint, save_checkpoint
-from physicsnemo.models.model import model
-
-DistributedManager.initialize()
-dm = DistributedManager()
-...
-device = dm.device
-
-</code></pre>
-<p>You can also leverage the relevant <a href="https://github.com/NVIDIA/physicsnemo/tree/main/physicsnemo/models">model architecture</a> blocks that are hardened and optimized, which accelerates your productivity by saving time spent developing and troubleshooting from scratch. </p>
-<p>One of the core principles of PhysicsNeMo is to enable the community in developing highly generalizable Physics AI models. This is critical to unlock the use of these models in real world enterprise applications. This is because in the absence of generalizable models, users of enterprise solutions have to take on the onus of training bespoke models, generating data for each simulation scenario which is not a practical workflow both on a computational and expertise front. By importing the PhysicsNeMo Sym modules, AI researchers can experiment with the efficacy of integrating governing equations into their training iterations. The example <a href="https://github.com/NVIDIA/physicsnemo/tree/main/examples/cfd/external_aerodynamics/domino#training-with-physics-losses">here</a> showcases use of <code>physicsnemo.sym</code> modules to physics-inform your model training. This has been described in detail in the <a href="https://docs.nvidia.com/physicsnemo/latest/user-guide/physics_addition.html">documentation here</a>.</p>
-<pre><code class="language-python"># pseudo code
-
-from physicsnemo.sym.eq.pdes.navier_stokes import NavierStokes
-from physicsnemo.sym.eq.phy_informer import PhysicsInformer
-
-ns = NavierStokes(nu=0.1, rho=1.0, dim=2, time=True)
-phy_inf = PhysicsInformer(
-    required_outputs=[&quot;continuity&quot;, &quot;momentum_x&quot;],
-    equations=ns,
-    grad_method=&quot;finite_difference&quot;
-)
-</code></pre>
-<p>Beyond the model architectures/layers, distributed tooling, and physics-informing capabilities mentioned previously, PhysicsNeMo also offers utilities for other arduous tasks of the model development process like experiment tracking, logging, and model checkpoint/restart. </p>
-<h2 id="sciml-practitioners">SciML practitioners</h2>
-<p>Now for other SciML practitioners, you can follow any of the above patterns to incrementally incorporate PhysicsNeMo into your PyTorch workflow and accelerate your learning and development. A great starting point for learning to use PhysicsNeMo modules in a SciML training loop is the extensive catalog of PhysicsNeMo <a href="https://docs.nvidia.com/physicsnemo/latest/examples_catalog.html">examples</a>. To get up and running quickly, PhysicsNeMo also offers a container environment that is a perfect launchpad. <a href="https://docs.nvidia.com/physicsnemo/latest/getting-started/installation.html#physicsnemo-with-docker-image">Here</a> is more information on steps to get started.</p>
-<p>These are just a few ways you can use PhysicsNeMo modules to accelerate your AI-Physics model development incrementally. As a developer, you are free to use any or all of these to your liking, and customize to your preferences. The PhysicsNeMo package has benefited from such customizations, and as an open source project welcomes <a href="https://docs.nvidia.com/physicsnemo/latest/resources/customization_guide.html">contributions</a> from the SciML community to incorporate novel architectures, loss functions, layers, or other components they want to share with the wider community.</p>
-<h2 id="takeaways">Takeaways</h2>
-<p>If you are a SciML developer or a Physics AI researcher or an AI practitioner, PhysicsNeMo is a powerful tool in your arsenal to supercharge and extend your PyTorch stack. Instead of building everything from scratch, you can import PhysicsNeMo modules to develop enterprise scale Physics AI solutions with unprecedented speed and simplicity. You can get started easily and step by step using these resources:</p>
+<h3 id="3-auto-discovery-deployment">3. Auto-Discovery &amp; Deployment</h3>
+<p>There’s no need to manually register routes. By using the <code>@workflow_registry</code>.register decorator and setting a <code>WORKFLOW_DIR</code> environment variable, the system <em>auto-discovers</em> your scripts and stands up endpoints immediately.</p>
+<p>This architecture separates the application and inference logic from the API infrastructure. While the system manages Redis state, file zipping, and request queuing, you spend your time focused on refining models.</p>
+<p><a href="../../../../../images/earth2/earth2-deploy-architecture-diagram.png"><img alt="earth2_deploy_architecture" src="../../../../../images/earth2/earth2-deploy-architecture-diagram.png" /></a>
+<em>Fig 1: Architecture diagram showing the underlying architecture and components that enable such seamless deployment of Earth2Studio recipes into endpoints.</em></p>
+<h2 id="deploying-a-forecasting-api">Deploying a Forecasting API</h2>
+<p>In the Earth2Studio <a href="https://github.com/NVIDIA/earth2studio/blob/main/serve/server/README_workflows.md">documentation</a>, there is an example that demonstrates the Earth2Studio REST API using the Deterministic Forecast recipe.
+This example transforms python inference scripts to a dynamic, trackable endpoint service by following the same "Contract-Logic-Discovery" pattern discussed above. 
+Meanwhile <a href="https://github.com/NVIDIA/earth2studio/blob/main/serve/server/README_earth2workflows.md">another example</a> shows how Earth2Workflow automates much of this process, requiring only a Pythonic workflow.</p>
+<h3 id="1-the-parameter-contract">1. The Parameter Contract</h3>
+<p>Instead of hardcoding simulation variables, the workflow uses a <code>DeterministicWorkflowParameters</code> class. This defines the exact inputs the REST API will accept, such as:</p>
 <ul>
-<li><a href="https://docs.nvidia.com/physicsnemo/latest/user-guide/simple_training_example.html#using-custom-models-in-physicsnemo">Using PhysicsNeMo with your PyTorch model</a></li>
-<li><a href="https://docs.nvidia.com/physicsnemo/latest/user-guide/simple_training_example.html#using-built-in-models">Using PhysicsNeMo built-in models</a></li>
-<li><a href="https://docs.nvidia.com/physicsnemo/latest/getting-started/installation.html">Getting Started Guide</a></li>
-<li><a href="https://github.com/NVIDIA/physicsnemo/blob/main/examples/README.md">Reference Samples</a></li>
-<li><a href="https://docs.nvidia.com/physicsnemo/latest/index.html">User Guide Documentation</a></li>
+<li><em>Forecast Details</em>: <code>forecast_times</code> (ISO strings) and <code>nsteps</code> (validated between 1 and 100).</li>
+<li><em>Model Selection</em>: A string parameter to toggle between models like <code>dlwp</code> or <code>fcn</code>.</li>
+<li><em>Visualization</em>: Boolean flags to trigger plot generation for specific variables like <code>t2m</code> (2-meter temperature).</li>
 </ul>
-<p><a class="md-button" href="https://twitter.com/intent/tweet?text=Accelerating%20AI%20Physics%20development%20with%20PyTorch%20and%20PhysicsNeMo%0A&amp;url=http://www.example.com/blog/2025/09/22/accelerate-ai-physics-with-pyt-and-physicsnemo/">Share on <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z"/></svg></span></a>
-<a class="md-button" href="https://www.facebook.com/sharer/sharer.php?u=http://www.example.com/blog/2025/09/22/accelerate-ai-physics-with-pyt-and-physicsnemo/">Share on <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.101 23.691v-7.98H6.627v-3.667h2.474v-1.58c0-4.085 1.848-5.978 5.858-5.978.401 0 .955.042 1.468.103a9 9 0 0 1 1.141.195v3.325a9 9 0 0 0-.653-.036 27 27 0 0 0-.733-.009c-.707 0-1.259.096-1.675.309a1.7 1.7 0 0 0-.679.622c-.258.42-.374.995-.374 1.752v1.297h3.919l-.386 2.103-.287 1.564h-3.246v8.245C19.396 23.238 24 18.179 24 12.044c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.628 3.874 10.35 9.101 11.647"/></svg></span></a>
-<a class="md-button" href="https://www.linkedin.com/sharing/share-offsite/?url=http://www.example.com/blog/2025/09/22/accelerate-ai-physics-with-pyt-and-physicsnemo/">Share on LinkedIn</a></p>
+<h3 id="2-the-implementation-logic">2. The Implementation Logic</h3>
+<p>The <code>run()</code> method acts as the engine, wrapping Earth2Studio’s computational tools in a way that communicates with the cloud infrastructure:</p>
+<ul>
+<li><em>Initialization</em>: It loads the requested AI model package (e.g., DLWP) and sets up the data source, such as GFS (Global Forecast System).</li>
+<li><em>Progress Heartbeats</em>: At key milestones—like loading components or starting the 6-hour forecast steps—it calls <code>self.update_execution_data()</code>. This allows an external developer to see <code>current_step: 4, total_steps: 6</code> via the API status endpoint.</li>
+<li><em>Output Management</em>: It uses a Zarr backend to save results to a specific directory provided by <code>get_output_path()</code>, ensuring the system knows exactly where to find the data to zip and serve it later.</li>
+</ul>
+<h3 id="3-api-accessibility">3. API Accessibility</h3>
+<p>Once deployed, this workflow is no longer just a script on a researcher's laptop; it becomes a set of predictable endpoints:</p>
+<ul>
+<li><strong>Submission</strong>: A POST to <code>/v1/infer/deterministic_workflow</code> starts the job.</li>
+<li><strong>Monitoring</strong>: A GET to the status endpoint returns the current state (e.g., running) and progress metadata.</li>
+<li><strong>Retrieval</strong>: Once complete, the results can be downloaded as a full zip or streamed directly into an analysis tool like <em>xarray</em> via the Zarr URL.</li>
+</ul>
+<h2 id="getting-started">Getting started</h2>
+<p>If you are a developer or scientist or AI researcher, Earth2Studio is a powerful library to get users up and running very quickly by lowering barriers to entry so they can explore, validate and experiment with AI models for weather and climate. The following resources will help you in getting started:</p>
+<ul>
+<li><a href="https://www.nvidia.com/en-us/high-performance-computing/earth-2/">Earth-2 Platform</a></li>
+<li><a href="https://github.com/NVIDIA/earth2studio">Earth2Studio Github</a></li>
+<li><a href="https://nvidia.github.io/earth2studio/examples/">Earth2Studio Reference Recipes</a></li>
+<li><a href="https://github.com/NVIDIA/earth2studio/blob/main/serve/server/README_workflows.md">EarthStudio Deploy</a></li>
+</ul>
+<p><a class="md-button" href="https://twitter.com/intent/tweet?text=From%20Scripts%20to%20Endpoints%3A%20Bridging%20the%20Gap%20in%20Cloud-Native%20Inference%0A&amp;url=http://www.example.com/blog/2026/04/10/earth2-deploy/">Share on <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z"/></svg></span></a>
+<a class="md-button" href="https://www.facebook.com/sharer/sharer.php?u=http://www.example.com/blog/2026/04/10/earth2-deploy/">Share on <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.101 23.691v-7.98H6.627v-3.667h2.474v-1.58c0-4.085 1.848-5.978 5.858-5.978.401 0 .955.042 1.468.103a9 9 0 0 1 1.141.195v3.325a9 9 0 0 0-.653-.036 27 27 0 0 0-.733-.009c-.707 0-1.259.096-1.675.309a1.7 1.7 0 0 0-.679.622c-.258.42-.374.995-.374 1.752v1.297h3.919l-.386 2.103-.287 1.564h-3.246v8.245C19.396 23.238 24 18.179 24 12.044c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.628 3.874 10.35 9.101 11.647"/></svg></span></a>
+<a class="md-button" href="https://www.linkedin.com/sharing/share-offsite/?url=http://www.example.com/blog/2026/04/10/earth2-deploy/">Share on LinkedIn</a></p>
 
 
 
