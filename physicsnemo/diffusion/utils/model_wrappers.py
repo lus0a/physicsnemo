@@ -254,6 +254,7 @@ class ConcatConditionWrapper(Module):
                 noise_labels=t,
                 class_labels=cond_vec,
                 augment_labels=augment_labels,
+                **model_kwargs,
             )
 
         return self.model(x, t, condition=cond_vec, **model_kwargs)
