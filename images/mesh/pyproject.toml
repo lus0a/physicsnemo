@@ -1,0 +1,13 @@
+[project]
+name = "mesh"
+version = "0.1.0"
+requires-python = ">=3.13"
+dependencies = [
+    "matplotlib>=3.10.8",
+    "nvidia-physicsnemo",
+    "pyacvd>=0.3.3",
+    "pyvista[all]>=0.47.1",
+]
+
+[tool.uv.sources]
+nvidia-physicsnemo = { path = "../../../../physicsnemo", editable = true }

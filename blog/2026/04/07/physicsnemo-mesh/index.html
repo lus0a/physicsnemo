@@ -10,13 +10,11 @@
       
       
       
-        <link rel="canonical" href="http://www.example.com/blog/2026/03/17/structural-mechanics/">
+        <link rel="canonical" href="http://www.example.com/blog/2026/04/07/physicsnemo-mesh/">
       
       
-        <link rel="prev" href="../../../../2025/10/21/physicsnemo-domino-opt/">
+        <link rel="prev" href="../../../03/17/structural-mechanics/">
       
-      
-        <link rel="next" href="../../../04/07/physicsnemo-mesh/">
       
       
       <link rel="icon" href="../../../../../assets/images/favicon.png">
@@ -24,7 +22,7 @@
     
     
       
-        <title>Training AI Physics Models for Transient Structural Mechanics Simulations such as Automotive Crash - NVIDIA PhysicsNeMo</title>
+        <title>Introducing PhysicsNeMo-Mesh: GPU-Accelerated Mesh Processing for Scientific ML - NVIDIA PhysicsNeMo</title>
       
     
     
@@ -65,11 +63,11 @@
       
         <meta  property="og:type"  content="website" >
       
-        <meta  property="og:title"  content="Training AI Physics Models for Transient Structural Mechanics Simulations such as Automotive Crash - NVIDIA PhysicsNeMo" >
+        <meta  property="og:title"  content="Introducing PhysicsNeMo-Mesh: GPU-Accelerated Mesh Processing for Scientific ML - NVIDIA PhysicsNeMo" >
       
         <meta  property="og:description"  content="PhysicsNeMo blog" >
       
-        <meta  property="og:image"  content="http://www.example.com/assets/images/social/blog/posts/crash_recipe.png" >
+        <meta  property="og:image"  content="http://www.example.com/assets/images/social/blog/posts/physicsnemo_mesh.png" >
       
         <meta  property="og:image:type"  content="image/png" >
       
@@ -77,15 +75,15 @@
       
         <meta  property="og:image:height"  content="630" >
       
-        <meta  property="og:url"  content="http://www.example.com/blog/2026/03/17/structural-mechanics/" >
+        <meta  property="og:url"  content="http://www.example.com/blog/2026/04/07/physicsnemo-mesh/" >
       
         <meta  name="twitter:card"  content="summary_large_image" >
       
-        <meta  name="twitter:title"  content="Training AI Physics Models for Transient Structural Mechanics Simulations such as Automotive Crash - NVIDIA PhysicsNeMo" >
+        <meta  name="twitter:title"  content="Introducing PhysicsNeMo-Mesh: GPU-Accelerated Mesh Processing for Scientific ML - NVIDIA PhysicsNeMo" >
       
         <meta  name="twitter:description"  content="PhysicsNeMo blog" >
       
-        <meta  name="twitter:image"  content="http://www.example.com/assets/images/social/blog/posts/crash_recipe.png" >
+        <meta  name="twitter:image"  content="http://www.example.com/assets/images/social/blog/posts/physicsnemo_mesh.png" >
       
     
     
@@ -108,7 +106,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#training-ai-physics-models-for-transient-structural-mechanics-simulations-such-as-automotive-crash" class="md-skip">
+        <a href="#introducing-physicsnemo-mesh-gpu-accelerated-mesh-processing-for-scientific-ml" class="md-skip">
           Skip to content
         </a>
       
@@ -142,7 +140,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Training AI Physics Models for Transient Structural Mechanics Simulations such as Automotive Crash
+              Introducing PhysicsNeMo-Mesh: GPU-Accelerated Mesh Processing for Scientific ML
             
           </span>
         </div>
@@ -575,46 +573,64 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#developing-ai-surrogates-for-crash-using-physicsnemo" class="md-nav__link">
+  <a href="#the-data-loading-problem" class="md-nav__link">
     <span class="md-ellipsis">
-      Developing AI surrogates for Crash using PhysicsNeMo
+      The Data Loading Problem
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Developing AI surrogates for Crash using PhysicsNeMo">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#faster-loading-smaller-files-shorter-training" class="md-nav__link">
+    <span class="md-ellipsis">
+      Faster Loading, Smaller Files, Shorter Training
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#structure-that-ml-models-need" class="md-nav__link">
+    <span class="md-ellipsis">
+      Structure That ML Models Need
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#gpu-accelerated-mesh-processing" class="md-nav__link">
+    <span class="md-ellipsis">
+      GPU-Accelerated Mesh Processing
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="GPU-Accelerated Mesh Processing">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#data-curation" class="md-nav__link">
+  <a href="#whats-available" class="md-nav__link">
     <span class="md-ellipsis">
-      Data Curation
+      What's Available
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#choosing-the-architecture" class="md-nav__link">
+  <a href="#from-meshes-to-graphs-and-point-clouds" class="md-nav__link">
     <span class="md-ellipsis">
-      Choosing the Architecture
+      From Meshes to Graphs and Point Clouds
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#the-training-configuration" class="md-nav__link">
+  <a href="#computing-derived-quantities" class="md-nav__link">
     <span class="md-ellipsis">
-      The Training Configuration
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#validation" class="md-nav__link">
-    <span class="md-ellipsis">
-      Validation
+      Computing Derived Quantities
     </span>
   </a>
   
@@ -626,9 +642,18 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#takeaways" class="md-nav__link">
+  <a href="#case-study-globe-a-neural-surrogate-built-on-mesh" class="md-nav__link">
     <span class="md-ellipsis">
-      Takeaways
+      Case Study: GLOBE - A Neural Surrogate Built on Mesh
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#getting-started" class="md-nav__link">
+    <span class="md-ellipsis">
+      Getting Started
     </span>
   </a>
   
@@ -663,31 +688,16 @@
                 
                   <div class="md-profile md-post__profile">
                     <span class="md-author md-author--long">
-                      <img src="../../../../../author-images/mohammad_headshot.png" alt="Mohammad Nabian">
+                      <img src="../../../../../author-images/peter_s_headshot.jpg" alt="Peter Sharpe">
                     </span>
                     <span class="md-profile__description">
                       <strong>
                         
-                          Mohammad Nabian
+                          Peter Sharpe
                         
                       </strong>
                       <br>
-                      Senior Software Engineer, AI-HPC
-                    </span>
-                  </div>
-                
-                  <div class="md-profile md-post__profile">
-                    <span class="md-author md-author--long">
-                      <img src="../../../../../author-images/ram_headshot.jpg" alt="Ram Cherukuri">
-                    </span>
-                    <span class="md-profile__description">
-                      <strong>
-                        
-                          Ram Cherukuri
-                        
-                      </strong>
-                      <br>
-                      Senior Product Manager
+                      Senior Scientific Machine Learning Software Engineer - Physics
                     </span>
                   </div>
                 
@@ -705,7 +715,7 @@
                     <li class="md-nav__item">
                       <div class="md-nav__link">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 19H5V8h14m-3-7v2H8V1H6v2H5c-1.11 0-2 .89-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-1V1m-1 11h-5v5h5z"/></svg>
-                        <time datetime="2026-03-17 00:00:00+00:00" class="md-ellipsis">March 17, 2026</time>
+                        <time datetime="2026-04-07 00:00:00+00:00" class="md-ellipsis">April 7, 2026</time>
                       </div>
                     </li>
                     
@@ -727,7 +737,7 @@
                           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 20a8 8 0 0 0 8-8 8 8 0 0 0-8-8 8 8 0 0 0-8 8 8 8 0 0 0 8 8m0-18a10 10 0 0 1 10 10 10 10 0 0 1-10 10C6.47 22 2 17.5 2 12A10 10 0 0 1 12 2m.5 5v5.25l4.5 2.67-.75 1.23L11 13V7z"/></svg>
                           <span class="md-ellipsis">
                             
-                              5 min read
+                              10 min read
                             
                           </span>
                         </div>
@@ -939,13 +949,13 @@
       
       
       
-        <a href="../../../../tags/#tag:scientific-computing" class="md-tag">Scientific Computing</a>
+        <a href="../../../../tags/#tag:mesh" class="md-tag">Mesh</a>
       
     
       
       
       
-        <a href="../../../../tags/#tag:structural-mechanics" class="md-tag">Structural Mechanics</a>
+        <a href="../../../../tags/#tag:scientific-computing" class="md-tag">Scientific Computing</a>
       
     
   </nav>
@@ -955,86 +965,118 @@
   
 
 
-<h1 id="training-ai-physics-models-for-transient-structural-mechanics-simulations-such-as-automotive-crash">Training AI Physics Models for Transient Structural Mechanics Simulations such as Automotive Crash</h1>
-<p>Simulating automotive crash is one of the most complex computational workloads in computer-aided engineering (CAE). Crash simulation is a highly non-linear, dynamic event that happens in milliseconds. Therefore automotive crash simulations face significant bottlenecks in both human-driven workflows and raw computational demands. These challenges stem from the need to model highly non-linear, split-second events with extreme accuracy to meet strict regulatory standards (like NHTSA or Euro NCAP).</p>
+<h1 id="introducing-physicsnemo-mesh-gpu-accelerated-mesh-processing-for-scientific-ml">Introducing PhysicsNeMo-Mesh: GPU-Accelerated Mesh Processing for Scientific ML</h1>
+<p>PhysicsNeMo-Mesh is a GPU-accelerated mesh processing module, built on PyTorch and TensorDict, and included in the open-source PhysicsNeMo library. It provides a) a GPU-native, high-performance mesh data structure with design choices that are particularly well-suited for ML workflows, and b) a diverse suite of accelerated mesh operations that can be used to bridge existing gaps between data preprocessing and training/inference.</p>
+<p>Its native data format allows loading meshes from disk much more quickly than VTU (9x-88x faster in our testing; hardware-dependent) while preserving the full mesh structure that flat tensor formats like zarr typically discard. This gives you the speed you need for training while retaining the geometric and physical context needed for model- and dataset-agnostic workflows. In this post, we'll show what PhysicsNeMo-Mesh can do for your training pipeline.</p>
 <!-- more -->
 
-<p><a href="../../../../../images/structural_mechanics/ai_crash_prediction_view1.gif"><img alt="ai_crash_prediction_view1" src="../../../../../images/structural_mechanics/ai_crash_prediction_view1.gif" /></a>
-<em>Fig 1: Results of commercial crash simulation and predictions from AI surrogate model trained using PhysicsNeMo for vehicle crash dynamics.</em></p>
-<p>Automotive engineers encounter significant challenges when simulating vehicle crashes, such as:</p>
+<p><a href="../../../../../images/mesh/hero_drivaerml_cp.png"><img alt="DrivAerML car with surface pressure coefficient" src="../../../../../images/mesh/hero_drivaerml_cp.png" /></a>
+<em>Fig 1: Surface pressure coefficient (Cp) on an 8.8 million-cell DrivAerML automotive mesh, loaded and rendered with PhysicsNeMo-Mesh.</em></p>
+<h2 id="the-data-loading-problem">The Data Loading Problem</h2>
+<p>Most ML training workflows that use large-scale (terabyte- to petabyte-scale) datasets from physics simulations follow four stages:</p>
+<ol>
+<li><strong>Data generation</strong> - run simulations and serialize results in solver-native or visualizer-native formats (in fluid dynamics applications, often VTU/VTP for unstructured meshes).</li>
+<li><strong>Data preprocessing</strong> - prepare data for the specific downstream ML model. This is often both model-specific and dataset-specific: computing derived quantities (SDF values, surface normals), nondimensionalization, data augmentation (e.g., random rotations to approximate rotational equivariance), and converting the data into the model's expected input format. For equivariant models, this means explicitly tagging which fields are scalars vs. vectors. For non-equivariant models, it often means concatenating all fields into a single feature tensor (<code>tensor[:, 0]</code> is density, <code>tensor[:, 1:4]</code> is velocity, and so on) - fine for non-equivariant architectures, but it destroys the information that equivariant ones need.</li>
+<li><strong>Serialization for training</strong> - re-serialize the preprocessed data into a fast-loading format (NumPy <code>.npy</code>/<code>.npz</code>, zarr, etc.), because solver-native formats like VTU are too slow for training-time loading. VTU requires CPU-bound XML parsing that takes tens of seconds to minutes per sample, and with typical Physics-AI forward and backward passes running in 0.1-10 seconds, the data loader easily becomes the bottleneck.</li>
+<li><strong>Training</strong> - load the serialized data and train the model.</li>
+</ol>
+<p>Notice that preprocessing (step 2) happens <em>before</em> serialization (step 3), and training (step 4) happens <em>after</em> - so preprocessing and training are separated by a serialization/deserialization boundary. This means the on-disk dataset is typically tightly coupled to one model architecture and one preprocessing recipe. If you want to change the model, switch to a different dataset, do feature engineering, normalize in a different way, or do data augmentation, you likely need to re-run steps 2-3 across the entire dataset. And because flat array formats like zarr discard mesh structure - cell connectivity, topology, boundary faces, hierarchical data, the distinction between point-centered and cell-centered data - there's no going back: you can't re-derive what was lost from the serialized format.</p>
+<p>PhysicsNeMo-Mesh provides a GPU-native <code>Mesh</code> data structure and associated processing tools, which ultimately give you the option of inverting the order of steps 2 and 3:</p>
 <ul>
-<li>
-<p><strong>Degree of Non-Linearity</strong> — Unlike most other engineering simulations, crash is a highly non-linear event. You have geometric non-linearity with parts not just bending but undergoing massive catastrophic deformations, material non-linearity where materials enter their "plastic" regime and also exhibit strain-rate sensitivity, and, last but not least, you have to deal with material fracture (incredibly difficult as it often depends on microscopic manufacturing defects).</p>
-</li>
-<li>
-<p><strong>Complexity of Contact Modeling</strong> — During a crash, thousands of car parts interact in milliseconds. The simulation must accurately detect and calculate forces for part-to-part contact (e.g., the engine block hitting the wall or the wheel smashing into the footwell), self-contact (parts folding onto themselves, like the metal of a crush rail crumpling), and finally simulating an airbag that explosively expands in 20–30 milliseconds, requiring complex fluid-structure interaction algorithms to model the gas expanding inside the unfolding cloth.</p>
-</li>
-<li>
-<p><strong>The Time-Step Problem</strong> — Crash simulations use explicit time integration solvers, and these solvers must take tiny time steps for simulations to be stable, of the order of microseconds. Simulating just 150 milliseconds of a real crash might require millions of time steps coupled with high-fidelity models with tens of millions of elements, which can take days to run even on massive HPC clusters.</p>
-</li>
+<li><strong>Conventional:</strong> Generate → Preprocess → Serialize → Train</li>
+<li><strong>With PhysicsNeMo-Mesh:</strong> Generate → Serialize → Preprocess → Train</li>
 </ul>
-<h2 id="developing-ai-surrogates-for-crash-using-physicsnemo">Developing AI surrogates for Crash using PhysicsNeMo</h2>
-<p>In the last couple of releases, we have <a href="https://github.com/NVIDIA/physicsnemo/tree/main/examples/structural_mechanics/crash">published training recipes</a> that enable developers to train AI surrogates to predict the dynamics of structural mechanics problems like deformation and automotive crash. Similar to other AI Physics applications, the automotive crash recipe in PhysicsNeMo showcases the step-by-step methodology for developers to build and test with their own datasets, solvers and modeling experiments with some simple configuration changes.</p>
-<h3 id="data-curation">Data Curation</h3>
-<p>The input data comes from simulations that entail complex 3D meshes representing vehicle components (bumpers, rails, chassis) and their material properties. In the recipe we showcase the use of PhysicsNeMo Curator, a specialized module to streamline the Extraction, Transformation, and Loading (ETL) of structural mechanics datasets.</p>
+<p>In this paradigm, you serialize first - from VTU to PhysicsNeMo-Mesh's native <code>Mesh</code> format (<code>*.pmsh</code>) - and preprocess later on-the-fly at load time (i.e., as part of training or inference). This is practical because PMSH preserves the mesh structure (so all preprocessing operations remain available after deserialization), and GPU-accelerated processing makes those operations fast enough to run at training time rather than as a batch preprocessing step (up to three orders of magnitude faster than CPU-based VTK operations, in part because the simplicial mesh representation makes algorithms much easier to vectorize on the GPU).</p>
+<p>Preprocessing and the training forward pass are now adjacent in the pipeline. Since both run on GPU, they can be fused into the same process - even within the same computational graph, with autograd flowing through both.</p>
+<p>The immediate benefit is faster loading and higher throughput. The longer-term benefit is that by flipping the order, the serialized format becomes model- and dataset-agnostic. The same PMSH files can serve any downstream model - equivariant or non-equivariant, point-cloud-based or graph-based. This matters because model architectures are evolving quickly (re-preprocessing a derived dataset for each new architecture doesn't scale), and as research focus shifts toward generalization of ML surrogates for PDEs, multi-dataset training becomes more compelling - which requires on-disk formats that aren't locked to a single model's preprocessing assumptions. The result is a fusion of what were previously disjoint preprocessing and training stages, enabling faster iteration on model architecture development, training, and benchmarking.</p>
+<h2 id="faster-loading-smaller-files-shorter-training">Faster Loading, Smaller Files, Shorter Training</h2>
+<p><a href="../../../../../images/mesh/mesh_vs_vtk_io_benchmark.png"><img alt="I/O Benchmark" src="../../../../../images/mesh/mesh_vs_vtk_io_benchmark.png" /></a>
+<em>Fig 2: I/O benchmark comparing VTU and PhysicsNeMo-Mesh (*.pmsh) across three production datasets. PMSH loads are 9x-88x faster with 3-8x smaller files on disk.</em></p>
+<p>The most important immediate benefit of PhysicsNeMo-Mesh-based datapipes over raw VTU/VTP formats is faster loading. The speedups are striking: on ShiftSUV, a mesh that takes 58.5 seconds to load from VTU loads in 1.7 seconds from PMSH (~35x faster). On DrivAerML, 413 seconds becomes 4.7 seconds (88x faster). Even HiLiftAeroML - 107 GB of VTU data per sample - loads in 12.6 seconds from PMSH (8.9x faster).</p>
+<p>This speedup comes from two places. The first is that you can drop fields that are typically not needed for downstream training. For example, while many CAE datasets save surface normals, with a GPU-accelerated mesh module it is often far faster to recompute these on-the-fly rather than incur the I/O overhead of loading them from disk. Other dropped fields include cell and node IDs (trivially reconstructable) and solver-internal quantities that are not typically direct engineering quantities of interest (e.g., full Reynolds stress tensor). This field trimming, while helpful, is responsible for a surprisingly small fraction of the speedup - around 5-10% on HiLiftAeroML, as shown in the figure above. (Unlike the other two tested datasets, the HiLiftAeroML dataset uses uncompressed VTU files; these allow for selective field loading, facilitating an apples-to-apples comparison.)</p>
+<p>The far more significant speedup comes from PhysicsNeMo-Mesh's ability to use memory-mapped (memmap) I/O via TensorDict. With this, there is near-zero parsing overhead - the mesh can be loaded byte-for-byte into memory, and the limiting factor typically becomes hard disk read bandwidth. Even after correcting for field trimming, this memmap approach is responsible for around an 8.9x speedup on HiLiftAeroML load speeds in our testing.</p>
+<p>PhysicsNeMo-Mesh also has disk space advantages over VTU, with a 3-8x reduction in per-sample storage (as shown in Fig 2). As modern CAE simulation datasets scale to tens or hundreds of terabytes of VTU data, this disk savings can be the deciding factor in whether training on a given dataset is feasible. As with the load speed improvements, the savings come from two sources: storing data as compact binary arrays rather than VTU's XML-based encoding, and trimming of extraneous data fields.</p>
+<p>Because <code>Mesh</code> is a first-class tensor structure, preprocessing steps are CUDA kernels that can be pipelined with training - the next sample's preprocessing and data transfers run concurrently with the current sample's forward and backward passes, keeping the GPU saturated. Early experiments show up to 50% training loop speedups (highly model- and dataset-dependent), a form of pipelining that isn't available when preprocessing happens offline. This is active work; we plan to share detailed results in a future post.</p>
+<h2 id="structure-that-ml-models-need">Structure That ML Models Need</h2>
+<p>The standard ML pipeline for physics simulations converts each mesh element into a concatenated feature vector, flattening away geometric and semantic distinctions that physically-consistent PDE surrogates need. For example:</p>
 <ul>
-<li><strong>Ingestion</strong>: The pipeline reads raw simulation output files (such as d3plot files from LS-DYNA or other Finite Element solvers).</li>
-<li><strong>Transformation</strong>: It extracts the "undeformed" mesh geometry (initial state) and the "deformed" mesh geometry (ground truth) over time.</li>
-<li><strong>Formatting</strong>: The data is converted into machine-learning-optimized formats like <strong>Zarr</strong> or other formats like <strong>VTP</strong>. Zarr is particularly useful for large-scale training because it supports chunked, compressed data storage that is efficiently readable by GPUs.</li>
+<li><strong>Euclidean equivariance</strong> requires distinguishing scalars from vectors (and higher-rank tensors) so that predictions transform correctly under rotation and reflection. Once everything is a single feature vector, this distinction is gone.</li>
+<li><strong>Boundary condition encoding</strong> requires structured, heterogeneous data: different boundary types (slip, no-slip, inlet, outlet) carry fundamentally different associated quantities, and interior and boundary points and cells carry different schemas. Flat feature vectors can't naturally represent this schema variation, with the typical result being that boundary condition data is irreversibly dropped.</li>
+<li><strong>PDE information flow</strong> often requires simultaneously manipulating physical fields (velocity, pressure) and nonphysical ones (network-internal latent fields), which demands a way to attach semantics to different parts of the internal representation.</li>
 </ul>
-<h3 id="choosing-the-architecture">Choosing the Architecture</h3>
-<p>The model is trained to predict the spatiotemporal evolution of the mesh. It takes the initial state ($t=0$) and predicts the deformation at subsequent time steps ($t+1$, $t+2$, etc.).</p>
-<p>The crash recipe supports multiple advanced architectures specifically designed for AI Physics applications:</p>
+<p>PhysicsNeMo-Mesh addresses all three. The mesh is a first-class, GPU-native, autograd-compatible data structure that carries arbitrary-rank tensor fields (scalars, vectors, stress tensors) organized in nested <a href="https://pytorch.org/tensordict/">TensorDict</a> containers with hierarchical, semantic keys. Cell connectivity, boundary structure, and the distinction between point-centered and cell-centered data are all preserved throughout the pipeline. PhysicsNeMo-Mesh operates on simplicial meshes (triangles, tetrahedra, and their lower/higher-dimensional analogues) - see the <a href="https://docs.nvidia.com/physicsnemo">User Guide</a> for details on mesh types and the underlying data model.</p>
+<h2 id="gpu-accelerated-mesh-processing">GPU-Accelerated Mesh Processing</h2>
+<p>Beyond I/O, PhysicsNeMo-Mesh accelerates the mesh operations themselves. Common operations - computing normals, curvature, gradients, neighbor queries, subdivision - that take seconds on CPU with conventional libraries can run orders of magnitude faster on GPU:</p>
+<p><a href="../../../../../images/mesh/processing_speedup.png"><img alt="Processing speedup" src="../../../../../images/mesh/processing_speedup.png" /></a>
+<em>Fig 3: GPU speedup of PhysicsNeMo-Mesh over PyVista (CPU) across common mesh operations, benchmarked on an NVIDIA GeForce RTX 4090 Laptop GPU. Green bars show GPU performance; blue bars show CPU performance within PhysicsNeMo-Mesh. Darker shades indicate torch.compiled variants.</em></p>
+<h3 id="whats-available">What's Available</h3>
+<p>PhysicsNeMo-Mesh is a comprehensive mesh processing module. For full details and worked examples, see the <a href="https://github.com/NVIDIA/physicsnemo/tree/main/examples/minimal/mesh">tutorial notebooks</a>.</p>
 <ul>
-<li>
-<p><strong>MeshGraphNet (Graph Neural Networks)</strong>: This model treats the vehicle mesh as a graph, where nodes represent physical points on the car parts and edges represent connections. The model uses "message passing" to simulate how forces propagate through the structure, predicting how each node moves and deforms based on its neighbors.</p>
-</li>
-<li>
-<p><strong>Transolver (Transformer-based)</strong>: Adapted from the Transformers that power Large Language Models (LLMs), Transolver handles the spatial dependencies in the crash data. It is particularly effective at capturing global interactions across the vehicle structure that might be missed by local graph connections.</p>
-</li>
-<li>
-<p><strong>GeoTransolver (Transformer-based)</strong>: An enhanced transformer that builds on Transolver by explicitly incorporating geometric context — learned from multi-scale neighborhoods across the mesh — and injecting it into every layer of the model. This persistent geometric grounding allows the model to stay anchored to the physical domain throughout its forward pass, improving accuracy and robustness compared to standard attention-based approaches. The recipe includes two variants: one using Physics-Attention (the slice-based mechanism from Transolver) and one using FLARE attention.</p>
-</li>
-<li>
-<p><strong>FIGConvUNet (Factorized Implicit Global Convolution UNet)</strong>: Rather than processing the 3D mesh directly, FIGConvUNet projects the point cloud onto a set of compact 2D implicit grids — one per spatial axis — and performs global convolutions on these factorized representations. This decomposition dramatically reduces computational complexity compared to full 3D convolution, enabling efficient processing of large, high-resolution meshes. A U-Net architecture then integrates multi-scale information across encoder and decoder stages for accurate field prediction.</p>
-</li>
+<li><strong>Discrete calculus</strong> - gradient, divergence, curl, and Laplacian operators via DEC and least-squares methods</li>
+<li><strong>Differential geometry</strong> - Gaussian and mean curvature, cell/point normals, tangent spaces</li>
+<li><strong>Subdivision &amp; remeshing</strong> - linear, Loop, and Butterfly subdivision; uniform remeshing via ACVD</li>
+<li><strong>Repair</strong> - duplicate removal, degenerate cell removal, hole filling, orientation fixing</li>
+<li><strong>Spatial queries</strong> - BVH-accelerated point containment, nearest-cell search, barycentric interpolation</li>
+<li><strong>Topology</strong> - point/cell adjacency, boundary detection, facet extraction, manifold checking</li>
+<li><strong>I/O &amp; visualization</strong> - bidirectional PyVista conversion (STL, VTK, PLY, OBJ); PyVista/VTK rendering; matplotlib fallback</li>
 </ul>
-<p><a href="../../../../../images/structural_mechanics/geotransolver_with_flare.png"><img alt="geotransolver_with_flare" src="../../../../../images/structural_mechanics/geotransolver_with_flare.png" /></a>
-<em>Fig 2: The GeoTransolver architecture with FLARE attention.</em></p>
-<h3 id="the-training-configuration">The Training Configuration</h3>
-<p>The unified training recipe provides the configurations that define the entire training pipeline in YAML configuration files (powered by Hydra). This includes specifying the data reader (Zarr or VTP), the datapipe (point-cloud or graph), the model architecture (MeshGraphNet, Transolver, GeoTransolver, or FigConvUNet), and the training and inference configs. Switching between architectures, readers, datapipes, or temporal schemes is as simple as changing the hydra configs for each run. The pipeline is optimized for NVIDIA GPUs, allowing it to handle the massive memory requirements of large meshes typical in automotive engineering.</p>
-<p>A key design decision in crash surrogate modeling is how to handle temporal progression. The recipe provides four strategies, each with different trade-offs:</p>
+<h3 id="from-meshes-to-graphs-and-point-clouds">From Meshes to Graphs and Point Clouds</h3>
+<p>A graph is just a 1D mesh: nodes are mesh points, edges are mesh cells (line segments). PhysicsNeMo-Mesh provides direct conversion methods:</p>
+<pre><code class="language-python">from physicsnemo.mesh.remeshing import remesh
+
+car_coarse = remesh(car_mesh, n_clusters=5000)
+edge_graph = car_coarse.to_edge_graph()     # vertex-centered graph
+centroid_graph = car_coarse.to_dual_graph()  # cell-centered graph
+point_cloud = car_mesh.to_point_cloud()      # 0D mesh, no connectivity
+</code></pre>
+<p><a href="../../../../../images/mesh/car_as_graph.png"><img alt="Car as graph" src="../../../../../images/mesh/car_as_graph.png" /></a>
+<em>Fig 4: Three views of a DrivAerML car: the surface mesh (left), its edge graph for point-centered data (center), and its cell-adjacency graph for cell-centered data (right). All three are first-class Mesh objects.</em></p>
+<p>The edge graph is natural when data lives on vertices. For cell-centered data - common in finite volume CFD - the dual graph places nodes at cell centroids with edges between adjacent cells, avoiding lossy interpolation from cells to vertices. The dual-graph edges correspond exactly to the faces where fluxes are exchanged between neighboring control volumes, making it a natural representation for finite volume formulations.</p>
+<p>Meshes are a strict superset of graphs: they add geometric structure (areas, normals, curvature), discrete calculus operators, spatial queries, and topological operations that graph-only frameworks like PyG and DGL don't natively provide. For tasks that purely rely on abstract graphs, those frameworks remain excellent choices; PhysicsNeMo-Mesh's value is in the geometric and topological operations that become available when you retain the full mesh structure.</p>
+<h3 id="computing-derived-quantities">Computing Derived Quantities</h3>
+<p>The real power of keeping mesh structure in the training loop is computing new quantities from simulation data. Consider the <a href="https://caemldatasets.org/drivaerml/">DrivAerML dataset</a>: the simulation outputs include surface pressure and wall shear stress, but we can derive the streamwise pressure gradient dp/ds - the classic indicator of boundary layer stability - by projecting the surface pressure gradient onto the local flow direction:</p>
+<pre><code class="language-python">from physicsnemo.mesh.io import from_pyvista
+import pyvista as pv
+
+mesh = from_pyvista(pv.read(&quot;boundary_1.vtp&quot;))
+mesh = mesh.cell_data_to_point_data()
+mesh = mesh.compute_point_derivatives(keys=&quot;pMeanTrim&quot;, gradient_type=&quot;extrinsic&quot;)
+
+grad_p = mesh.point_data[&quot;pMeanTrim_gradient&quot;]          # (n_points, 3)
+wss = mesh.point_data[&quot;wallShearStressMeanTrim&quot;]         # (n_points, 3)
+wss_hat = wss / wss.norm(dim=-1, keepdim=True).clamp(min=1e-8)
+mesh.point_data[&quot;adverse_pg&quot;] = (grad_p * wss_hat).sum(dim=-1)
+</code></pre>
+<p><a href="../../../../../images/mesh/drivaerml_adverse_pg.png"><img alt="Adverse pressure gradient" src="../../../../../images/mesh/drivaerml_adverse_pg.png" /></a>
+<em>Fig 5: Adverse pressure gradient indicator on the DrivAerML car. Red regions indicate adverse pressure gradients (destabilizing), blue regions indicate favorable gradients (stabilizing). Computed from raw CFD data using PhysicsNeMo-Mesh gradient operators.</em></p>
+<p>This workflow - loading simulation data, converting between cell and point representations, computing surface gradients, combining fields - is representative of the feature engineering that PhysicsNeMo-Mesh makes straightforward. Each step is GPU-accelerated and autograd-compatible - and because these operations happen at training time rather than as a batch preprocessing step, changing your feature engineering recipe means changing code, not re-processing the entire dataset.</p>
+<h2 id="case-study-globe-a-neural-surrogate-built-on-mesh">Case Study: GLOBE - A Neural Surrogate Built on Mesh</h2>
+<p>A powerful illustration of what becomes possible when your ML architecture is built on a proper mesh module is the <a href="https://github.com/NVIDIA/physicsnemo/pull/1401">GLOBE model</a> (Green's-function-Like Operator for Boundary Element PDEs), recently merged into PhysicsNeMo at <code>physicsnemo.experimental.models.globe</code>.</p>
+<p>GLOBE is a kernel-based neural field inspired by boundary element method PDE solvers. It represents solutions as superpositions of learnable Green's-function-like kernels evaluated from boundary faces to target points. Its internal state is itself a collection of <code>Mesh</code> objects - the model receives boundary meshes with boundary condition data in <code>cell_data</code>, processes them through communication hyperlayers, and produces predictions at arbitrary query points.</p>
+<p>Notably, GLOBE takes boundary condition information as an explicit, structured input: <code>boundary_meshes: dict[str, Mesh]</code>, where dictionary keys identify condition types (e.g., <code>"no_slip"</code>, <code>"freestream"</code>) and each mesh's <code>cell_data</code> carries the associated values. Boundary conditions are explicit inputs to the model, not inferred from geometric heuristics or dataset-specific correlations.</p>
+<p>Building on PhysicsNeMo-Mesh gives GLOBE:</p>
 <ul>
-<li><strong>One-shot</strong>: The model predicts the entire deformation sequence in a single forward pass. Use one-shot when you need fast iteration or have limited compute resources.</li>
-<li><strong>Time-conditional</strong>: The model predicts the state at an arbitrary time given the initial condition and a time parameter. Use time-conditional over one-shot when prediction quality during validation matters most.</li>
-<li><strong>Autoregressive with rollout training</strong>: The model is trained over multi-step trajectories with backpropagation through time, explicitly learning to correct accumulated errors. Enforces temporal causality but is the most expensive to train.</li>
-<li><strong>Single-step Autoregressive Training</strong>: Uses ground-truth states as inputs during training for efficiency, but suffers from covariate shift at inference. Predictions degrade over long rollouts due to error accumulation.</li>
+<li><strong>Structured latent state.</strong> Latent activations are stored in a nested TensorDict within <code>cell_data</code> (e.g., <code>mesh.cell_data["latent", "scalars", "0"]</code>), not as opaque flat tensors. GLOBE uses this separation to treat scalar channels as rotation-invariant and vector channels as covariant under rotation, supporting equivariant operations.</li>
+<li><strong>Discretization invariance.</strong> Area-weighted integration via <code>mesh.cell_areas</code> ensures predictions converge to a well-defined limit as the mesh is refined, independent of the particular discretization.</li>
+<li><strong>Reusable mesh utilities.</strong> Subdivision, remeshing, and interpolation are available out of the box for upscaling or downscaling between training and inference.</li>
+<li><strong>Debuggability.</strong> Call <code>mesh.draw(cell_scalars=("latent", "scalars", "0"))</code> at any breakpoint in the forward pass to visualize latent activations. You can trace numerical instabilities, identify dead channels, or understand what the model has learned - no custom visualization code needed, because the data already carries its own geometry.</li>
 </ul>
-<p>The recipe uses gradient checkpointing during rollout training to keep memory usage manageable across the full time sequence. Training supports multi-GPU distributed execution via PyTorch DDP and mixed-precision (AMP) training.</p>
-<h3 id="validation">Validation</h3>
-<p>The recipe was validated on a Body-in-White (BIW) dataset derived from a public-domain NHTSA vehicle model, simplified to ~400,000 nodes and ~380,000 elements, simulated under a 56 kph frontal crash scenario using a commercial solver. A design of experiments was conducted by varying the thickness of 33 front-end components within ±20% of nominal values, yielding 150 unique designs. The dataset was split 90/5/5 for train/validation/test.</p>
-<p>Results show that the overall spatio-temporal deformation trends are captured with reasonable fidelity. Displacement predictions align closely with finite element ground truth throughout the crash sequence. Velocity and acceleration predictions at critical probe points (driver and passenger toe pans) show good quantitative agreement.</p>
-<p><a href="../../../../../images/structural_mechanics/ai_crash_prediction_view2.gif"><img alt="ai_crash_prediction_view2" src="../../../../../images/structural_mechanics/ai_crash_prediction_view2.gif" /></a>
-<em>Fig 3: Results of commercial crash simulation and predictions from AI surrogate model trained using GeoTransolver architecture (with FLARE attention) in PhysicsNeMo.</em></p>
-<p><a href="../../../../../images/structural_mechanics/ai_crash_prediction_toepan.png"><img alt="ai_crash_prediction_toepan" src="../../../../../images/structural_mechanics/ai_crash_prediction_toepan.png" /></a>
-<em>Fig 4: Comparison between the predicted and ground-truth velocity and acceleration at the driver and passenger toe pans.</em></p>
-<p>The recipe also supports other structural mechanics use cases, including modeling bumper beam crash, demonstrating that the same pipeline generalizes to different use cases or structural subassemblies with minimal configuration changes.</p>
-<p><a href="../../../../../images/structural_mechanics/bumper_beam.gif"><img alt="bumper_beam" src="../../../../../images/structural_mechanics/bumper_beam.gif" /></a>
-<em>Fig 5: Comparison of simulation and PhysicsNeMo predictions for bumper beam dynamics.</em></p>
-<h2 id="takeaways">Takeaways</h2>
-<p>If you are a SciML developer or a Physics AI researcher or an AI practitioner, PhysicsNeMo is a powerful tool in your arsenal to supercharge and extend your PyTorch stack. </p>
-<p>Instead of building everything from scratch, you can import PhysicsNeMo modules to develop enterprise-scale Physics AI solutions with unprecedented speed and simplicity. You can use the training recipes to quickly build your first surrogate model and then customize it to your own application.</p>
-<p>You can get started easily and step by step using these resources:</p>
+<h2 id="getting-started">Getting Started</h2>
+<p>PhysicsNeMo-Mesh is available now as part of <a href="https://github.com/NVIDIA/physicsnemo">PhysicsNeMo</a>.</p>
 <ul>
-<li><a href="https://github.com/NVIDIA/physicsnemo/tree/main/examples/structural_mechanics/crash">Crash training recipes</a></li>
-<li><a href="https://arxiv.org/pdf/2510.15201">arXiv paper</a></li>
-<li><a href="https://docs.nvidia.com/physicsnemo/latest/getting-started/installation.html">Getting Started Guide</a></li>
-<li><a href="https://github.com/NVIDIA/physicsnemo/blob/main/examples/README.md">Other domain reference samples</a></li>
-<li><a href="https://docs.nvidia.com/physicsnemo/latest/index.html">User Guide Documentation</a></li>
+<li><strong>Source code</strong>: <a href="https://github.com/NVIDIA/physicsnemo/tree/main/physicsnemo/mesh">physicsnemo/mesh/</a></li>
+<li><strong>API documentation for Mesh</strong>: <a href="https://docs.nvidia.com/physicsnemo/latest/physicsnemo/api/mesh/core.html#">PhysicsNeMo Docs</a></li>
+<li><strong>Mesh User Guide</strong>: <a href="https://docs.nvidia.com/physicsnemo/latest/user-guide/mesh.html">Mesh User Guide</a> (coming soon) - concepts, data model, and usage patterns</li>
+<li><strong>Tutorial notebooks</strong>: <a href="https://github.com/NVIDIA/physicsnemo/tree/main/examples/minimal/mesh">examples/minimal/mesh/</a> - six Jupyter notebooks covering mesh creation, operations, discrete calculus, spatial queries, quality/repair, and ML integration</li>
+<li><strong>GLOBE model</strong>: <a href="https://github.com/NVIDIA/physicsnemo/tree/main/physicsnemo/experimental/models/globe">physicsnemo.experimental.models.globe</a></li>
 </ul>
-<p><a class="md-button" href="https://twitter.com/intent/tweet?text=Training%20AI%20Physics%20Models%20for%20Transient%20Structural%20Mechanics%20Simulations%20such%20as%20Automotive%20Crash%0A&amp;url=http://www.example.com/blog/2026/03/17/structural-mechanics/">Share on <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z"/></svg></span></a>
-<a class="md-button" href="https://www.facebook.com/sharer/sharer.php?u=http://www.example.com/blog/2026/03/17/structural-mechanics/">Share on <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.101 23.691v-7.98H6.627v-3.667h2.474v-1.58c0-4.085 1.848-5.978 5.858-5.978.401 0 .955.042 1.468.103a9 9 0 0 1 1.141.195v3.325a9 9 0 0 0-.653-.036 27 27 0 0 0-.733-.009c-.707 0-1.259.096-1.675.309a1.7 1.7 0 0 0-.679.622c-.258.42-.374.995-.374 1.752v1.297h3.919l-.386 2.103-.287 1.564h-3.246v8.245C19.396 23.238 24 18.179 24 12.044c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.628 3.874 10.35 9.101 11.647"/></svg></span></a>
-<a class="md-button" href="https://www.linkedin.com/sharing/share-offsite/?url=http://www.example.com/blog/2026/03/17/structural-mechanics/">Share on LinkedIn</a></p>
+<p>Install with:</p>
+<pre><code class="language-bash">pip install &quot;nvidia-physicsnemo[cu13,mesh-extras]&quot;
+</code></pre>
+<p>We're excited to see what you build with PhysicsNeMo-Mesh. If you have questions or feedback, visit our <a href="https://github.com/NVIDIA/physicsnemo/discussions">GitHub Discussions</a>.</p>
+<p><a class="md-button" href="https://twitter.com/intent/tweet?text=Introducing%20PhysicsNeMo-Mesh%3A%20GPU-Accelerated%20Mesh%20Processing%20for%20Scientific%20ML%0A&amp;url=http://www.example.com/blog/2026/04/07/physicsnemo-mesh/">Share on <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z"/></svg></span></a>
+<a class="md-button" href="https://www.facebook.com/sharer/sharer.php?u=http://www.example.com/blog/2026/04/07/physicsnemo-mesh/">Share on <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.101 23.691v-7.98H6.627v-3.667h2.474v-1.58c0-4.085 1.848-5.978 5.858-5.978.401 0 .955.042 1.468.103a9 9 0 0 1 1.141.195v3.325a9 9 0 0 0-.653-.036 27 27 0 0 0-.733-.009c-.707 0-1.259.096-1.675.309a1.7 1.7 0 0 0-.679.622c-.258.42-.374.995-.374 1.752v1.297h3.919l-.386 2.103-.287 1.564h-3.246v8.245C19.396 23.238 24 18.179 24 12.044c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.628 3.874 10.35 9.101 11.647"/></svg></span></a>
+<a class="md-button" href="https://www.linkedin.com/sharing/share-offsite/?url=http://www.example.com/blog/2026/04/07/physicsnemo-mesh/">Share on LinkedIn</a></p>
 
 
 
