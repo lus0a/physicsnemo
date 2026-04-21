@@ -650,8 +650,6 @@ class GeoTransolver(Module):
         else:
             x = tuple(x)
 
-        return x
-
         if return_embedding_states:
             return x, embedding_states
         return x
