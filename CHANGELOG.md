@@ -37,6 +37,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   creating Voronoi regions around seed points. BVH-accelerated.
 - Added support for 1D, 2D, and 3D neighborhood attention (natten) via
   `physicsnemo.nn.functional` interface, with full `ShardTensor` support.
+- Adds embedded OOD guardrail `OODGuard` (with companion `OODGuardConfig`
+  dataclass) at `physicsnemo.experimental.guardrails.embedded`, optionally
+  wired into `GeoTransolver` via a new `guard_config` constructor argument
+  (accepts an `OODGuardConfig`, a mapping, or `None` to disable). The guard
+  calibrates per-channel global bounds and a geometry-latent kNN threshold
+  during training, and emits warnings on out-of-distribution inputs at
+  inference.
 
 ### Changed
 

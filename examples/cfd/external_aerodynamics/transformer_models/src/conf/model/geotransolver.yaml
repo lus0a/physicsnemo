@@ -32,6 +32,15 @@ include_local_features: true # use local features
 radii: [0.05, 0.25, 1.0, 2.5] # radius for local features
 neighbors_in_radius: [8, 32, 64, 128] # neighbors in radius for local features
 n_hidden_local: 32 # hidden dimension for local features
-guard_buffer_size: null # OOD guard buffer size (set to dataset size), null to disable
-guard_knn_k: 0 # k for geometry kNN OOD detection
+# OOD guard (disabled by default — set `guard_config` to a mapping to enable)
+guard_config: null
+# Example enabled config:
+# guard_config:
+#   buffer_size: 500       # FIFO buffer size for geometry embeddings (~dataset size)
+#   knn_k: 10              # k for geometry kNN distance (recommended 5–15)
+#   sensitivity: 1.5       # threshold = sensitivity * 99th-percentile in-dist
+#                          # kNN distance; >1 is less sensitive, <1 more.
+#                          # Start at 1.5 and raise if too noisy (too many
+#                          # warnings on in-dist data), lower if real OOD
+#                          # inputs slip through.
 
