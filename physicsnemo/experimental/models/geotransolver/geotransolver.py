@@ -477,11 +477,6 @@ class GeoTransolver(Module):
             )
 
         # OOD guard (None when disabled).
-        #
-        # Note: guard_config is restricted to ``dict`` (not ``OODGuardConfig``
-        # or a generic ``Mapping``) so that the kwargs captured by
-        # :class:`physicsnemo.core.Module` stay JSON-serialisable and survive
-        # round-tripping through ``.mdlus`` checkpoints.
         if guard_config is None:
             self.ood_guard = None
         else:
