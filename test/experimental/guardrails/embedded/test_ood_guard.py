@@ -101,9 +101,7 @@ def test_config_requires_buffer_size_and_applies_defaults():
 )
 def test_construction_buffers(global_dim, geo_dim):
     """Each surface's buffers are allocated iff its dim is set."""
-    guard = OODGuard(
-        buffer_size=16, global_dim=global_dim, geometry_embed_dim=geo_dim
-    )
+    guard = OODGuard(buffer_size=16, global_dim=global_dim, geometry_embed_dim=geo_dim)
 
     if global_dim is not None:
         assert guard.global_min.shape == (global_dim,)
@@ -191,9 +189,9 @@ def test_geometry_threshold_computes_and_detects_ood(device, caplog):
     biased toward ``+e_0`` so coverage is local; a query pointing along
     ``-e_0`` is then ~2 away — reliably over any reasonable threshold.
     """
-    guard = OODGuard(
-        buffer_size=32, geometry_embed_dim=8, knn_k=4, sensitivity=1.5
-    ).to(device)
+    guard = OODGuard(buffer_size=32, geometry_embed_dim=8, knn_k=4, sensitivity=1.5).to(
+        device
+    )
 
     # Clustered in-distribution buffer: a tight Gaussian offset along +e_0.
     gen = torch.Generator(device=device).manual_seed(11)
@@ -245,9 +243,7 @@ def test_shape_validation(global_embedding, geometry_latent, match):
             global_embedding=global_embedding, geometry_latent=geometry_latent
         )
     with pytest.raises(ValueError, match=match):
-        guard.check(
-            global_embedding=global_embedding, geometry_latent=geometry_latent
-        )
+        guard.check(global_embedding=global_embedding, geometry_latent=geometry_latent)
 
 
 # ---------------------------------------------------------------------------
