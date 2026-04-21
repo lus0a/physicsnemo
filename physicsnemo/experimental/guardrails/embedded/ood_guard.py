@@ -283,7 +283,9 @@ class OODGuard(nn.Module):
     def _collect_global(self, global_embedding: torch.Tensor | None) -> None:
         if global_embedding is None or self.global_min is None:
             return
-        vals = global_embedding.detach()
+        # Upcast to the buffer dtype so AMP (fp16/bf16) inputs don't mismatch
+        # the fp32 running min/max.
+        vals = global_embedding.detach().to(self.global_min.dtype)
         batch_min = _reduce_leading(vals, torch.amin)
         batch_max = _reduce_leading(vals, torch.amax)
         self.global_min.copy_(torch.minimum(self.global_min, batch_min))
@@ -292,7 +294,9 @@ class OODGuard(nn.Module):
     def _collect_geometry(self, geometry_latent: torch.Tensor | None) -> None:
         if geometry_latent is None or self.geo_embeddings is None:
             return
-        pooled = geometry_latent.detach()  # (B, D)
+        # Upcast to the buffer dtype so AMP (fp16/bf16) inputs don't fail the
+        # dtype-strict indexed assignment into geo_embeddings.
+        pooled = geometry_latent.detach().to(self.geo_embeddings.dtype)  # (B, D)
         B = pooled.shape[0]
         ptr = self.geo_ptr[0]
         indices = (ptr + torch.arange(B, device=pooled.device)) % self.buffer_size
@@ -307,7 +311,8 @@ class OODGuard(nn.Module):
             return
         if torch.isinf(self.global_min).any():
             return
-        vals = global_embedding.detach()
+        # Upcast so AMP inputs compare against the fp32 bounds cleanly.
+        vals = global_embedding.detach().to(self.global_min.dtype)
         batch_min = _reduce_leading(vals, torch.amin)
         batch_max = _reduce_leading(vals, torch.amax)
         below = batch_min < self.global_min
@@ -346,7 +351,8 @@ class OODGuard(nn.Module):
             return
         if torch.isinf(self.knn_threshold):
             return
-        pooled = geometry_latent.detach()  # (B, D)
+        # Upcast so ``cdist`` against the fp32 store works under AMP inputs.
+        pooled = geometry_latent.detach().to(self.geo_embeddings.dtype)  # (B, D)
         z = pooled / (pooled.norm(dim=-1, keepdim=True) + 1e-8)
         n_valid = self._n_valid()
         if n_valid == 0:
