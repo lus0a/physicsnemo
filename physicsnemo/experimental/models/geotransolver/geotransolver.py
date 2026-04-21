@@ -23,7 +23,7 @@ structure and global context throughout the forward pass.
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 import torch
@@ -205,14 +205,18 @@ class GeoTransolver(Module):
         Neighbors in radius for the local features. Default is ``[8, 32]``.
     n_hidden_local : int, optional
         Hidden dimension for the local features. Default is 32.
-    guard_config : OODGuardConfig | Mapping | None, optional
+    guard_config : dict | None, optional
         Configuration for the embedded OOD guard
         (:class:`~physicsnemo.experimental.guardrails.embedded.OODGuard`).
-        Pass an :class:`OODGuardConfig` instance, a mapping with the same
-        fields (e.g. a Hydra/YAML section), or ``None`` to disable the guard
-        entirely. When set, the guard accumulates global-parameter bounds and
-        pooled geometry latents during training, and emits warnings on
-        out-of-distribution inputs during inference. Default is ``None``.
+        Pass a plain ``dict`` whose keys match the fields of
+        :class:`~physicsnemo.experimental.guardrails.embedded.OODGuardConfig`
+        (``buffer_size`` required; ``knn_k`` and ``sensitivity`` optional), or
+        ``None`` to disable the guard entirely. A ``dict`` is required (rather
+        than the dataclass directly) so the model kwargs remain
+        JSON-serialisable for ``.mdlus`` checkpointing. When set, the guard
+        accumulates global-parameter bounds and pooled geometry latents during
+        training, and emits warnings on out-of-distribution inputs during
+        inference. Default is ``None``.
 
     Forward
     -------
@@ -324,7 +328,7 @@ class GeoTransolver(Module):
         radii: list[float] | None = None,
         neighbors_in_radius: list[int] | None = None,
         n_hidden_local: int = 32,
-        guard_config: OODGuardConfig | Mapping | None = None,
+        guard_config: dict | None = None,
     ) -> None:
         super().__init__(meta=GeoTransolverMetaData())
         self.__name__ = "GeoTransolver"
@@ -448,9 +452,21 @@ class GeoTransolver(Module):
             )
 
         # OOD guard (None when disabled).
+        #
+        # Note: guard_config is restricted to ``dict`` (not ``OODGuardConfig``
+        # or a generic ``Mapping``) so that the kwargs captured by
+        # :class:`physicsnemo.core.Module` stay JSON-serialisable and survive
+        # round-tripping through ``.mdlus`` checkpoints.
         if guard_config is None:
             self.ood_guard = None
         else:
+            if not isinstance(guard_config, dict):
+                raise TypeError(
+                    f"guard_config must be a dict or None; got "
+                    f"{type(guard_config).__name__}. If using Hydra, set "
+                    f"_convert_=partial or _convert_=all on the model config "
+                    f"so nested mappings are passed as native dicts."
+                )
             if global_dim is None and geometry_dim is None:
                 raise ValueError(
                     "guard_config is set, but neither global_dim nor "
@@ -458,15 +474,8 @@ class GeoTransolver(Module):
                     "nothing to watch. Either set guard_config=None or "
                     "enable at least one of the two surfaces."
                 )
-            if isinstance(guard_config, OODGuardConfig):
-                cfg = guard_config
-            elif isinstance(guard_config, Mapping):
-                cfg = OODGuardConfig(**dict(guard_config))
-            else:
-                raise TypeError(
-                    f"guard_config must be OODGuardConfig, a mapping, or None; "
-                    f"got {type(guard_config).__name__}"
-                )
+            # OODGuardConfig validates keys and applies defaults.
+            cfg = OODGuardConfig(**guard_config)
             dim_head = n_hidden // n_head
             self.ood_guard = OODGuard(
                 buffer_size=cfg.buffer_size,

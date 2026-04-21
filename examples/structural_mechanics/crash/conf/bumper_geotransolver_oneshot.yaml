@@ -84,6 +84,3 @@ model:
   #   knn_k: 10              # k for geometry kNN distance (recommended 5–15)
   #   sensitivity: 1.5       # threshold = sensitivity * 99th-percentile in-dist
   #                          # kNN distance; >1 is less sensitive, <1 more.
-  #                          # Start at 1.5 and raise if too noisy (too many
-  #                          # warnings on in-dist data), lower if real OOD
-  #                          # inputs slip through.
