@@ -63,10 +63,10 @@ if ST_AVAILABLE:
         """
         # These imports will register the custom ops with the ShardTensor class.
         # It's done here to avoid an import cycle.
-        from .custom_ops import (
+        from .custom_ops import (  # noqa: F401
+            _tensor_ops,
             mean_wrapper,
             sum_wrapper,
-            unbind_wrapper,
         )
         from .shard_utils import register_shard_wrappers
 
