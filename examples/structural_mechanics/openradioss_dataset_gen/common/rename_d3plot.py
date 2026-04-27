@@ -1,3 +1,19 @@
+# SPDX-FileCopyrightText: Copyright (c) 2023 - 2026 NVIDIA CORPORATION & AFFILIATES.
+# SPDX-FileCopyrightText: All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """
 Rename OpenRadioss-generated d3plot files to the LS-DYNA convention expected
 by PhysicsNeMo-Curator.
@@ -27,6 +43,7 @@ from pathlib import Path
 
 
 def rename_run(run_dir: Path, base_name: str) -> int:
+    """Rename ``<base_name>.d3plot*`` files in ``run_dir`` to ``d3plot*``; returns count renamed."""
     renamed = 0
     pattern = re.compile(rf"^{re.escape(base_name)}\.d3plot(.*)$")
 
@@ -49,6 +66,7 @@ def rename_run(run_dir: Path, base_name: str) -> int:
 
 
 def rename_all(dataset_dir: Path, base_name: str) -> None:
+    """Apply :func:`rename_run` to every ``run*/`` subfolder of ``dataset_dir``."""
     for run_dir in sorted(dataset_dir.glob("run*")):
         if not run_dir.is_dir():
             continue
@@ -57,6 +75,7 @@ def rename_all(dataset_dir: Path, base_name: str) -> None:
 
 
 def main() -> None:
+    """CLI entry point: parse ``--dataset-dir`` / ``--base-name`` and rename in place."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--dataset-dir",

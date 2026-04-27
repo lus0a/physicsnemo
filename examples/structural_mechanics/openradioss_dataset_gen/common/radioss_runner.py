@@ -1,3 +1,19 @@
+# SPDX-FileCopyrightText: Copyright (c) 2023 - 2026 NVIDIA CORPORATION & AFFILIATES.
+# SPDX-FileCopyrightText: All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """
 Parallel OpenRadioss batch runner.
 
@@ -19,6 +35,8 @@ from dataclasses import dataclass
 
 @dataclass
 class RunnerConfig:
+    """Runtime configuration for the OpenRadioss batch runner."""
+
     openradioss_root: str
     dataset_dir: str
     input_base_name: str
@@ -28,6 +46,7 @@ class RunnerConfig:
 
 
 def build_radioss_env(openradioss_root: str, omp_num_threads: str) -> dict:
+    """Build the env dict (LD_LIBRARY_PATH, OMP, RAD_CFG_PATH) for OpenRadioss."""
     env = os.environ.copy()
     env["OPENRADIOSS_PATH"] = openradioss_root
     env["RAD_CFG_PATH"] = os.path.join(openradioss_root, "hm_cfg_files")
