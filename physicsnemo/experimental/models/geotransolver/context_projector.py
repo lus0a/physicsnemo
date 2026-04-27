@@ -807,7 +807,7 @@ class GlobalContextBuilder(nn.Module):
             - ``local_features``: List of local feature tensors, one per input type,
               each of shape :math:`(B, N, D_l)`, or ``None`` if local features are
               disabled.
-            - ``geometry_context``: Detached geometry-tokenizer output of shape
+            - ``geometry_context_detached``: Detached geometry-tokenizer output of shape
               :math:`(B, H, S, D)`, intended for downstream observers such as the
               embedded OOD guard.  ``None`` when geometry tokenization is disabled
               or no geometry was provided.
