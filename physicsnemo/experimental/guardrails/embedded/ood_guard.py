@@ -40,6 +40,8 @@ from dataclasses import dataclass
 import torch
 import torch.nn as nn
 
+from physicsnemo.nn.functional import knn
+
 logger = logging.getLogger(__name__)
 
 
@@ -70,9 +72,6 @@ class OODGuardConfig:
     buffer_size : int
         Capacity of the geometry latent FIFO buffer.  Typically set to the
         training-set size.  No default — callers must pick a value.
-        Note: threshold calibration materialises a ``(buffer_size,
-        buffer_size)`` pairwise-distance matrix, so memory cost is
-        :math:`O(B^2)` in this value.
     knn_k : int
         Number of nearest neighbours for the geometry kNN distance check.
         Default is ``10``.
@@ -210,12 +209,13 @@ class OODGuard(nn.Module):
             return
         store = self.geo_embeddings[:n_valid]
         store_norm = store / (store.norm(dim=-1, keepdim=True) + 1e-8)
-        dists = torch.cdist(store_norm, store_norm)
-        dists.fill_diagonal_(float("inf"))
         k = min(self.knn_k, n_valid - 1)
         if k <= 0:
             return
-        avg_knn_dists = dists.topk(k, largest=False).values.mean(dim=-1)
+        # Leave-one-out: ask for k+1 neighbours and drop column 0 (each
+        # point's nearest neighbour is itself, distance 0).
+        _, dists = knn(store_norm, store_norm, k + 1)
+        avg_knn_dists = dists[:, 1:].mean(dim=-1)
         base = torch.quantile(avg_knn_dists, 0.99)
         threshold = base * self.sensitivity
         self.knn_threshold.copy_(threshold)
@@ -359,10 +359,10 @@ class OODGuard(nn.Module):
             return
         store = self.geo_embeddings[:n_valid]
         store_norm = store / (store.norm(dim=-1, keepdim=True) + 1e-8)
-        dists = torch.cdist(z, store_norm)  # (B, n_valid)
         # Query is not in the store, so no -1 needed; clamp to buffer size.
         k = min(self.knn_k, n_valid)
-        avg_knn_dists = dists.topk(k, largest=False).values.mean(dim=-1)  # (B,)
+        _, dists = knn(store_norm, z, k)  # (B, k)
+        avg_knn_dists = dists.mean(dim=-1)  # (B,)
         over = avg_knn_dists > self.knn_threshold
         # Skip host transfer when nothing is violated and DEBUG is off.
         if not (bool(over.any()) or logger.isEnabledFor(logging.DEBUG)):
