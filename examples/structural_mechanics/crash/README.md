@@ -233,6 +233,34 @@ model:
     sensitivity: 1.5       # threshold multiplier on 99th-percentile kNN dist
 ```
 
+What each parameter controls:
+
+- **`buffer_size`** — Capacity of the FIFO ring buffer that stores pooled
+  geometry latents during training; the kNN threshold is computed over its
+  contents. Set it to at least the training-set size so calibration sees every
+  sample. Under DDP each rank keeps its own buffer and the distributed sampler
+  shuffles, so after a few epochs each rank's FIFO covers most of the data.
+  Memory cost is `buffer_size × head_dim × 4` bytes — typically well under 1 MB.
+- **`knn_k`** — Number of nearest neighbours used in the kNN distance. Smaller
+  `k` is more sensitive to isolated training-set outliers; larger `k` is
+  smoother but can blur multi-modal cluster boundaries. The default of `10`
+  works for buffer sizes from ~100 up to several thousand.
+- **`sensitivity`** — Multiplier on the 99th-percentile training kNN distance
+  used as the OOD threshold. **Higher = less sensitive** (fewer warnings).
+  Raise it if known in-distribution validation data triggers warnings; lower
+  it if known-OOD inputs are being missed.
+
+Recommended starting points by training-set size:
+
+| Training samples | `buffer_size`           | `knn_k` | `sensitivity` |
+|------------------|-------------------------|---------|---------------|
+| ~100             | 100–200                 | 5–10    | 1.5           |
+| ~500             | 500–1000                | 10      | 1.5           |
+| 5000+            | = dataset size          | 10–15   | 1.5           |
+
+If validation data trips warnings, raise `sensitivity` toward 2.0–3.0; if
+known-OOD inputs slip through, lower it toward 1.0.
+
 No changes to `train.py` / `inference.py` are required: during training the
 guard silently collects calibration statistics, and during inference it emits
 warnings of the form `OOD Guard: geometry sample ...` or
