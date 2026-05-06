@@ -6,6 +6,8 @@ buffers. They follow the same stateless functional pattern as the rest of
 ``physicsnemo.nn.functional``: tensors in, tensors out, with implementation
 dispatch handled through ``FunctionSpec``.
 
+Runnable examples are available under ``examples/functional/rendering``.
+
 Isosurface Render
 -----------------
 
