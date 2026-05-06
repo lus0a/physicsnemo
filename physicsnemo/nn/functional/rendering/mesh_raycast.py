@@ -78,6 +78,7 @@ class MeshRaycast(FunctionSpec):
         ambient: float = 0.2,
         max_distance: float = 1.0e8,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Run the Warp implementation for ``mesh_raycast``."""
         return mesh_raycast_warp(
             mesh_vertices=mesh_vertices,
             mesh_indices=mesh_indices,
@@ -97,6 +98,7 @@ class MeshRaycast(FunctionSpec):
 
     @classmethod
     def make_inputs_forward(cls, device: torch.device | str = "cpu"):
+        """Yield benchmark inputs for mesh raycasting."""
         device = torch.device(device)
         mesh_vertices = torch.tensor(
             [

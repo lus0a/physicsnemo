@@ -1174,6 +1174,7 @@ def scalar_field_to_rgba_impl(
     max_opacity: float = 0.8,
     opacity_threshold: float = 0.1,
 ) -> torch.Tensor:
+    """Launch the Warp scalar-to-RGBA transfer custom op."""
     if field.ndim != 3:
         raise ValueError(
             f"field must have shape (nx, ny, nz), got {tuple(field.shape)}"
@@ -1225,6 +1226,7 @@ def line_integral_convolution_impl(
     num_steps: int = 20,
     contrast: float = 1.4,
 ) -> torch.Tensor:
+    """Launch the Warp line integral convolution custom op."""
     _validate_vector_field(vector_field)
     if seed.shape != vector_field.shape[:3]:
         raise ValueError(
@@ -1283,6 +1285,7 @@ def vector_field_to_rgba_impl(
     max_opacity: float = 0.8,
     lic_threshold: float = 0.5,
 ) -> torch.Tensor:
+    """Launch the Warp vector LIC-to-RGBA transfer custom op."""
     _validate_vector_field(vector_field)
     if lic_field.shape != vector_field.shape[:3]:
         raise ValueError(
@@ -1352,6 +1355,7 @@ def volume_render_impl(
     opacity_threshold: float = 0.95,
     depth_threshold: float = 0.1,
 ) -> tuple[torch.Tensor, torch.Tensor]:
+    """Launch the Warp RGBA volume rendering custom op."""
     _validate_image_shape(image_height, image_width)
     _validate_fov(fov_y_degrees)
     if step_size <= 0.0:
@@ -1432,6 +1436,7 @@ def point_cloud_render_impl(
     near: float = 0.01,
     far: float = 1.0e8,
 ) -> tuple[torch.Tensor, torch.Tensor]:
+    """Launch the Warp point cloud rendering custom op."""
     if points.ndim != 2 or points.shape[-1] != 3:
         raise ValueError(f"points must have shape (num_points, 3), got {points.shape}")
     if points.shape[0] == 0:
@@ -1545,6 +1550,7 @@ def wireframe_render_impl(
     near: float = 0.01,
     far: float = 1.0e8,
 ) -> tuple[torch.Tensor, torch.Tensor]:
+    """Launch the Warp wireframe rendering custom op."""
     if edges.ndim == 3:
         if edges.shape[1:] != (2, 3):
             raise ValueError(
@@ -1630,6 +1636,7 @@ def isosurface_render_impl(
     light_direction: torch.Tensor | None = None,
     ambient: float = 0.2,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Launch the Warp isosurface rendering custom op."""
     if field.ndim != 3:
         raise ValueError(
             f"field must have shape (nx, ny, nz), got {tuple(field.shape)}"
@@ -1738,6 +1745,7 @@ def mesh_raycast_impl(
     ambient: float = 0.2,
     max_distance: float = 1.0e8,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Launch the Warp mesh raycast rendering custom op."""
     if mesh_vertices.ndim != 2 or mesh_vertices.shape[-1] != 3:
         raise ValueError(
             "mesh_vertices must have shape (num_vertices, 3), got "
@@ -1861,6 +1869,7 @@ def isosurface_render_warp(
     light_direction: torch.Tensor | None = None,
     ambient: float = 0.2,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Prepare tensor arguments and render an isosurface with Warp."""
     device = field.device
     return isosurface_render_impl(
         field,
@@ -1898,6 +1907,7 @@ def mesh_raycast_warp(
     ambient: float = 0.2,
     max_distance: float = 1.0e8,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Prepare tensor arguments and raycast a mesh with Warp."""
     device = mesh_vertices.device
     return mesh_raycast_impl(
         mesh_vertices,
@@ -1924,6 +1934,7 @@ def scalar_field_to_rgba_warp(
     max_opacity: float = 0.8,
     opacity_threshold: float = 0.1,
 ) -> torch.Tensor:
+    """Map a scalar field to an RGBA volume with Warp."""
     return scalar_field_to_rgba_impl(
         field,
         vmin,
@@ -1940,6 +1951,7 @@ def line_integral_convolution_warp(
     num_steps: int = 20,
     contrast: float = 1.4,
 ) -> torch.Tensor:
+    """Compute line integral convolution with Warp."""
     return line_integral_convolution_impl(
         vector_field,
         seed,
@@ -1957,6 +1969,7 @@ def vector_field_to_rgba_warp(
     max_opacity: float = 0.8,
     lic_threshold: float = 0.5,
 ) -> torch.Tensor:
+    """Map vector magnitude and LIC values to RGBA with Warp."""
     return vector_field_to_rgba_impl(
         vector_field,
         lic_field,
@@ -1982,6 +1995,7 @@ def volume_render_warp(
     opacity_threshold: float = 0.95,
     depth_threshold: float = 0.1,
 ) -> tuple[torch.Tensor, torch.Tensor]:
+    """Prepare tensor arguments and render an RGBA volume with Warp."""
     device = rgba_volume.device
     return volume_render_impl(
         rgba_volume,
@@ -2014,6 +2028,7 @@ def point_cloud_render_warp(
     near: float = 0.01,
     far: float = 1.0e8,
 ) -> tuple[torch.Tensor, torch.Tensor]:
+    """Prepare tensor arguments and rasterize a point cloud with Warp."""
     device = points.device
     return point_cloud_render_impl(
         points,
@@ -2044,6 +2059,7 @@ def wireframe_render_warp(
     near: float = 0.01,
     far: float = 1.0e8,
 ) -> tuple[torch.Tensor, torch.Tensor]:
+    """Prepare tensor arguments and rasterize wireframe segments with Warp."""
     device = edges.device
     return wireframe_render_impl(
         edges,

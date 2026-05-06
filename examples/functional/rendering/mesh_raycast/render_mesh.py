@@ -27,6 +27,7 @@ from physicsnemo.nn.functional import mesh_raycast
 
 
 def cube_mesh(device: torch.device) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Create a colored cube mesh for the raycast example."""
     vertices = torch.tensor(
         [
             [-0.6, -0.6, -0.6],
@@ -76,6 +77,7 @@ def cube_mesh(device: torch.device) -> tuple[torch.Tensor, torch.Tensor, torch.T
 
 
 def rotate_y(vertices: torch.Tensor, angle: torch.Tensor) -> torch.Tensor:
+    """Rotate vertices about the vertical axis."""
     c = torch.cos(angle)
     s = torch.sin(angle)
     rotation = torch.stack(
@@ -89,6 +91,7 @@ def rotate_y(vertices: torch.Tensor, angle: torch.Tensor) -> torch.Tensor:
 
 
 def main() -> None:
+    """Generate an animation with the ``mesh_raycast`` functional."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--frames", type=int, default=24)
     parser.add_argument("--image-size", type=int, default=256)

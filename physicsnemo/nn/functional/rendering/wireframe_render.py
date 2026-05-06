@@ -67,6 +67,7 @@ class WireframeRender(FunctionSpec):
         near: float = 0.01,
         far: float = 1.0e8,
     ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Run the Warp implementation for ``wireframe_render``."""
         return wireframe_render_warp(
             edges=edges,
             image_height=image_height,
@@ -83,6 +84,7 @@ class WireframeRender(FunctionSpec):
 
     @classmethod
     def make_inputs_forward(cls, device: torch.device | str = "cpu"):
+        """Yield benchmark inputs for wireframe rendering."""
         device = torch.device(device)
         edges = torch.tensor(
             [

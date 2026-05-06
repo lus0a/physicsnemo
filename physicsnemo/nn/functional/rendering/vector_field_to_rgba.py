@@ -50,6 +50,7 @@ class VectorFieldToRGBA(FunctionSpec):
         max_opacity: float = 0.8,
         lic_threshold: float = 0.5,
     ) -> torch.Tensor:
+        """Run the Warp implementation for ``vector_field_to_rgba``."""
         return vector_field_to_rgba_warp(
             vector_field=vector_field,
             lic_field=lic_field,
@@ -68,6 +69,7 @@ class VectorFieldToRGBA(FunctionSpec):
         max_opacity: float = 0.8,
         lic_threshold: float = 0.5,
     ) -> torch.Tensor:
+        """Run the PyTorch implementation for ``vector_field_to_rgba``."""
         return vector_field_to_rgba_torch(
             vector_field=vector_field,
             lic_field=lic_field,
@@ -79,6 +81,7 @@ class VectorFieldToRGBA(FunctionSpec):
 
     @classmethod
     def make_inputs_forward(cls, device: torch.device | str = "cpu"):
+        """Yield benchmark inputs for vector RGBA transfer."""
         device = torch.device(device)
         coords = torch.linspace(-1.0, 1.0, 16, device=device)
         x, y, z = torch.meshgrid(coords, coords, coords, indexing="ij")
@@ -88,6 +91,7 @@ class VectorFieldToRGBA(FunctionSpec):
 
     @classmethod
     def compare_forward(cls, output: torch.Tensor, reference: torch.Tensor) -> None:
+        """Compare Warp and PyTorch transfer outputs."""
         torch.testing.assert_close(output, reference, atol=1, rtol=0)
 
 

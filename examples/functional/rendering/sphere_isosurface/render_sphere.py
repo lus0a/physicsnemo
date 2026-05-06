@@ -32,6 +32,7 @@ def sphere_field(
     radius: float,
     device: torch.device,
 ) -> torch.Tensor:
+    """Create a signed-distance scalar field for a sphere."""
     coords = torch.linspace(-1.0, 1.0, grid_n, device=device)
     x, y, z = torch.meshgrid(coords, coords, coords, indexing="ij")
     dx = x - center[0]
@@ -41,6 +42,7 @@ def sphere_field(
 
 
 def color_field(grid_n: int, device: torch.device) -> torch.Tensor:
+    """Create a uint8 RGB volume used to color the sphere."""
     coords = torch.linspace(0.0, 1.0, grid_n, device=device)
     x, y, z = torch.meshgrid(coords, coords, coords, indexing="ij")
     rgb = torch.stack([0.15 + 0.85 * x, 0.25 + 0.55 * y, 0.95 - 0.45 * z], dim=-1)
@@ -48,6 +50,7 @@ def color_field(grid_n: int, device: torch.device) -> torch.Tensor:
 
 
 def main() -> None:
+    """Generate an animation with the ``isosurface_render`` functional."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--frames", type=int, default=24)
     parser.add_argument("--grid-size", type=int, default=64)

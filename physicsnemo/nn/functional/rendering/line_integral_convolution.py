@@ -49,6 +49,7 @@ class LineIntegralConvolution(FunctionSpec):
         num_steps: int = 20,
         contrast: float = 1.4,
     ) -> torch.Tensor:
+        """Run the Warp implementation for ``line_integral_convolution``."""
         return line_integral_convolution_warp(
             vector_field=vector_field,
             seed=seed,
@@ -59,6 +60,7 @@ class LineIntegralConvolution(FunctionSpec):
 
     @classmethod
     def make_inputs_forward(cls, device: torch.device | str = "cpu"):
+        """Yield benchmark inputs for line integral convolution."""
         device = torch.device(device)
         coords = torch.linspace(-1.0, 1.0, 16, device=device)
         x, y, z = torch.meshgrid(coords, coords, coords, indexing="ij")

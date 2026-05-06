@@ -68,6 +68,7 @@ class VolumeRender(FunctionSpec):
         opacity_threshold: float = 0.95,
         depth_threshold: float = 0.1,
     ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Run the Warp implementation for ``volume_render``."""
         return volume_render_warp(
             rgba_volume=rgba_volume,
             image_height=image_height,
@@ -86,6 +87,7 @@ class VolumeRender(FunctionSpec):
 
     @classmethod
     def make_inputs_forward(cls, device: torch.device | str = "cpu"):
+        """Yield benchmark inputs for volume rendering."""
         device = torch.device(device)
         rgba_volume = torch.zeros((24, 24, 24, 4), device=device, dtype=torch.uint8)
         rgba_volume[..., 0] = 96

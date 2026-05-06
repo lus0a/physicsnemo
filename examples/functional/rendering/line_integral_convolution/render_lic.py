@@ -29,6 +29,7 @@ from physicsnemo.nn.functional import line_integral_convolution
 def dipole_field(
     grid_size: int, depth_size: int, phase: float, device: torch.device
 ) -> torch.Tensor:
+    """Build a thin 3D dipole vector field for LIC slice rendering."""
     coords = torch.linspace(-2.0, 2.0, grid_size, device=device)
     z_coords = torch.linspace(-0.05, 0.05, depth_size, device=device)
     x, y, z = torch.meshgrid(coords, coords, z_coords, indexing="ij")
@@ -59,10 +60,12 @@ def dipole_field(
 
 
 def seed_pattern(grid_size: int, device: torch.device) -> torch.Tensor:
+    """Create the fixed random seed texture advected by LIC."""
     return torch.rand(grid_size, grid_size, 1, device=device)
 
 
 def jet_colormap(value: np.ndarray) -> np.ndarray:
+    """Map normalized scalar values to RGB jet colors."""
     red = np.clip(np.minimum(4.0 * value - 1.5, -4.0 * value + 4.5), 0.0, 1.0)
     green = np.clip(np.minimum(4.0 * value - 0.5, -4.0 * value + 3.5), 0.0, 1.0)
     blue = np.clip(np.minimum(4.0 * value + 0.5, -4.0 * value + 2.5), 0.0, 1.0)
@@ -83,6 +86,7 @@ def _draw_marker(
 def lic_to_rgb(
     lic: torch.Tensor, vector_field: torch.Tensor, phase: float
 ) -> np.ndarray:
+    """Convert a LIC slice and vector magnitude to an RGB image."""
     center = lic.shape[2] // 2
     lic_image = lic[:, :, center].detach().cpu().numpy()
     low = float(np.percentile(lic_image, 1.0))
@@ -110,6 +114,7 @@ def lic_to_rgb(
 
 
 def main() -> None:
+    """Generate a 2D LIC animation from a rotating dipole field."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--frames", type=int, default=16)
     parser.add_argument("--grid-size", type=int, default=192)

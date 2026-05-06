@@ -31,6 +31,7 @@ from physicsnemo.nn.functional import (
 
 
 def dipole_field(grid_size: int, device: torch.device) -> torch.Tensor:
+    """Build a steady 3D dipole vector field for volume LIC."""
     coords = torch.linspace(-1.0, 1.0, grid_size, device=device)
     x, y, z = torch.meshgrid(coords, coords, coords, indexing="ij")
     positive = torch.tensor([0.42, 0.0, 0.0], device=device)
@@ -45,6 +46,7 @@ def dipole_field(grid_size: int, device: torch.device) -> torch.Tensor:
 
 
 def cube_edges(device: torch.device) -> torch.Tensor:
+    """Return the line segments for a unit context cube."""
     vertices = torch.tensor(
         [
             [-1.05, -1.05, -1.05],
@@ -79,6 +81,7 @@ def cube_edges(device: torch.device) -> torch.Tensor:
 
 
 def rotate_edges(edges: torch.Tensor, phase: float) -> torch.Tensor:
+    """Rotate context-cube edges around two axes."""
     angle = torch.tensor(phase, device=edges.device, dtype=edges.dtype)
     c = torch.cos(angle)
     s = torch.sin(angle)
@@ -105,6 +108,7 @@ def rotate_edges(edges: torch.Tensor, phase: float) -> torch.Tensor:
 
 
 def jet_colormap(value: torch.Tensor) -> torch.Tensor:
+    """Map normalized tensor values to RGB jet colors."""
     red = torch.minimum(4.0 * value - 1.5, -4.0 * value + 4.5).clamp(0.0, 1.0)
     green = torch.minimum(4.0 * value - 0.5, -4.0 * value + 3.5).clamp(0.0, 1.0)
     blue = torch.minimum(4.0 * value + 0.5, -4.0 * value + 2.5).clamp(0.0, 1.0)
@@ -116,6 +120,7 @@ def make_lic_rgba_volume(
     lic: torch.Tensor,
     max_opacity: float,
 ) -> torch.Tensor:
+    """Convert vector magnitude and LIC values into a uint8 RGBA volume."""
     magnitude = torch.log1p(vector_field.norm(dim=-1))
     magnitude = (magnitude / torch.quantile(magnitude.reshape(-1), 0.985)).clamp(
         0.0, 1.0
@@ -135,18 +140,21 @@ def make_lic_rgba_volume(
 
 
 def composite_rgba(rgba: torch.Tensor, background: np.ndarray) -> np.ndarray:
+    """Composite a rendered RGBA image over a background color."""
     image = rgba.detach().clamp(0.0, 1.0).cpu().numpy()
     alpha = image[..., 3:4]
     return image[..., :3] * alpha + background * (1.0 - alpha)
 
 
 def overlay_wire(volume_rgb: np.ndarray, wire_rgba: torch.Tensor) -> np.ndarray:
+    """Alpha composite a wireframe render over a volume RGB image."""
     wire = wire_rgba.detach().clamp(0.0, 1.0).cpu().numpy()
     alpha = wire[..., 3:4]
     return wire[..., :3] * alpha + volume_rgb * (1.0 - alpha)
 
 
 def main() -> None:
+    """Generate a 3D LIC volume-render animation with a rotating cube."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--frames", type=int, default=16)
     parser.add_argument("--grid-size", type=int, default=56)

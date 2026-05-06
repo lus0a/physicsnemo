@@ -69,6 +69,7 @@ class PointCloudRender(FunctionSpec):
         near: float = 0.01,
         far: float = 1.0e8,
     ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Run the Warp implementation for ``point_cloud_render``."""
         return point_cloud_render_warp(
             points=points,
             image_height=image_height,
@@ -86,6 +87,7 @@ class PointCloudRender(FunctionSpec):
 
     @classmethod
     def make_inputs_forward(cls, device: torch.device | str = "cpu"):
+        """Yield benchmark inputs for point-cloud rendering."""
         device = torch.device(device)
         points = torch.tensor(
             [[-0.4, 0.0, 0.0], [0.0, 0.2, 0.0], [0.4, 0.0, 0.0]],

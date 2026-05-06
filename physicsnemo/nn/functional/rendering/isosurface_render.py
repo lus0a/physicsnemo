@@ -94,6 +94,7 @@ class IsosurfaceRender(FunctionSpec):
         light_direction: torch.Tensor | None = None,
         ambient: float = 0.2,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Run the Warp implementation for ``isosurface_render``."""
         return isosurface_render_warp(
             field=field,
             image_height=image_height,
@@ -115,6 +116,7 @@ class IsosurfaceRender(FunctionSpec):
 
     @classmethod
     def make_inputs_forward(cls, device: torch.device | str = "cpu"):
+        """Yield benchmark inputs for the isosurface renderer."""
         device = torch.device(device)
         bounds_min = torch.tensor([-1.0, -1.0, -1.0], device=device)
         bounds_max = torch.tensor([1.0, 1.0, 1.0], device=device)
