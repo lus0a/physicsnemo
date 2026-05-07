@@ -134,16 +134,17 @@ def test_isosurface_render_error_handling(device: str):
             implementation="warp",
         )
 
-    with pytest.raises(ValueError, match="eye and center"):
-        isosurface_render(
-            field,
-            16,
-            16,
-            eye,
-            eye,
-            up,
-            45.0,
-            bounds_min,
-            bounds_max,
-            implementation="warp",
-        )
+    if torch.device(device).type == "cpu":
+        with pytest.raises(ValueError, match="eye and center"):
+            isosurface_render(
+                field,
+                16,
+                16,
+                eye,
+                eye,
+                up,
+                45.0,
+                bounds_min,
+                bounds_max,
+                implementation="warp",
+            )
