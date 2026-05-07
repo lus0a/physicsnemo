@@ -42,7 +42,7 @@ def _camera(device: str) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
 
 
 @requires_module("warp")
-def test_mesh_raycast_returns_color_depth_and_normals(device: str):
+def test_mesh_raycast_warp(device: str):
     mesh_vertices, mesh_indices = _triangle_mesh(device)
     vertex_colors = torch.tensor(
         [[255, 0, 0], [0, 255, 0], [0, 0, 255]],

@@ -44,7 +44,7 @@ def _camera(device: str) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
 
 
 @requires_module("warp")
-def test_isosurface_render_returns_color_depth_and_normals(device: str):
+def test_isosurface_render_warp(device: str):
     field = _sphere_field(48, device)
     color_field = _sphere_color_field(48, device)
     bounds_min = torch.tensor([-1.0, -1.0, -1.0], device=device)

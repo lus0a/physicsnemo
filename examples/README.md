@@ -111,12 +111,6 @@ The several examples inside PhysicsNeMo can be classified based on their domains
 
 1. [Classify the famous two-moons data distribution using Active learning](./active_learning/moons/)
 
-### Functional
-
-|Use case|Functionals covered|
-| --- | --- |
-|[Rendering functionals](./functional/rendering/)|Isosurface rendering, mesh raycasting, line integral convolution, volume rendering, and raster overlays|
-
 ## Additional examples
 
 Physics-informed training examples (PINNs, PINO, physics-informed fine-tuning)
