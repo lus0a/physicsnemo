@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.1.0a0] - 2026-XX-YY
+## [2.1.0] - 2026-05-26
 
 ### Added
 
@@ -214,8 +214,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   of `sdf_to_stl`. For VTP/OBJ/STL file conversion (`combine_vtp_files`,
   `convert_tesselated_files_in_directory`), use VTK or PyVista directly.
 
-### Removed
-
 ### Fixed
 
 - Fixed functional benchmark plot fallback labeling so unlabeled ASV results use
@@ -261,8 +259,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed the sinusoidal positional embeddings formula in `SongUNet` and
   `MultiDiffusionModel2D` so it now follows the standard `sin / cos`
   convention. Affected reference data was regenerated.
-
-### Security
 
 ### Dependencies
 
