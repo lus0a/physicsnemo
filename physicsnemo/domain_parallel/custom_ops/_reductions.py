@@ -398,7 +398,6 @@ class ShardedSum(ShardedReductionBase):
 
     @staticmethod
     def forward(
-        ctx: Any,
         tensor: ShardTensor,
         dim: DimT = None,
         keepdim: bool = False,
@@ -408,8 +407,6 @@ class ShardedSum(ShardedReductionBase):
 
         Parameters
         ----------
-        ctx : torch.autograd.function.FunctionCtx
-            The autograd context object.
         tensor : ShardTensor
             The input ShardTensor to be reduced.
         dim : DimT, optional
@@ -423,17 +420,50 @@ class ShardedSum(ShardedReductionBase):
         -------
         ShardTensor
             The result of sum reduction.
+
+        Notes
+        -----
+        The body runs under ``torch._C.DisableTorchFunctionSubclass``.
+        Reason: new-style autograd.Function (per-PyTorch design) executes
+        ``forward`` with grad-mode ON, and any property access on the
+        ShardTensor input (e.g. ``tensor.ndim`` -- a C-level getset
+        descriptor) re-enters ``__torch_function__`` -> the DTensor
+        fallback -> ``_ShardTensorToDTensor.apply``. The resulting
+        ``BackwardCFunction`` has a ``next_functions`` accessor that
+        raises a "legacy access pattern" error on newer PyTorch,
+        blocking AOTAutograd from walking the autograd graph. Shielding
+        these metadata-only accesses fully avoids that bridge for the
+        sum path.
         """
-        dim, keepdim = ShardedReductionBase.setup_ctx(ctx, tensor, dim, keepdim)
+        with torch._C.DisableTorchFunctionSubclass():
+            dim_n = normalize_dim(dim, tensor.ndim)
+            keepdim_n = bool(keepdim)
 
-        local_result = aten.sum(
-            tensor._local_tensor, dim=dim, keepdim=keepdim, dtype=dtype
-        )
+            local_result = aten.sum(
+                tensor._local_tensor, dim=dim_n, keepdim=keepdim_n, dtype=dtype
+            )
 
-        placements = compute_result_placements(tensor, dim, "sum")
-        sharding_shapes = compute_result_sharding_shapes(tensor, dim, keepdim)
+            placements = compute_result_placements(tensor, dim_n, "sum")
+            sharding_shapes = compute_result_sharding_shapes(
+                tensor, dim_n, keepdim_n
+            )
 
-        return build_reduction_result(local_result, tensor, placements, sharding_shapes)
+            return build_reduction_result(
+                local_result, tensor, placements, sharding_shapes
+            )
+
+    @staticmethod
+    def setup_context(ctx, inputs, output) -> None:
+        r"""Save the input ShardTensorSpec + normalized dim/keepdim for backward.
+
+        Same ``DisableTorchFunctionSubclass`` shielding as ``forward`` so the
+        property accesses inside ``ShardedReductionBase.setup_ctx`` (e.g.
+        ``tensor.ndim``, ``tensor.requires_grad``) don't bridge through the
+        AOT-hostile autograd Function fallback.
+        """
+        tensor, dim, keepdim, _dtype = inputs
+        with torch._C.DisableTorchFunctionSubclass():
+            ShardedReductionBase.setup_ctx(ctx, tensor, dim, keepdim)
 
     @staticmethod
     def backward(
