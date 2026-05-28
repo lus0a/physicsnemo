@@ -241,7 +241,6 @@ class UnHaloPadding(torch.autograd.Function):
 
     @staticmethod
     def forward(
-        ctx: torch.autograd.function.FunctionCtx,
         tensor: torch.Tensor,
         mesh: DeviceMesh,
         config: HaloConfig,
@@ -254,8 +253,6 @@ class UnHaloPadding(torch.autograd.Function):
 
         Parameters
         ----------
-        ctx : torch.autograd.function.FunctionCtx
-            Autograd context for saving tensors/variables for backward.
         tensor : torch.Tensor
             Tensor to remove halo padding from.
         mesh : DeviceMesh
@@ -269,10 +266,6 @@ class UnHaloPadding(torch.autograd.Function):
             Tensor with halo regions removed.
         """
 
-        # Save context for backward pass
-        ctx.mesh = mesh
-        ctx.config = config
-
         # Chop off the halos
         _left, unpadded_tensor, _right = slice_halo_regions(
             tensor,
@@ -280,10 +273,42 @@ class UnHaloPadding(torch.autograd.Function):
             config,
         )
 
-        ctx.left_shape = _left.shape
-        ctx.right_shape = _right.shape
-
         return unpadded_tensor
+
+    @staticmethod
+    def setup_context(ctx, inputs, output) -> None:
+        r"""Save ``mesh``, ``config`` and the left/right halo shapes for backward.
+
+        The left/right halo shapes are derived from the input tensor's shape
+        along ``config.tensor_dim`` and the rank in the mesh, matching the
+        slicing performed by ``slice_halo_regions``.
+        """
+        tensor, mesh, config = inputs
+
+        # Reconstruct the left/right slice boundaries on this rank without
+        # actually running ``slice_halo_regions`` a second time.
+        local_group = mesh.get_group(config.mesh_dim)
+        local_rank = mesh.get_local_rank(config.mesh_dim)
+        local_size = dist.get_world_size(group=local_group)
+
+        dim_shape = tensor.shape[config.tensor_dim]
+
+        start = config.halo_size if local_rank != 0 else config.edge_padding_size
+        end = (
+            dim_shape - config.halo_size
+            if local_rank != local_size - 1
+            else dim_shape - config.edge_padding_size
+        )
+
+        left_shape = list(tensor.shape)
+        left_shape[config.tensor_dim] = start
+        right_shape = list(tensor.shape)
+        right_shape[config.tensor_dim] = dim_shape - end
+
+        ctx.mesh = mesh
+        ctx.config = config
+        ctx.left_shape = torch.Size(left_shape)
+        ctx.right_shape = torch.Size(right_shape)
 
     @staticmethod
     def backward(
@@ -622,7 +647,7 @@ def perform_halo_collective(
                 req.wait()
 
     elif method == "a2a":
-        # This has to be funcol collectives, below, to be 
+        # This has to be funcol collectives, below, to be
         # conmpatible with torc.compile.
         #
         # Symmetric-halo assumption: what I receive from neighbor R has the

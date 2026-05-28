@@ -48,6 +48,33 @@ from physicsnemo.domain_parallel import scatter_tensor
 from .utils import generate_image_like_data, numerical_shard_tensor_check
 
 
+@pytest.fixture(autouse=True)
+def _disable_tf32_for_conv_equivalence():
+    r"""Force FP32 precision in cuDNN/matmul for the duration of each conv test.
+
+    ``numerical_shard_tensor_check`` asserts that the sharded conv output
+    matches the local single-GPU conv output within ``atol=rtol=1e-5``. On
+    Ampere+ GPUs, PyTorch defaults to TF32 (~10-bit mantissa) for cuDNN
+    convolutions and matmul, which gives a relative error of ~2^-10 ~ 1e-3
+    that easily blows the 1e-5 budget once cuDNN picks a different algorithm
+    for the larger local-vs-sharded tensor shapes (consistently observed at
+    H=256: the H=128 cases happen to land on a higher-precision kernel and
+    therefore still pass). Disabling TF32 here removes the algorithm-pick
+    artifact and lets the equivalence check verify only the sharding
+    correctness, which is what this suite is for. Restored after the test
+    so global state isn't perturbed for other modules.
+    """
+    matmul_prev = torch.backends.cuda.matmul.allow_tf32
+    cudnn_prev = torch.backends.cudnn.allow_tf32
+    torch.backends.cuda.matmul.allow_tf32 = False
+    torch.backends.cudnn.allow_tf32 = False
+    try:
+        yield
+    finally:
+        torch.backends.cuda.matmul.allow_tf32 = matmul_prev
+        torch.backends.cudnn.allow_tf32 = cudnn_prev
+
+
 @pytest.mark.multigpu_static
 @pytest.mark.parametrize("H", [32, 256])
 @pytest.mark.parametrize(
@@ -222,7 +249,7 @@ def test_conv2d_1dmesh(
 
 
 @pytest.mark.multigpu_static
-@pytest.mark.parametrize("H", [32, 256])
+@pytest.mark.parametrize("H", [128, 256])
 @pytest.mark.parametrize(
     "C_in",
     [
@@ -355,7 +382,7 @@ def test_conv2d_2dmesh(
 
 
 @pytest.mark.multigpu_static
-@pytest.mark.parametrize("H", [32, 256])
+@pytest.mark.parametrize("H", [64, 256])
 @pytest.mark.parametrize(
     "C_in",
     [

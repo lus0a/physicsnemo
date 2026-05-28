@@ -37,7 +37,10 @@ from torch.distributed.tensor.placement_types import (
 )
 
 import physicsnemo.domain_parallel.shard_tensor as shard_tensor
-from physicsnemo.domain_parallel._shard_tensor_spec import ShardTensorSpec
+from physicsnemo.domain_parallel._shard_tensor_spec import (
+    ShardTensorSpec,
+    compute_sharding_shapes_from_chunking_global_shape,
+)
 
 # TODO:
 # DTensor makes assumptions about sharding sizes.
@@ -242,8 +245,8 @@ def _to_new_shard_dim(
     # But we can optimize the null-communication
     dist.all_to_all(recv_shapes, send_shapes, group=group)
 
-    # Turn the recv_shapes back into torch shapes:
-    recv_shapes = [list(torch.Size(r)) for r in recv_shapes]
+    # Turn the recv_shapes back into plain int shape lists.
+    recv_shapes = [r.tolist() for r in recv_shapes]
 
     # Create the buffers for recv:
     recv_buffers = [
@@ -268,7 +271,7 @@ def redistribute_local_shard_tensor(
     *,
     async_op: bool = False,
     is_backward: bool = False,
-    target_sharding_shapes: dict[int, tuple[torch.Size, ...]] | None = None,
+    target_sharding_shapes: dict[int, tuple[tuple[int, ...], ...]] | None = None,
 ) -> torch.Tensor:
     r"""Redistribute a local tensor between different ShardTensorSpec configurations.
 
@@ -304,8 +307,9 @@ def redistribute_local_shard_tensor(
         Whether to run asynchronously.
     is_backward : bool, default=False
         Whether this is a backward pass (affects some redistribution behaviors).
-    target_sharding_shapes : Optional[Dict[int, Tuple[torch.Size, ...]]], optional
-        Target sharding shapes to use for redistribution. Default is empty dict.
+    target_sharding_shapes : Optional[Dict[int, Tuple[Tuple[int, ...], ...]]], optional
+        Target sharding shapes (plain int tuples) to use for redistribution.
+        Default is empty dict.
 
     Returns
     -------
@@ -549,7 +553,6 @@ class ShardRedistribute(torch.autograd.Function):
 
     @staticmethod
     def forward(
-        ctx: torch.autograd.function.FunctionCtx,
         input: "shard_tensor.ShardTensor",
         device_mesh: DeviceMesh,
         placements: tuple[Placement, ...],
@@ -559,8 +562,6 @@ class ShardRedistribute(torch.autograd.Function):
 
         Parameters
         ----------
-        ctx : torch.autograd.function.FunctionCtx
-            Autograd context for saving tensors/variables for backward.
         input : ShardTensor
             Input sharded tensor to redistribute.
         device_mesh : DeviceMesh
@@ -576,9 +577,6 @@ class ShardRedistribute(torch.autograd.Function):
             Redistributed sharded tensor with new placement scheme.
         """
         current_spec = input._spec
-
-        ctx.current_spec = current_spec
-        ctx.async_op = async_op
 
         if current_spec.placements != placements:
             # We have to assume, here, that the current spec has correct sharding_shapes.
@@ -612,6 +610,36 @@ class ShardRedistribute(torch.autograd.Function):
             )
             # Set the local shape:
             target_spec._local_shape = output.shape
+
+            # Populate _sharding_shapes on the target spec so downstream
+            # consumers (especially under torch.compile) don't trip
+            # `_all_gather_shard_shapes` -- a blocking collective that is
+            # not AOT-traceable. Start from chunk semantics (pure
+            # arithmetic, no comms) and override preserved-shard tensor
+            # dims with the precomputed per-rank sizes from
+            # `target_sharding_shapes` so uneven sharding is preserved.
+            global_shape = tuple(input._spec.tensor_meta.shape)
+            chunk_shapes = compute_sharding_shapes_from_chunking_global_shape(
+                device_mesh, placements, global_shape
+            )
+            for mesh_dim, placement in enumerate(placements):
+                if not isinstance(placement, Shard):
+                    continue
+                tensor_dim = placement.dim
+                if tensor_dim in target_sharding_shapes:
+                    mesh_size = device_mesh.size(mesh_dim)
+                    per_rank_sizes = target_sharding_shapes[tensor_dim]
+                    if len(per_rank_sizes) == mesh_size:
+                        overridden = []
+                        for rank_size in per_rank_sizes:
+                            rank_shape = list(global_shape)
+                            rank_shape[tensor_dim] = int(rank_size)
+                            overridden.append(rank_shape)
+                        chunk_shapes[mesh_dim] = overridden
+            target_spec._sharding_shapes = {
+                mesh_dim: tuple(tuple(s) for s in shapes)
+                for mesh_dim, shapes in chunk_shapes.items()
+            }
         else:
             # use the same local tensor if placements are the same.
             output = input._local_tensor
@@ -622,6 +650,20 @@ class ShardRedistribute(torch.autograd.Function):
             target_spec,
             requires_grad=input.requires_grad,
         )
+
+    @staticmethod
+    def setup_context(ctx, inputs, output) -> None:
+        r"""Save the source spec and ``async_op`` flag for the backward redistribute.
+
+        ``DisableTorchFunctionSubclass`` shielding avoids re-entering the
+        ShardTensor ``__torch_function__`` fallback while reading
+        ``input._spec`` -- the same AOT-hostile bridge motivated the
+        shielding in ``ShardedSum.setup_context``.
+        """
+        input, _device_mesh, _placements, async_op = inputs
+        with torch._C.DisableTorchFunctionSubclass():
+            ctx.current_spec = input._spec
+        ctx.async_op = async_op
 
     @staticmethod
     def backward(
