@@ -10,13 +10,11 @@
       
       
       
-        <link rel="canonical" href="http://www.example.com/blog/2026/04/10/earth2-deploy/">
+        <link rel="canonical" href="http://www.example.com/blog/2026/05/29/physicsnemo-cfd/">
       
       
-        <link rel="prev" href="../../07/physicsnemo-mesh/">
+        <link rel="prev" href="../../../04/10/earth2-deploy/">
       
-      
-        <link rel="next" href="../../../05/29/physicsnemo-cfd/">
       
       
       <link rel="icon" href="../../../../../assets/images/favicon.png">
@@ -24,7 +22,7 @@
     
     
       
-        <title>From Scripts to Endpoints: Bridging the Gap in Cloud-Native Inference - NVIDIA PhysicsNeMo</title>
+        <title>Don’t Yet Trust the Model, Test the Physics - NVIDIA PhysicsNeMo</title>
       
     
     
@@ -65,11 +63,11 @@
       
         <meta  property="og:type"  content="website" >
       
-        <meta  property="og:title"  content="From Scripts to Endpoints: Bridging the Gap in Cloud-Native Inference - NVIDIA PhysicsNeMo" >
+        <meta  property="og:title"  content="Don’t Yet Trust the Model, Test the Physics - NVIDIA PhysicsNeMo" >
       
         <meta  property="og:description"  content="PhysicsNeMo blog" >
       
-        <meta  property="og:image"  content="http://www.example.com/assets/images/social/blog/posts/earth2_inference_api.png" >
+        <meta  property="og:image"  content="http://www.example.com/assets/images/social/blog/posts/physicsnemo_cfd.png" >
       
         <meta  property="og:image:type"  content="image/png" >
       
@@ -77,15 +75,15 @@
       
         <meta  property="og:image:height"  content="630" >
       
-        <meta  property="og:url"  content="http://www.example.com/blog/2026/04/10/earth2-deploy/" >
+        <meta  property="og:url"  content="http://www.example.com/blog/2026/05/29/physicsnemo-cfd/" >
       
         <meta  name="twitter:card"  content="summary_large_image" >
       
-        <meta  name="twitter:title"  content="From Scripts to Endpoints: Bridging the Gap in Cloud-Native Inference - NVIDIA PhysicsNeMo" >
+        <meta  name="twitter:title"  content="Don’t Yet Trust the Model, Test the Physics - NVIDIA PhysicsNeMo" >
       
         <meta  name="twitter:description"  content="PhysicsNeMo blog" >
       
-        <meta  name="twitter:image"  content="http://www.example.com/assets/images/social/blog/posts/earth2_inference_api.png" >
+        <meta  name="twitter:image"  content="http://www.example.com/assets/images/social/blog/posts/physicsnemo_cfd.png" >
       
     
     
@@ -108,7 +106,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#from-scripts-to-endpoints-bridging-the-gap-in-cloud-native-inference" class="md-skip">
+        <a href="#dont-yet-trust-the-model-test-the-physics" class="md-skip">
           Skip to content
         </a>
       
@@ -142,7 +140,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              From Scripts to Endpoints: Bridging the Gap in Cloud-Native Inference
+              Don’t Yet Trust the Model, Test the Physics
             
           </span>
         </div>
@@ -629,37 +627,19 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#serving-inference-with-earth2studio" class="md-nav__link">
+  <a href="#the-consistency-gap" class="md-nav__link">
     <span class="md-ellipsis">
-      Serving inference with Earth2Studio
+      The Consistency Gap
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Serving inference with Earth2Studio">
+    <nav class="md-nav" aria-label="The Consistency Gap">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#1-implement-the-workflow-logic" class="md-nav__link">
+  <a href="#validation-is-important" class="md-nav__link">
     <span class="md-ellipsis">
-      1. Implement the Workflow Logic
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-define-your-data-structure-with-pydantic" class="md-nav__link">
-    <span class="md-ellipsis">
-      2. Define Your Data Structure with Pydantic
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-auto-discovery-deployment" class="md-nav__link">
-    <span class="md-ellipsis">
-      3. Auto-Discovery &amp; Deployment
+      Validation is important
     </span>
   </a>
   
@@ -671,37 +651,28 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#deploying-a-forecasting-api" class="md-nav__link">
+  <a href="#the-expertise-gap" class="md-nav__link">
     <span class="md-ellipsis">
-      Deploying a Forecasting API
+      The Expertise Gap
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Deploying a Forecasting API">
+    <nav class="md-nav" aria-label="The Expertise Gap">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#1-the-parameter-contract" class="md-nav__link">
+  <a href="#accessibility-matters" class="md-nav__link">
     <span class="md-ellipsis">
-      1. The Parameter Contract
+      Accessibility Matters
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#2-the-implementation-logic" class="md-nav__link">
+  <a href="#path-toward-democratization" class="md-nav__link">
     <span class="md-ellipsis">
-      2. The Implementation Logic
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-api-accessibility" class="md-nav__link">
-    <span class="md-ellipsis">
-      3. API Accessibility
+      Path Toward Democratization
     </span>
   </a>
   
@@ -709,13 +680,31 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#introducing-physicsnemo-cfd" class="md-nav__link">
+    <span class="md-ellipsis">
+      Introducing PhysicsNeMo CFD
+    </span>
+  </a>
   
 </li>
       
         <li class="md-nav__item">
   <a href="#getting-started" class="md-nav__link">
     <span class="md-ellipsis">
-      Getting started
+      Getting Started
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-can-you-contribute" class="md-nav__link">
+    <span class="md-ellipsis">
+      How can you contribute?
     </span>
   </a>
   
@@ -750,51 +739,6 @@
                 
                   <div class="md-profile md-post__profile">
                     <span class="md-author md-author--long">
-                      <img src="../../../../../author-images/sourabh_headshot.jpg" alt="Sourabh Joshi">
-                    </span>
-                    <span class="md-profile__description">
-                      <strong>
-                        
-                          Sourabh Joshi
-                        
-                      </strong>
-                      <br>
-                      Senior System Software Engineer
-                    </span>
-                  </div>
-                
-                  <div class="md-profile md-post__profile">
-                    <span class="md-author md-author--long">
-                      <img src="../../../../../author-images/ramu_headshot.jpg" alt="Ramu Ramamurthy">
-                    </span>
-                    <span class="md-profile__description">
-                      <strong>
-                        
-                          Ramu Ramamurthy
-                        
-                      </strong>
-                      <br>
-                      Senior System Software Engineer
-                    </span>
-                  </div>
-                
-                  <div class="md-profile md-post__profile">
-                    <span class="md-author md-author--long">
-                      <img src="../../../../../author-images/jussi_headshot.jpg" alt="Jussi Leinonen">
-                    </span>
-                    <span class="md-profile__description">
-                      <strong>
-                        
-                          Jussi Leinonen
-                        
-                      </strong>
-                      <br>
-                      Solutions Architect
-                    </span>
-                  </div>
-                
-                  <div class="md-profile md-post__profile">
-                    <span class="md-author md-author--long">
                       <img src="../../../../../author-images/ram_headshot.jpg" alt="Ram Cherukuri">
                     </span>
                     <span class="md-profile__description">
@@ -810,12 +754,27 @@
                 
                   <div class="md-profile md-post__profile">
                     <span class="md-author md-author--long">
-                      <img src="../../../../../author-images/nick_headshot.jpg" alt="Nicholas Geneva">
+                      <img src="../../../../../author-images/rishi_headshot.jpeg" alt="Rishi Ranade">
                     </span>
                     <span class="md-profile__description">
                       <strong>
                         
-                          Nicholas Geneva
+                          Rishi Ranade
+                        
+                      </strong>
+                      <br>
+                      Senior Technical Product Manager - Physics AI Models and CAE Blueprints
+                    </span>
+                  </div>
+                
+                  <div class="md-profile md-post__profile">
+                    <span class="md-author md-author--long">
+                      <img src="../../../../../author-images/kaustubh_headshot.jpg" alt="Kaustubh Tangsali">
+                    </span>
+                    <span class="md-profile__description">
+                      <strong>
+                        
+                          Kaustubh Tangsali
                         
                       </strong>
                       <br>
@@ -837,14 +796,14 @@
                     <li class="md-nav__item">
                       <div class="md-nav__link">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 19H5V8h14m-3-7v2H8V1H6v2H5c-1.11 0-2 .89-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-1V1m-1 11h-5v5h5z"/></svg>
-                        <time datetime="2026-04-10 00:00:00+00:00" class="md-ellipsis">April 10, 2026</time>
+                        <time datetime="2026-05-29 00:00:00+00:00" class="md-ellipsis">May 29, 2026</time>
                       </div>
                     </li>
                     
                       <li class="md-nav__item">
                         <div class="md-nav__link">
                           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15 13h1.5v2.82l2.44 1.41-.75 1.3L15 16.69zm4-5H5v11h4.67c-.43-.91-.67-1.93-.67-3a7 7 0 0 1 7-7c1.07 0 2.09.24 3 .67zM5 21a2 2 0 0 1-2-2V5c0-1.11.89-2 2-2h1V1h2v2h8V1h2v2h1a2 2 0 0 1 2 2v6.1c1.24 1.26 2 2.99 2 4.9a7 7 0 0 1-7 7c-1.91 0-3.64-.76-4.9-2zm11-9.85A4.85 4.85 0 0 0 11.15 16c0 2.68 2.17 4.85 4.85 4.85A4.85 4.85 0 0 0 20.85 16c0-2.68-2.17-4.85-4.85-4.85"/></svg>
-                          <time datetime="2026-04-10 00:00:00+00:00" class="md-ellipsis">April 10, 2026</time>
+                          <time datetime="2026-05-29 00:00:00+00:00" class="md-ellipsis">May 29, 2026</time>
                         </div>
                       </li>
                     
@@ -855,7 +814,7 @@
                           <span class="md-ellipsis">
                             in
                             
-                              <a href="../../../../category/earth2studio/">Earth2Studio</a></span>
+                              <a href="../../../../category/physicsnemo-cfd/">PhysicsNeMo CFD</a></span>
                         </div>
                       </li>
                     
@@ -1020,19 +979,13 @@
       
       
       
-        <a href="../../../../tags/#tag:earth-2" class="md-tag">Earth-2</a>
-      
-    
-      
-      
-      
-        <a href="../../../../tags/#tag:earth2studio" class="md-tag">Earth2Studio</a>
-      
-    
-      
-      
-      
         <a href="../../../../tags/#tag:inference" class="md-tag">Inference</a>
+      
+    
+      
+      
+      
+        <a href="../../../../tags/#tag:physicsnemo-cfd" class="md-tag">PhysicsNeMo CFD</a>
       
     
   </nav>
@@ -1042,83 +995,76 @@
   
 
 
-<h1 id="from-scripts-to-endpoints-bridging-the-gap-in-cloud-native-inference">From Scripts to Endpoints: Bridging the Gap in Cloud-Native Inference</h1>
-<p>For a developer, the journey from working Python scripts to a production-ready cloud solution is often paved with "infrastructure tax." For instance, as a developer you’ve cracked the problem of applying AI models for your weather related application using powerful libraries like Earth2Studio. </p>
+<h1 id="dont-yet-trust-the-model-test-the-physics">Don’t Yet Trust the Model, Test the Physics</h1>
+<p>AI physics models are advancing quickly and are beginning to prove their value in enterprise engineering workflows. But a critical bottleneck remains: rigorous, repeatable evaluation. Comparing a new model against the current state of the art still too often means stitching together datasets, metrics, scripts, and baselines by hand. That keeps evaluation behind a skill curtain and slows down both model development and domain expert adoption. To push the state of the art forward at the speed of light, we need to make evaluation easier for the people who understand the physics, the data, and the edge cases best. Their feedback will enable the AI researchers to surgically operate and build new bleeding edge models. This blog highlights the new and improved <a href="https://github.com/NVIDIA/physicsnemo-cfd/tree/main">PhysicsNeMo CFD module</a> to address the current gaps and strengthen this loop between model developers and model evaluators.</p>
 <!-- more -->
 
-<p>But the road to a scalable cloud native pipeline that could serve many users is blocked by a familiar set of challenges:</p>
+<p><a href="../../../../../images/physicsnemo-cfd/continuity-errors.png"><img alt="physicsnemo-cfd-continuity" src="../../../../../images/physicsnemo-cfd/continuity-errors.png" /></a></p>
+<h2 id="the-consistency-gap">The Consistency Gap</h2>
+<p>SciML Researchers building the next generation of AI Physics models need a consistent way to compare against current baselines, but today's evaluation process can be fragmented. Teams often scrape different repositories, reproduce inconsistent setups, and hand-build metric pipelines before they can make an apples-to-apples comparison. The target engineering community has high standards for reliability, physical consistency, and generalization; without transparent benchmarks, domain experts are left in a wait-and-see posture.</p>
+<h3 id="validation-is-important">Validation is important</h3>
 <ul>
-<li><em>The "Plumbing" Problem</em>: Writing boilerplate code for asynchronous job queues, status management and error handling.</li>
-<li><em>State Management</em>: Tracking long-running inference tasks across distributed systems without losing progress or results.</li>
-<li><em>Data Management</em>: Converting complex Python objects into validated JSON schemas, efficiently zipping, storing, and serving large output files (like Zarr or NetCDF) via HTTP.</li>
+<li><strong>Holistic benchmarking</strong>: Metrics should capture physical consistency and engineering relevance, not just pointwise L2 error.</li>
+<li><strong>Consistent benchmarking</strong>: Models should be evaluated on shared datasets, metrics, and reporting formats so comparisons are fair.</li>
+<li><strong>Leaderboards</strong>: A current snapshot of state-of-the-art performance helps guide model development, ablations, and ideation.</li>
 </ul>
-<p><a href="../../../../../images/earth2/hpc-corp-blog-earth-2-model-768x432.jpg"><img alt="earth2_open_model_banner" src="../../../../../images/earth2/hpc-corp-blog-earth-2-model-768x432.jpg" /></a></p>
-<h2 id="serving-inference-with-earth2studio">Serving inference with Earth2Studio</h2>
-<p>In the latest release of Earth2Studio, we have introduced a templatized workflow designed to eliminate this "middleman" work. Leveraging the concept of built-in reference recipes in Earth2Studio, this templatized workflow allows you to transform any Earth2Studio recipe into a scalable REST API by following a three-step pattern:</p>
-<h3 id="1-implement-the-workflow-logic">1. Implement the Workflow Logic</h3>
-<p>You subclass the <code>Workflow</code> class and implement a <code>run()</code> method within it. The heavy lifting—managing whether a job is "queued" or "running"—is automatically handled by the system. You simply focus on your logic, using <code>update_execution_data()</code> to send progress heartbeats back to the API.</p>
-<p>For even tighter integration with Earth2Studio and fewer manual steps, you can use <code>Earth2Workflow</code>. This is a Pythonic workflow that can be naturally run also outside the server environments and is automatically assigned an API schema.</p>
-<pre><code class="language-python">class MyForecastWorkflow(Earth2Workflow):
-    def __init__(self):
-        self.model = ...  # initialize your model
-        self.data = ... #initialize your data source
+<h2 id="the-expertise-gap">The Expertise Gap</h2>
+<p>Evaluating an AI physics surrogate for a CFD use case, such as aerodynamic flow over a vehicle or conjugate heat transfer over a chip, often requires bespoke code and manual data plumbing. That creates a barrier for domain experts: the engineers who have the physical intuition to recognize non-physical behavior that a standard loss function would not capture.</p>
+<h3 id="accessibility-matters">Accessibility Matters</h3>
+<ul>
+<li><strong>Verification of physical consistency</strong>: A model can achieve a low mean squared error (MSE) while still violating important physical constraints. Domain experts need intuitive diagnostics and visualizations that surface those silent failures.</li>
+<li><strong>Stress-testing edge cases</strong>: Domain experts know the breaking points of simulation workflows, from extreme turbulence to unusual operating regimes. Accessible evaluation lets them probe models where failures are most likely.</li>
+<li><strong>Trust and adoption</strong>: For AI to be used in real-world engineering, the black box must be paired with transparent benchmarks that experts can inspect, extend, and discuss in the language of their discipline.</li>
+</ul>
+<h3 id="path-toward-democratization">Path Toward Democratization</h3>
+<p>To bring more experts into the fold, the field needs evaluation workflows that are:</p>
+<ul>
+<li><strong>Representative</strong>: Pretrained models and datasets should cover meaningful CFD use cases so experts can explore realistic behavior quickly.</li>
+<li><strong>Low-code</strong>: Engineers should be able to evaluate models on their own data by writing minimal wrappers and adapters.</li>
+<li><strong>Collaborative</strong>: Open libraries should make it easy to contribute challenge cases, custom metrics, and diagnostics that reveal where current models struggle.</li>
+</ul>
+<p><strong>The Bottom Line</strong>: If we want AI to solve the next generation of physics problems, the referees of these models should not need to overcome barriers to develop AI expertise first. By making evaluation accessible, we turn domain experts from skeptical observers into active architects of more robust AI.</p>
+<h2 id="introducing-physicsnemo-cfd">Introducing PhysicsNeMo CFD</h2>
+<p>PhysicsNeMo CFD is a sub-module of <a href="https://github.com/NVIDIA/physicsnemo/">NVIDIA PhysicsNeMo framework</a> that provides tools for integrating pretrained AI models into engineering and CFD workflows. It includes config-driven workflows for surrogate model evaluation and benchmarking, along with utilities for model wrappers, dataset adapters, metric computation, and postprocessing.</p>
+<p>This makes evaluation simpler for engineers and domain experts: many experiments require only a few YAML configuration changes. Advanced users can extend the same workflow with custom datasets, custom model wrappers, and new metrics while still reporting results through a consistent harness.</p>
+<p>Let's look at GeoTransolver as an example. After installing the module like any other Python package, you can use the benchmarking workflow to evaluate a pretrained GeoTransolver checkpoint on DrivAerML or your own compatible CFD dataset. The workflow reports metrics such as L2 pressure, L2 turbulent viscosity, L2 velocity, and integrated quantities such as drag and lift coefficient errors. For the default volume benchmark, evaluation comes down to running one script with the right configuration file.</p>
+<pre><code class="language-bash"># Volume benchmark
+python main.py --config-name=config_volume
+</code></pre>
+<p>The configuration file is designed to be easy to customize. You can swap the model checkpoint, dataset path, inference domain, or metric list from the built-in wrappers, and advanced users can register their own models, datasets, metrics, and visuals.</p>
+<pre><code class="language-yaml">benchmark:
+ ...
+  models:
+    - name: &quot;geotransolver&quot;
+      inference_domain: volume
+      checkpoint: /path/to/checkpoint
+      ...
+  datasets:
+    - name: &quot;drivaerml&quot;
+      root: /path/to/dataset
+     ...
 
-    def __call__(
-        self,
-        io: IOBackend,
-        nsteps: int = 20,
-        model_type: Literal[&quot;dlwp&quot;, &quot;fcn&quot;] = &quot;fcn&quot;
-    ):
-        # workflow logic goes here 
+metrics:
+  - l2_pressure
+  - l2_turbulent_viscosity
+  - l2_velocity
+...
 </code></pre>
-<h3 id="2-define-your-data-structure-with-pydantic">2. Define Your Data Structure with Pydantic</h3>
-<p>If you’re using <code>Earth2Workflow</code>, you can skip this step - the parameters will be automatically created for your model!</p>
-<p>If you use the lower-level <code>Workflow</code>, instead of manually parsing request bodies, you define a <code>WorkflowParameters</code> class. Using Pydantic, your Python types (strings, ints, lists) are automatically mapped to a JSON API. This provides instant validation and self-documenting parameters for your endpoint. The parameters below correspond to the parameters that would be automatically created for the <code>Earth2Workflow</code> example above:</p>
-<pre><code class="language-python">class MyForecastParameters(WorkflowParameters):
-    nsteps: int = Field(default=20, ge=1, le=100, description=&quot;Forecast steps&quot;)
-    model_type: str = Field(default=&quot;dlwp&quot;, description=&quot;Model type&quot;)
-</code></pre>
-<h3 id="3-auto-discovery-deployment">3. Auto-Discovery &amp; Deployment</h3>
-<p>There’s no need to manually register routes. By using the <code>@workflow_registry</code>.register decorator and setting a <code>WORKFLOW_DIR</code> environment variable, the system <em>auto-discovers</em> your scripts and stands up endpoints immediately.</p>
-<p>This architecture separates the application and inference logic from the API infrastructure. While the system manages Redis state, file zipping, and request queuing, you spend your time focused on refining models.</p>
-<p><a href="../../../../../images/earth2/earth2-deploy-architecture-diagram.png"><img alt="earth2_deploy_architecture" src="../../../../../images/earth2/earth2-deploy-architecture-diagram.png" /></a>
-<em>Fig 1: Architecture diagram showing the underlying architecture and components that enable such seamless deployment of Earth2Studio recipes into endpoints.</em></p>
-<h2 id="deploying-a-forecasting-api">Deploying a Forecasting API</h2>
-<p>In the Earth2Studio <a href="https://github.com/NVIDIA/earth2studio/blob/main/serve/server/README_workflows.md">documentation</a>, there is an example that demonstrates the Earth2Studio REST API using the Deterministic Forecast recipe.
-This example transforms python inference scripts to a dynamic, trackable endpoint service by following the same "Contract-Logic-Discovery" pattern discussed above. 
-Meanwhile <a href="https://github.com/NVIDIA/earth2studio/blob/main/serve/server/README_earth2workflows.md">another example</a> shows how Earth2Workflow automates much of this process, requiring only a Pythonic workflow.</p>
-<h3 id="1-the-parameter-contract">1. The Parameter Contract</h3>
-<p>Instead of hardcoding simulation variables, the workflow uses a <code>DeterministicWorkflowParameters</code> class. This defines the exact inputs the REST API will accept, such as:</p>
-<ul>
-<li><em>Forecast Details</em>: <code>forecast_times</code> (ISO strings) and <code>nsteps</code> (validated between 1 and 100).</li>
-<li><em>Model Selection</em>: A string parameter to toggle between models like <code>dlwp</code> or <code>fcn</code>.</li>
-<li><em>Visualization</em>: Boolean flags to trigger plot generation for specific variables like <code>t2m</code> (2-meter temperature).</li>
-</ul>
-<h3 id="2-the-implementation-logic">2. The Implementation Logic</h3>
-<p>The <code>run()</code> method acts as the engine, wrapping Earth2Studio’s computational tools in a way that communicates with the cloud infrastructure:</p>
-<ul>
-<li><em>Initialization</em>: It loads the requested AI model package (e.g., DLWP) and sets up the data source, such as GFS (Global Forecast System).</li>
-<li><em>Progress Heartbeats</em>: At key milestones—like loading components or starting the 6-hour forecast steps—it calls <code>self.update_execution_data()</code>. This allows an external developer to see <code>current_step: 4, total_steps: 6</code> via the API status endpoint.</li>
-<li><em>Output Management</em>: It uses a Zarr backend to save results to a specific directory provided by <code>get_output_path()</code>, ensuring the system knows exactly where to find the data to zip and serve it later.</li>
-</ul>
-<h3 id="3-api-accessibility">3. API Accessibility</h3>
-<p>Once deployed, this workflow is no longer just a script on a researcher's laptop; it becomes a set of predictable endpoints:</p>
-<ul>
-<li><strong>Submission</strong>: A POST to <code>/v1/infer/deterministic_workflow</code> starts the job.</li>
-<li><strong>Monitoring</strong>: A GET to the status endpoint returns the current state (e.g., running) and progress metadata.</li>
-<li><strong>Retrieval</strong>: Once complete, the results can be downloaded as a full zip or streamed directly into an analysis tool like <em>xarray</em> via the Zarr URL.</li>
-</ul>
-<h2 id="getting-started">Getting started</h2>
-<p>If you are a developer or scientist or AI researcher, Earth2Studio is a powerful library to get users up and running very quickly by lowering barriers to entry so they can explore, validate and experiment with AI models for weather and climate. The following resources will help you in getting started:</p>
-<ul>
-<li><a href="https://www.nvidia.com/en-us/high-performance-computing/earth-2/">Earth-2 Platform</a></li>
-<li><a href="https://github.com/NVIDIA/earth2studio">Earth2Studio Github</a></li>
-<li><a href="https://nvidia.github.io/earth2studio/examples/">Earth2Studio Reference Recipes</a></li>
-<li><a href="https://github.com/NVIDIA/earth2studio/blob/main/serve/server/README_workflows.md">EarthStudio Deploy</a></li>
-</ul>
-<p><a class="md-button" href="https://twitter.com/intent/tweet?text=From%20Scripts%20to%20Endpoints%3A%20Bridging%20the%20Gap%20in%20Cloud-Native%20Inference%0A&amp;url=http://www.example.com/blog/2026/04/10/earth2-deploy/">Share on <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z"/></svg></span></a>
-<a class="md-button" href="https://www.facebook.com/sharer/sharer.php?u=http://www.example.com/blog/2026/04/10/earth2-deploy/">Share on <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.101 23.691v-7.98H6.627v-3.667h2.474v-1.58c0-4.085 1.848-5.978 5.858-5.978.401 0 .955.042 1.468.103a9 9 0 0 1 1.141.195v3.325a9 9 0 0 0-.653-.036 27 27 0 0 0-.733-.009c-.707 0-1.259.096-1.675.309a1.7 1.7 0 0 0-.679.622c-.258.42-.374.995-.374 1.752v1.297h3.919l-.386 2.103-.287 1.564h-3.246v8.245C19.396 23.238 24 18.179 24 12.044c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.628 3.874 10.35 9.101 11.647"/></svg></span></a>
-<a class="md-button" href="https://www.linkedin.com/sharing/share-offsite/?url=http://www.example.com/blog/2026/04/10/earth2-deploy/">Share on LinkedIn</a>
+<p>To make exploration easier, NVIDIA PhysicsNeMo team has also published pretrained checkpoints on <a href="https://huggingface.co/collections/nvidia/physicsnemo">Hugging Face</a> for model architectures such as GeoTransolver, DoMINO, MeshGraphNet, and FigConvNet. These checkpoints give teams a starting point for reproducing benchmark results before bringing in their own models or data. The figure and the table below show the kind of validation and analysis that domain experts can perform using the benchmarking workflow with a custom model, dataset or custom metrics.</p>
+<p>This is just the beginning. We will continue building PhysicsNeMo CFD to help model builders and domain experts meet on common evaluation ground. A leaderboard can provide a living snapshot of state-of-the-art performance, helping researchers understand where current models excel, where they fail, and what they need to eclipse. Join the conversation on <a href="https://github.com/NVIDIA/physicsnemo-cfd">GitHub</a> by sharing issues, datasets, metrics, models, and challenge cases.</p>
+<p><a href="../../../../../images/physicsnemo-cfd/geotransolver-surface-predictions.gif"><img alt="physicsnemo-cfd-surface-predictions" src="../../../../../images/physicsnemo-cfd/geotransolver-surface-predictions.gif" /></a>
+<em>Fig 1: Figure showing outputs from the benchmarking notebook using the DrivAerML dataset.</em></p>
+<h2 id="getting-started">Getting Started</h2>
+<p>Start with the <a href="https://github.com/NVIDIA/physicsnemo-cfd">PhysicsNeMo CFD GitHub</a> repository. Install the package in your Python environment, or clone the repository if you want to run the example workflows locally. From there, choose the benchmark assets you want to evaluate against and point the YAML configuration to the relevant checkpoint, dataset, and metrics.</p>
+<p>For the GeoTransolver example above, the workflow is intentionally lightweight: run the benchmark script from the benchmarking workflow with the volume configuration, then swap in a different checkpoint, dataset path, or metric list as needed. Advanced users can register custom model wrappers, dataset adapters, metrics, and visuals without rewriting the full harness.</p>
+<p>The output should give both model builders and domain experts a shared readout of model behavior: field-level errors, integrated engineering quantities, physics-aware diagnostics, and visual comparisons that make failure modes easier to inspect.</p>
+<h2 id="how-can-you-contribute">How can you contribute?</h2>
+<p>PhysicsNeMo CFD is intended to grow with the community. Contributions can be as small as a bug report or documentation fix, or as substantial as a new benchmark dataset, model wrapper, metric, visualization, or challenge case.</p>
+<p>If you are building AI physics models, contribute workflows that make your evaluation reproducible. If you are a domain expert, contribute edge cases and diagnostics that reveal failure modes standard loss curves miss. The goal is to make the benchmark harness a shared meeting ground where model builders and engineering experts can test, compare, and improve CFD surrogates together.</p>
+<p>To get involved, open an issue or pull request in the <a href="https://github.com/NVIDIA/physicsnemo-cfd">PhysicsNeMo CFD GitHub</a> repository and share what you are evaluating, what data or metrics matter, and where current models need to improve.</p>
+<p><a class="md-button" href="https://twitter.com/intent/tweet?text=Don%E2%80%99t%20Yet%20Trust%20the%20Model%2C%20Test%20the%20Physics%0A&amp;url=http://www.example.com/blog/2026/05/29/physicsnemo-cfd/">Share on <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z"/></svg></span></a>
+<a class="md-button" href="https://www.facebook.com/sharer/sharer.php?u=http://www.example.com/blog/2026/05/29/physicsnemo-cfd/">Share on <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.101 23.691v-7.98H6.627v-3.667h2.474v-1.58c0-4.085 1.848-5.978 5.858-5.978.401 0 .955.042 1.468.103a9 9 0 0 1 1.141.195v3.325a9 9 0 0 0-.653-.036 27 27 0 0 0-.733-.009c-.707 0-1.259.096-1.675.309a1.7 1.7 0 0 0-.679.622c-.258.42-.374.995-.374 1.752v1.297h3.919l-.386 2.103-.287 1.564h-3.246v8.245C19.396 23.238 24 18.179 24 12.044c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.628 3.874 10.35 9.101 11.647"/></svg></span></a>
+<a class="md-button" href="https://www.linkedin.com/sharing/share-offsite/?url=http://www.example.com/blog/2026/05/29/physicsnemo-cfd/">Share on LinkedIn</a>
 <a class="md-button" href="https://github.com/NVIDIA/physicsnemo/discussions/categories/show-and-tell">Discuss on <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg></span></a></p>
 
 
