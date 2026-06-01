@@ -155,6 +155,23 @@ jobs:
         path: ${{ env.JIT_CACHE_DIR }}
         key: ${{ env.JIT_CACHE_KEY_PREFIX }}-latest
 
+    # asv shells out to git for every command (the container runs as root but
+    # the checked-out tree is owned by a different uid, which otherwise trips
+    # git's "detected dubious ownership" guard and fails `asv publish`).  Also
+    # ensure a local `main` ref exists: asv resolves conf.branches (["main"]
+    # in asv.conf.json) to build its commit list, which fails on a feature
+    # branch where `main` was never fetched.  Results are still stored under
+    # the real HEAD sha via --set-commit-hash below, so pointing `main` at
+    # HEAD here only satisfies asv's branch lookup.
+    - name: Prepare git for asv
+      run: |
+        set -euo pipefail
+        git config --global --add safe.directory "$GITHUB_WORKSPACE"
+        git config --global --add safe.directory '*'
+        if ! git rev-parse --verify --quiet main >/dev/null; then
+          git branch main HEAD
+        fi
+
     # asv prompts interactively for machine metadata on first use; --yes
     # accepts the autodetected defaults and writes ~/.asv-machine.json.
     - name: Configure asv machine
@@ -166,13 +183,54 @@ jobs:
     # CUDA compatibility).  --python=same runs in the existing uv env and
     # ignores the asv.conf.json matrix.  `uv run --no-sync` puts .venv/bin on
     # PATH and keeps the env read-only (UV_FROZEN/UV_NO_SYNC).
+    #
+    # --set-commit-hash is REQUIRED: with an existing environment (--python=
+    # same) asv skips saving results entirely unless a commit hash is pinned
+    # (see asv/commands/run.py: skip_save is True for ExistingEnvironment when
+    # set_commit_hash is None).  Without it, .asv/results stays empty and the
+    # publish/plot steps have nothing to consume.  --no-pull avoids an
+    # unnecessary `git fetch` against the shallow checkout.
+    #
+    # Verbosity:
+    #   -v / --verbose    : per-benchmark progress and asv internals.
+    #   --show-stderr     : surface each benchmark process's stdout/stderr so
+    #                       a slow or hanging benchmark is visible live in the
+    #                       job log instead of only the terminal summary line.
+    #   PYTHONUNBUFFERED=1: flush asv/benchmark output immediately so the live
+    #                       log is not held back by stdio buffering.
+    #
+    # Exit-code handling: asv returns 2 when one or more benchmarks fail (e.g.
+    # the functional KNN "scipy" cases, which cannot run on CUDA inputs).
+    # Those are individual benchmark failures, not an infrastructure problem,
+    # so we downgrade exit code 2 to a warning and still publish the partial
+    # results.  Any other nonzero exit (config/usage/infra errors) remains
+    # fatal.
     - name: Run ASV benchmarks
       env:
         WARP_CACHE_PATH: ${{ env.JIT_CACHE_DIR }}/warp
         TRITON_CACHE_DIR: ${{ env.JIT_CACHE_DIR }}/triton
         TORCHINDUCTOR_CACHE_DIR: ${{ env.JIT_CACHE_DIR }}/inductor
+        PYTHONUNBUFFERED: "1"
       run: |
-        uv run --no-sync asv run --launch-method spawn --python=same
+        commit_hash="$(git rev-parse HEAD)"
+        # GitHub's default bash shell runs with `set -e`; disable it around
+        # the asv call so we can inspect the exit code instead of aborting.
+        set +e
+        uv run --no-sync asv run \
+          --launch-method spawn \
+          --python=same \
+          --set-commit-hash "$commit_hash" \
+          --no-pull \
+          --verbose \
+          --show-stderr
+        rc=$?
+        set -e
+        if [ "$rc" -eq 2 ]; then
+          echo "::warning::asv reported one or more failed benchmarks (exit code 2); publishing partial results."
+        elif [ "$rc" -ne 0 ]; then
+          echo "::error::asv run failed with exit code $rc."
+          exit "$rc"
+        fi
 
     # Generate the browsable HTML dashboard from the fresh results.
     - name: Publish ASV HTML report
