@@ -43,6 +43,13 @@
 
 name: Nightly Github ASV Benchmarks
 on:
+  # TEMPORARY: run on every push to the development branch so the workflow can
+  # be exercised before it lands on the default branch (workflow_dispatch and
+  # schedule are only registered once the file is on the default branch).
+  # REMOVE this push trigger before merging.
+  push:
+    branches:
+      - asv-benchmarks-in-ci
   schedule:
     # Run nightly at 4 AM UTC -- offset from the 2 AM main nightly so the two
     # workflows do not contend for the same GPU runner pool.
