@@ -27,9 +27,6 @@ from ..utils import (
     _validate_vector_field,
 )
 
-wp.init()
-wp.config.quiet = True
-
 
 @wp.kernel
 def _line_integral_convolution_kernel(

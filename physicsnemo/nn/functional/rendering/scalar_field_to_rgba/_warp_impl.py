@@ -23,9 +23,6 @@ from physicsnemo.core.function_spec import FunctionSpec
 
 from ..utils import _jet_colormap, _validate_opacity, _validate_transfer_range
 
-wp.init()
-wp.config.quiet = True
-
 
 @wp.kernel
 def _scalar_field_to_rgba_kernel(

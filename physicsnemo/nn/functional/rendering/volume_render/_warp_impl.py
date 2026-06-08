@@ -37,9 +37,6 @@ from ..utils import (
     _validate_opacity,
 )
 
-wp.init()
-wp.config.quiet = True
-
 
 @wp.kernel
 def _volume_render_kernel(

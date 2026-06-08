@@ -35,9 +35,6 @@ from ..utils import (
     _validate_image_shape,
 )
 
-wp.init()
-wp.config.quiet = True
-
 
 @wp.func
 def _write_depth_tested_pixel(

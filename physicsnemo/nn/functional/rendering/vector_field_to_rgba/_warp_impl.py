@@ -28,9 +28,6 @@ from ..utils import (
     _validate_vector_field,
 )
 
-wp.init()
-wp.config.quiet = True
-
 
 @wp.kernel
 def _vector_field_to_rgba_kernel(

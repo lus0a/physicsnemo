@@ -36,9 +36,6 @@ from ..utils import (
     _validate_image_shape,
 )
 
-wp.init()
-wp.config.quiet = True
-
 
 @wp.kernel
 def _point_cloud_depth_kernel(

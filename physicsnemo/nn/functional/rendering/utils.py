@@ -22,9 +22,6 @@ from collections.abc import Sequence
 import torch
 import warp as wp
 
-wp.init()
-wp.config.quiet = True
-
 
 def _normalize_torch(vector: torch.Tensor, eps: float = 1.0e-12) -> torch.Tensor:
     return vector / vector.norm(dim=-1, keepdim=True).clamp_min(eps)

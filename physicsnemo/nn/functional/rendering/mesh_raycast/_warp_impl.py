@@ -39,9 +39,6 @@ from ..utils import (
     _validate_image_shape,
 )
 
-wp.init()
-wp.config.quiet = True
-
 
 @wp.kernel
 def _mesh_raycast_kernel(
