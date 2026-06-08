@@ -134,17 +134,44 @@ def test_isosurface_render_error_handling(device: str):
             implementation="warp",
         )
 
-    if torch.device(device).type == "cpu":
-        with pytest.raises(ValueError, match="eye and center"):
-            isosurface_render(
-                field,
-                16,
-                16,
-                eye,
-                eye,
-                up,
-                45.0,
-                bounds_min,
-                bounds_max,
-                implementation="warp",
-            )
+    with pytest.raises(ValueError, match="eye and center"):
+        isosurface_render(
+            field,
+            16,
+            16,
+            eye,
+            eye,
+            up,
+            45.0,
+            bounds_min,
+            bounds_max,
+            implementation="warp",
+        )
+
+    with pytest.raises(ValueError, match="up must not be parallel"):
+        isosurface_render(
+            field,
+            16,
+            16,
+            eye,
+            center,
+            center - eye,
+            45.0,
+            bounds_min,
+            bounds_max,
+            implementation="warp",
+        )
+
+    with pytest.raises(ValueError, match="bounds_max"):
+        isosurface_render(
+            field,
+            16,
+            16,
+            eye,
+            center,
+            up,
+            45.0,
+            bounds_max,
+            bounds_min,
+            implementation="warp",
+        )

@@ -59,6 +59,32 @@ def test_wireframe_render_warp(device: str):
 
 
 @requires_module("warp")
+def test_wireframe_render_clips_depth_range(device: str):
+    edges = torch.tensor(
+        [[[0.0, -0.5, -2.2], [0.0, 0.5, 0.0]]],
+        device=device,
+        dtype=torch.float32,
+    )
+    eye, center, up = _camera(device)
+
+    rgba, depth = wireframe_render(
+        edges,
+        21,
+        21,
+        eye,
+        center,
+        up,
+        45.0,
+        near=0.1,
+        far=10.0,
+        implementation="warp",
+    )
+
+    assert float(rgba[..., 3].sum()) > 0.0
+    assert torch.isfinite(depth).any()
+
+
+@requires_module("warp")
 def test_wireframe_render_make_inputs_forward(device: str):
     label, args, kwargs = next(iter(WireframeRender.make_inputs_forward(device)))
     assert isinstance(label, str)
@@ -94,6 +120,18 @@ def test_wireframe_render_error_handling(device: str):
             eye,
             center,
             up,
+            45.0,
+            implementation="warp",
+        )
+
+    with pytest.raises(ValueError, match="up must not be parallel"):
+        wireframe_render(
+            torch.zeros(1, 2, 3, device=device),
+            16,
+            16,
+            eye,
+            center,
+            center - eye,
             45.0,
             implementation="warp",
         )

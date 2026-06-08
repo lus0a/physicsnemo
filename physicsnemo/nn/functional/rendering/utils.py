@@ -58,14 +58,12 @@ def _camera_basis(
     center = _as_vec3(center, name="center", device=device)
     up = _as_vec3(up, name="up", device=device)
     forward_raw = center - eye
-    if forward_raw.device.type == "cpu" and bool(
-        (forward_raw.norm() <= 1.0e-12).item()
-    ):
+    if bool((forward_raw.norm() <= 1.0e-12).item()):
         raise ValueError("eye and center must not be equal")
     forward = _normalize_torch(forward_raw)
     up_hint = _normalize_torch(up)
     right_raw = torch.linalg.cross(up_hint, forward, dim=0)
-    if right_raw.device.type == "cpu" and bool((right_raw.norm() <= 1.0e-12).item()):
+    if bool((right_raw.norm() <= 1.0e-12).item()):
         raise ValueError("up must not be parallel to the camera direction")
     right = _normalize_torch(right_raw)
     camera_up = _normalize_torch(torch.linalg.cross(forward, right, dim=0))
@@ -80,9 +78,7 @@ def _bounds_tensor(
 ) -> torch.Tensor:
     bounds_min = _as_vec3(bounds_min, name="bounds_min", device=device)
     bounds_max = _as_vec3(bounds_max, name="bounds_max", device=device)
-    if bounds_min.device.type == "cpu" and bool(
-        torch.any(bounds_max <= bounds_min).item()
-    ):
+    if bool(torch.any(bounds_max <= bounds_min).item()):
         raise ValueError("bounds_max must be greater than bounds_min in all dimensions")
     return torch.stack([bounds_min, bounds_max]).contiguous()
 
