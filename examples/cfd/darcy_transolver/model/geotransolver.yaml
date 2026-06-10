@@ -14,16 +14,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from physicsnemo.experimental.models.globe.field_kernel import (
-    BarnesHutKernel,
-    Kernel,
-    MultiscaleKernel,
-)
-from physicsnemo.experimental.models.globe.model import GLOBE
+# GeoTransolver with GALE attention (default).
+# Uses geometry-aware cross-attention instead of Transolver's structured grid.
 
-__all__ = [
-    "GLOBE",
-    "Kernel",
-    "BarnesHutKernel",
-    "MultiscaleKernel",
-]
+_target_: physicsnemo.experimental.models.geotransolver.GeoTransolver
+_convert_: all
+
+functional_dim: 3
+out_dim: 1
+geometry_dim: 3
+n_layers: 4
+n_hidden: 128
+dropout: 0.0
+n_head: 4
+act: gelu
+mlp_ratio: 4
+slice_num: 64
+use_te: False
+time_input: False
+attention_type: GALE
+include_local_features: False
+state_mixing_mode: weighted
+structured_shape:
+  - ${resolution}
+  - ${resolution}
