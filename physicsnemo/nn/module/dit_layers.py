@@ -193,6 +193,10 @@ class TimmSelfAttention(AttentionModuleBase):
         QK normalization type. Options: ``"RMSNorm"``, ``"LayerNorm"``, or ``None``.
     qk_norm_affine : bool, optional, default=True
         Whether QK normalization layers should use learnable affine parameters.
+    qkv_bias : bool, optional, default=True
+        Whether the combined query/key/value projection carries a bias.
+    proj_bias : bool, optional, default=True
+        Whether the output projection carries a bias.
     **kwargs : Any
         Additional keyword arguments for the timm attention module.
 
@@ -203,6 +207,9 @@ class TimmSelfAttention(AttentionModuleBase):
     attn_mask : torch.Tensor, optional
         The attention mask to apply (passed to timm's Attention module).
         If ``None``, no mask is applied. Only supported for timm version 1.0.16 and higher.
+    is_causal : bool, optional, default=False
+        Whether to use timm's native causal-attention path. Only supported for
+        timm version 1.0.16 and higher.
 
     Outputs
     -------
@@ -218,6 +225,9 @@ class TimmSelfAttention(AttentionModuleBase):
         proj_drop_rate: float = 0.0,
         qk_norm_type: Literal["RMSNorm", "LayerNorm"] | None = None,
         qk_norm_affine: bool = True,
+        *,
+        qkv_bias: bool = True,
+        proj_bias: bool = True,
         **kwargs: Any,
     ):
         super().__init__()
@@ -237,7 +247,8 @@ class TimmSelfAttention(AttentionModuleBase):
             num_heads=num_heads,
             attn_drop=attn_drop_rate,
             proj_drop=proj_drop_rate,
-            qkv_bias=True,
+            qkv_bias=qkv_bias,
+            proj_bias=proj_bias,
             **kwargs,
         )
 
@@ -245,16 +256,21 @@ class TimmSelfAttention(AttentionModuleBase):
         self,
         x: Float[torch.Tensor, "batch sequence hidden_size"],
         attn_mask: Optional[Float[torch.Tensor, "..."]] = None,
+        is_causal: bool = False,
     ) -> Float[torch.Tensor, "batch sequence hidden_size"]:
         if attn_mask is not None and not timm_v1_0_16:
             raise ValueError(
                 "attn_mask in TimmSelfAttention is only supported for timm version 1.0.16 and higher"
             )
+        if is_causal and not timm_v1_0_16:
+            raise ValueError(
+                "is_causal in TimmSelfAttention is only supported for timm version 1.0.16 and higher"
+            )
 
         if not timm_v1_0_16:
             return self.attn_op(x)
         else:
-            return self.attn_op(x, attn_mask=attn_mask)
+            return self.attn_op(x, attn_mask=attn_mask, is_causal=is_causal)
 
 
 class TESelfAttention(AttentionModuleBase):
@@ -666,9 +682,9 @@ class DiTBlock(nn.Module):
         self.adaptive_modulation = nn.Sequential(
             nn.SiLU(), nn.Linear(modulation_input_dim, 6 * hidden_size, bias=True)
         )
-        self.modulation = lambda x, scale, shift: x * (
-            1 + scale.unsqueeze(1)
-        ) + shift.unsqueeze(1)
+        self.modulation = lambda x, scale, shift: (
+            x * (1 + scale.unsqueeze(1)) + shift.unsqueeze(1)
+        )
 
         self.drop_path = DropPath(drop_path)
 
@@ -780,9 +796,9 @@ class ProjLayer(nn.Module):
         self.adaptive_modulation = nn.Sequential(
             nn.SiLU(), nn.Linear(hidden_size, 2 * hidden_size, bias=True)
         )
-        self.modulation = lambda x, scale, shift: x * (
-            1 + scale.unsqueeze(1)
-        ) + shift.unsqueeze(1)
+        self.modulation = lambda x, scale, shift: (
+            x * (1 + scale.unsqueeze(1)) + shift.unsqueeze(1)
+        )
 
     def forward(
         self,

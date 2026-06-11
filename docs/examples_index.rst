@@ -15,3 +15,4 @@ PhysicsNeMo examples organized by application domain.
    examples_additive_manufacturing
    examples_molecular_dynamics
    examples_geophysics
+   examples_newton

@@ -112,6 +112,17 @@ The several examples inside PhysicsNeMo can be classified based on their domains
 1. [Classify the famous two-moons data distribution using Active learning](./active_learning/moons/)
 2. [Active Learning for Surface-CFD Aerodynamic Surrogates](./cfd/external_aerodynamics/active_learning_aero/)
 
+### Physics Simulation Surrogates (Newton)
+
+Coupling the GPU-native [Newton](https://github.com/newton-physics/newton) physics engine to PhysicsNeMo training. See [examples/newton](./newton/).
+
+|Use case|Method|
+| --- | --- |
+|[Differentiable-simulation surrogate (ball)](./newton/diffsim/)|Gradient-matched BPTT surrogate through a differentiable solver|
+|[Offline articulated gripper co-design](./newton/gripper/)|PointNet surrogate plus grouped-gradient co-design of a two-finger gripper's geometry (segment shape, curvature, pads)|
+|[MPM nozzle inverse design](./newton/nozzle/)|Simulator-as-oracle active learning|
+|[Newton NeRD (Neural Robot Dynamics) learned dynamics](./newton/nerd/)|One generic learned-step workflow for Cartpole and contact-rich RJ45 cable dynamics|
+
 ## Additional examples
 
 Physics-informed training examples (PINNs, PINO, physics-informed fine-tuning)

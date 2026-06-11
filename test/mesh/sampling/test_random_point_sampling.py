@@ -24,7 +24,10 @@ import pytest
 import torch
 
 from physicsnemo.mesh.mesh import Mesh
-from physicsnemo.mesh.sampling import sample_random_points_on_cells
+from physicsnemo.mesh.sampling import (
+    sample_random_points,
+    sample_random_points_on_cells,
+)
 
 ### Helper Functions ###
 
@@ -357,6 +360,63 @@ class TestRandomSampling:
 
         ### Should be on CUDA
         assert sampled_points.device.type == "cuda"
+
+
+class TestMeasureWeightedRandomSampling:
+    """Tests for fixed-size sampling over a complete mesh."""
+
+    def test_uses_cached_cell_measures(self):
+        mesh = create_simple_mesh(3, 2)
+        assert mesh._cache.get(("cell", "areas"), None) is None
+
+        sample_random_points(mesh, 8)
+
+        assert mesh._cache.get(("cell", "areas"), None) is not None
+
+    def test_reproducible_fixed_size_sampling(self):
+        mesh = create_simple_mesh(3, 2)
+        first = sample_random_points(
+            mesh,
+            64,
+            generator=torch.Generator().manual_seed(7),
+        )
+        second = mesh.sample_random_points(
+            64,
+            generator=torch.Generator().manual_seed(7),
+        )
+        assert first.shape == (64, 3)
+        torch.testing.assert_close(first, second)
+
+    def test_cells_are_selected_in_proportion_to_measure(self):
+        points = torch.tensor(
+            [
+                [0.0, 0.0],
+                [1.0, 0.0],
+                [0.0, 1.0],
+                [4.0, 0.0],
+                [0.0, 4.0],
+            ]
+        )
+        mesh = Mesh(
+            points=points,
+            cells=torch.tensor(((0, 1, 2), (0, 3, 4))),
+        )
+        sampled = sample_random_points(
+            mesh,
+            10_000,
+            generator=torch.Generator().manual_seed(11),
+        )
+        large_triangle_fraction = float(
+            ((sampled[:, 0] > 1.0) | (sampled[:, 1] > 1.0)).float().mean()
+        )
+        assert large_triangle_fraction > 0.70
+
+    def test_requires_positive_sample_count_and_nonempty_cells(self):
+        mesh = create_simple_mesh(2, 2)
+        with pytest.raises(ValueError, match="positive"):
+            sample_random_points(mesh, 0)
+        with pytest.raises(ValueError, match="at least one cell"):
+            sample_random_points(Mesh(points=torch.zeros((3, 2))), 4)
 
 
 ### Parametrized Tests for Exhaustive Dimensional Coverage ###

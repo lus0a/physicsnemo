@@ -23,6 +23,7 @@ This module provides functions for sampling points on meshes, including:
 """
 
 from physicsnemo.mesh.sampling.random_point_sampling import (
+    sample_random_points,
     sample_random_points_on_cells,
 )
 from physicsnemo.mesh.sampling.sample_data import (

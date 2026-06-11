@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 510" role="img" aria-label="Newton simulations train a neural physics model for geometry optimization, and Newton verifies the result">
+  <rect width="1400" height="510" fill="#f7f9fb" />
+  <text x="700" y="52" fill="#17212b" font-size="30" font-family="Arial, sans-serif" font-weight="700" text-anchor="middle">Neural geometry co-design</text>
+  <text x="700" y="82" fill="#52606d" font-size="17" font-family="Arial, sans-serif" font-weight="400" text-anchor="middle">Simulate, learn, optimize, and verify.</text>
+  <rect x="45" y="118" width="380" height="270" rx="18" fill="#ffffff" stroke="#cbd2d9" stroke-width="2" />
+  <circle cx="79" cy="151" r="17" fill="#ef7d32" />
+  <text x="79" y="157" fill="#ffffff" font-size="16" font-family="Arial, sans-serif" font-weight="700" text-anchor="middle">1</text>
+  <text x="107" y="158" fill="#17212b" font-size="21" font-family="Arial, sans-serif" font-weight="700" text-anchor="start">Newton simulations</text>
+  <rect x="510" y="118" width="380" height="270" rx="18" fill="#ffffff" stroke="#cbd2d9" stroke-width="2" />
+  <circle cx="544" cy="151" r="17" fill="#2474b5" />
+  <text x="544" y="157" fill="#ffffff" font-size="16" font-family="Arial, sans-serif" font-weight="700" text-anchor="middle">2</text>
+  <text x="572" y="158" fill="#17212b" font-size="21" font-family="Arial, sans-serif" font-weight="700" text-anchor="start">Neural physics</text>
+  <rect x="975" y="118" width="380" height="270" rx="18" fill="#ffffff" stroke="#cbd2d9" stroke-width="2" />
+  <circle cx="1009" cy="151" r="17" fill="#76b900" />
+  <text x="1009" y="157" fill="#ffffff" font-size="16" font-family="Arial, sans-serif" font-weight="700" text-anchor="middle">3</text>
+  <text x="1037" y="158" fill="#17212b" font-size="21" font-family="Arial, sans-serif" font-weight="700" text-anchor="start">Optimize and verify</text>
+  <line x1="425" y1="253" x2="495" y2="253" stroke="#9aa5b1" stroke-width="4" stroke-linecap="round" />
+  <polygon points="488,243 503,253 488,263" fill="#9aa5b1" />
+  <line x1="890" y1="253" x2="960" y2="253" stroke="#9aa5b1" stroke-width="4" stroke-linecap="round" />
+  <polygon points="953,243 968,253 953,263" fill="#9aa5b1" />
+  <line x1="148" y1="204" x2="322" y2="204" stroke="#17212b" stroke-width="14" stroke-linecap="round" />
+  <path d="M 170 214 C 154 240, 154 274, 161.2 304" fill="none" stroke="#2474b5" stroke-width="15" stroke-linecap="round" />
+  <path d="M 300 214 C 316 240, 316 274, 308.8 304" fill="none" stroke="#2474b5" stroke-width="15" stroke-linecap="round" />
+  <rect x="213" y="246" width="44" height="67" rx="12" fill="#22a6c7" />
+  <text x="235" y="344" fill="#17212b" font-size="16" font-family="Arial, sans-serif" font-weight="700" text-anchor="middle">Generate trusted examples</text>
+  <text x="235" y="367" fill="#52606d" font-size="13" font-family="Arial, sans-serif" font-weight="400" text-anchor="middle">design + object + grasp  →  outcomes</text>
+  <circle cx="545" cy="228" r="4" fill="#2474b5" />
+  <circle cx="550" cy="258" r="4" fill="#2474b5" />
+  <circle cx="562" cy="214" r="4" fill="#2474b5" />
+  <circle cx="564" cy="244" r="4" fill="#2474b5" />
+  <circle cx="570" cy="276" r="4" fill="#2474b5" />
+  <circle cx="580" cy="226" r="4" fill="#2474b5" />
+  <circle cx="585" cy="257" r="4" fill="#2474b5" />
+  <circle cx="594" cy="243" r="4" fill="#2474b5" />
+  <circle cx="597" cy="275" r="4" fill="#2474b5" />
+  <text x="570" y="312" fill="#52606d" font-size="12" font-family="Arial, sans-serif" font-weight="400" text-anchor="middle">object shape</text>
+  <line x1="608" y1="248" x2="644" y2="248" stroke="#cbd2d9" stroke-width="3" />
+  <rect x="646" y="216" width="100" height="64" rx="12" fill="#e5f1fa" stroke="#2474b5" stroke-width="2" />
+  <text x="696" y="255" fill="#17212b" font-size="16" font-family="Arial, sans-serif" font-weight="700" text-anchor="middle">PointNet</text>
+  <line x1="748" y1="248" x2="780" y2="248" stroke="#cbd2d9" stroke-width="3" />
+  <rect x="782" y="216" width="82" height="64" rx="12" fill="#edf7dd" stroke="#76b900" stroke-width="2" />
+  <text x="823" y="255" fill="#17212b" font-size="16" font-family="Arial, sans-serif" font-weight="700" text-anchor="middle">MLP</text>
+  <text x="700" y="344" fill="#17212b" font-size="16" font-family="Arial, sans-serif" font-weight="700" text-anchor="middle">Learn contact behavior</text>
+  <text x="700" y="367" fill="#52606d" font-size="13" font-family="Arial, sans-serif" font-weight="400" text-anchor="middle">fast, differentiable outcome predictions</text>
+  <rect x="1032" y="198" width="176" height="48" rx="12" fill="#edf7dd" stroke="#76b900" stroke-width="2" />
+  <text x="1120" y="228" fill="#17212b" font-size="15" font-family="Arial, sans-serif" font-weight="700" text-anchor="middle">optimize geometry</text>
+  <line x1="1120" y1="249" x2="1120" y2="278" stroke="#cbd2d9" stroke-width="3" />
+  <polygon points="1112,272 1120,284 1128,272" fill="#cbd2d9" />
+  <rect x="1032" y="286" width="176" height="48" rx="12" fill="#fff2e8" stroke="#ef7d32" stroke-width="2" />
+  <text x="1120" y="316" fill="#17212b" font-size="15" font-family="Arial, sans-serif" font-weight="700" text-anchor="middle">verify in Newton</text>
+  <circle cx="1268" cy="266" r="31" fill="#76b900" />
+  <text x="1268" y="273" fill="#ffffff" font-size="20" font-family="Arial, sans-serif" font-weight="700" text-anchor="middle">OK</text>
+  <text x="1165" y="361" fill="#52606d" font-size="14" font-family="Arial, sans-serif" font-weight="400" text-anchor="middle">Search quickly. Accept physically.</text>
+  <line x1="175" y1="438" x2="1225" y2="438" stroke="#cbd2d9" />
+  <text x="700" y="472" fill="#52606d" font-size="15" font-family="Arial, sans-serif" font-weight="400" text-anchor="middle">Reusable PhysicsNeMo APIs: design spaces  •  PointNet  •  grouped optimization  •  verified selection</text>
+</svg>

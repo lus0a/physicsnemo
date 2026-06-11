@@ -20,7 +20,8 @@ This module provides two categories of functionality:
 
 Both capabilities are also accessible as methods on
 :class:`~physicsnemo.mesh.mesh.Mesh`:
-``sample_random_points_on_cells()`` and ``sample_data_at_points()``.
+``sample_random_points()``, ``sample_random_points_on_cells()``, and
+``sample_data_at_points()``.
 
 .. code:: python
 
@@ -29,8 +30,8 @@ Both capabilities are also accessible as methods on
     mesh = sphere_icosahedral.load(subdivisions=3)
 
     # Sample 10000 random points on the surface
-    sampled_mesh = mesh.sample_random_points_on_cells(n_points=10000)
-    print(sampled_mesh.points.shape)  # (10000, 3)
+    sampled_points = mesh.sample_random_points(10000)
+    print(sampled_points.shape)  # (10000, 3)
 
     # Interpolate data at arbitrary query points
     import torch

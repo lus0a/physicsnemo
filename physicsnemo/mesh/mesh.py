@@ -41,6 +41,7 @@ from physicsnemo.mesh.transformations.geometric import (
     transform,
     translate,
 )
+from physicsnemo.mesh.transformations.normalize import normalize_points
 from physicsnemo.mesh.utilities._padding import _pad_by_tiling_last, _pad_with_value
 from physicsnemo.mesh.utilities._scatter_ops import scatter_aggregate
 from physicsnemo.mesh.utilities.mesh_repr import format_mesh_repr
@@ -1460,6 +1461,7 @@ class Mesh:
         self,
         cell_indices: Sequence[int] | torch.Tensor | None = None,
         alpha: float = 1.0,
+        generator: torch.Generator | None = None,
     ) -> torch.Tensor:
         """Sample random points on specified cells of the mesh.
 
@@ -1484,6 +1486,8 @@ class Mesh:
             - alpha = 1.0: Uniform distribution over the simplex (default)
             - alpha > 1.0: Concentrates samples toward the center of each cell
             - alpha < 1.0: Concentrates samples toward vertices and edges
+        generator : torch.Generator, optional
+            Random generator used for reproducible uniform sampling.
 
         Returns
         -------
@@ -1514,6 +1518,52 @@ class Mesh:
             mesh=self,
             cell_indices=cell_indices,
             alpha=alpha,
+            generator=generator,
+        )
+
+    def sample_random_points(
+        self,
+        num_samples: int,
+        *,
+        generator: torch.Generator | None = None,
+    ) -> Float[torch.Tensor, "num_samples n_spatial_dims"]:
+        """Sample points uniformly over the measure of the mesh.
+
+        Cells are selected in proportion to their length, area, or volume, and
+        points are sampled uniformly within the selected simplices.
+
+        Parameters
+        ----------
+        num_samples : int
+            Number of point coordinates to return.
+        generator : torch.Generator, optional
+            Random generator for reproducible cell and barycentric sampling.
+
+        Returns
+        -------
+        Float[torch.Tensor, "num_samples n_spatial_dims"]
+            Sampled point coordinates. Each row lies within one mesh cell.
+
+        Raises
+        ------
+        ValueError
+            If ``num_samples`` is not positive, the mesh has no cells, or the
+            cell measures are non-finite or sum to zero.
+
+        Examples
+        --------
+        >>> from physicsnemo.mesh.primitives.surfaces import sphere_icosahedral
+        >>> mesh = sphere_icosahedral.load(subdivisions=2)
+        >>> points = mesh.sample_random_points(1000)
+        >>> points.shape
+        torch.Size([1000, 3])
+        """
+        from physicsnemo.mesh.sampling import sample_random_points
+
+        return sample_random_points(
+            self,
+            num_samples,
+            generator=generator,
         )
 
     def sample_data_at_points(
@@ -1529,7 +1579,7 @@ class Mesh:
 
         This method retrieves mesh data at arbitrary spatial locations. Note that
         "sample" here means "extract/query at specific points" - NOT random sampling.
-        For random point sampling, see :meth:`sample_random_points_on_cells`.
+        For random point sampling, see :meth:`sample_random_points`.
 
         Containment queries are BVH-accelerated (O(n_queries * log(n_cells))).
 
@@ -2523,6 +2573,40 @@ class Mesh:
             ax=ax,
             backend_options=backend_options,
         )
+
+    def normalize_points(
+        self,
+        *,
+        eps: float = 1.0e-8,
+    ) -> tuple[
+        "Mesh",
+        Float[torch.Tensor, " n_spatial_dims"],
+        Float[torch.Tensor, ""],
+    ]:
+        """Center and isotropically scale the mesh points.
+
+        Parameters
+        ----------
+        eps : float, optional
+            Positive lower bound for the normalization radius.
+
+        Returns
+        -------
+        Mesh
+            New mesh whose vertex centroid is at the origin and whose maximum
+            vertex distance from the origin is at most one.
+        Float[torch.Tensor, " n_spatial_dims"]
+            Arithmetic mean of the original point coordinates.
+        Float[torch.Tensor, ""]
+            Maximum vertex distance from the centroid, clamped to ``eps``.
+
+        Raises
+        ------
+        ValueError
+            If ``eps`` is not positive or the mesh points are empty or
+            non-finite.
+        """
+        return normalize_points(self, eps=eps)
 
     def translate(
         self,

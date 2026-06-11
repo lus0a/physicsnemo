@@ -17,11 +17,35 @@
 import pytest
 import torch
 
-from physicsnemo.nn.module.dit_layers import DiTBlock
+from physicsnemo.nn.module.dit_layers import DiTBlock, TimmSelfAttention
 from test import common
 from test.conftest import requires_module
 
 # --- DiTBlock tests ---
+
+
+def test_timm_self_attention_bias_and_causal_controls(device):
+    legacy_positional = TimmSelfAttention(32, 4, 0.0, 0.0, None, False).to(device)
+    assert legacy_positional.attn_op.qkv.bias is not None
+    assert legacy_positional.attn_op.proj.bias is not None
+
+    attention = TimmSelfAttention(
+        hidden_size=32,
+        num_heads=4,
+        qkv_bias=False,
+        proj_bias=False,
+    ).to(device)
+    assert attention.attn_op.qkv.bias is None
+    assert attention.attn_op.proj.bias is None
+
+    x = torch.randn(2, 6, 32, device=device)
+    changed = x.clone()
+    changed[:, -1] += 100.0
+    with torch.no_grad():
+        before = attention(x, is_causal=True)
+        after = attention(changed, is_causal=True)
+    assert torch.allclose(before[:, :-1], after[:, :-1], atol=1.0e-6)
+    assert not torch.allclose(before[:, -1], after[:, -1])
 
 
 @torch.no_grad()

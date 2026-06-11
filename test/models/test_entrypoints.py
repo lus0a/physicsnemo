@@ -29,6 +29,8 @@ import pytest
         "GraphCastNet",
         "MeshGraphNet",
         "FullyConnected",
+        "PointNetEncoder",
+        "PointNetMLP",
         "Pix2Pix",
         "One2ManyRNN",
         "SRResNet",

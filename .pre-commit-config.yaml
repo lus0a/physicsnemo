@@ -20,7 +20,7 @@ repos:
     hooks:
       - id: ruff-check
         args: [--fix]
-        exclude: ^examples/
+        exclude: ^examples/(?!newton/)
       - id: ruff-format
 
 -   repo: local

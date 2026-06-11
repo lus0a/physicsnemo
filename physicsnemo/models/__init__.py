@@ -17,3 +17,4 @@
 from .dit import DiT
 from .domino import DoMINO
 from .mlp import FullyConnected
+from .pointnet import PointNetEncoder, PointNetMLP

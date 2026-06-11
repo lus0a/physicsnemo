@@ -34,6 +34,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Adds `FourierPositionalEmbedding` to `physicsnemo.nn`, a deterministic
   axis-wise (NeRF-style) Fourier positional embedding for continuous
   coordinates with no learnable parameters.
+- Added reusable simulator-trained geometry-design building blocks:
+  `PointNetMLP`, normalized point-cloud context extraction, generic Newton
+  primitive/mesh objects, grouped candidate ranking and shortlisting, layered
+  dataset provenance, trajectory-aware diverse proposal selection, and the
+  articulated gripper co-design teaching example.
+
 - Adds radiation transport example (`examples/nuclear_engineering/radiation_transport`)
 - Adds agent skills structure, and initial skill for 'discoverability'.
 - Adds xDeepONet to experimental models
@@ -76,6 +82,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   geometry-latent kNN distance as a continuous score for downstream
   consumers (e.g. AL acquisition) without the boolean thresholding /
   warning emission of `OODGuard.check()`.
+- Adds experimental Newton physics-engine integration under
+  `physicsnemo.experimental.integrations.newton`. The optional integration
+  provides headless scene loading, a common reset/step/rollout lifecycle,
+  readable zero-copy Warp-to-Torch state views, batched-world access,
+  differentiable rollouts, gradient-matched surrogate training, batched
+  multi-start surrogate design, safeguarded Newton multi-start refinement,
+  simulator-as-oracle active learning, learned solver-step deployment,
+  checkpoint bundles, evaluation, and distributed helpers. Newton remains an
+  optional runtime through the new `newton` install extra, which includes the
+  MuJoCo solver runtime, and is imported only when needed.
+- Adds experimental Neural Robot Dynamics (NeRD) models under
+  `physicsnemo.experimental.models.nerd`. `NeRDTransformer` implements the
+  paper's causal relative-dynamics transformer, while `NeRDEntityTransformer`
+  adds within-frame entity attention for body, particle, and other structured
+  state. Both reuse PhysicsNeMo attention, model, and checkpoint infrastructure.
+- Adds one representation-generic Newton NeRD workflow through `NeRDProblem`,
+  state codecs, `fit_nerd`, and `train_nerd`. It supports joint, body, particle,
+  composite, and custom fixed-topology state; global or entity-aligned
+  application inputs; pluggable PhysicsNeMo or PyTorch models; automatic
+  sharded teacher generation; global normalization; Distributed Data Parallel
+  training; fully autoregressive held-out evaluation; checkpoint bundles; and
+  live-state deployment through the common `NewtonStepModel` and `NewtonEnv`
+  contracts.
+- Adds `PointNetEncoder` to the PhysicsNeMo model zoo for permutation-invariant
+  point-set embeddings with max or mean pooling.
+- Adds `optimize_grouped_design` for bounded shared-design optimization over
+  grouped task/control candidates, including scheduled top-k reduction and
+  optional trust regions around sampled designs.
+- Adds solver-independent experimental design utilities to the Newton
+  integration (`physicsnemo.experimental.integrations.newton`, in the
+  `design_space` module): named linear/log/integer variables,
+  normalized/physical transforms, Sobol sampling, stable schema fingerprints,
+  and composable similarity and smoothness constraints. Newton grouped-design
+  optimization accepts these design spaces directly.
+- Adds reusable Newton rigid-geometry specifications backed by PhysicsNeMo
+  meshes, including compound primitives, mesh collision policies, bounds,
+  mass estimation, area-weighted point-cloud sampling, and cache fingerprints.
+- Adds fixed-size measure-weighted sampling over PhysicsNeMo meshes.
+- Adds `TrainedNeRDModel.compile_for_inference()` for reusable, checkpoint-safe
+  `torch.compile` acceleration of NeRD rollouts and live Newton deployment.
+- Adds the public `examples/newton/` suite with complete training, evaluation,
+  figures, videos, and documentation: a differentiable ball surrogate trained
+  from Warp adjoints, offline neural geometry co-design of an articulated gripper,
+  MPM nozzle inverse design using Newton as an active-learning oracle, a
+  recreation of the NeRD Cartpole experiment, and an entity-aware NeRD model
+  replacing the contact-rich VBD solve for an RJ45 cable.
+- Adds beginner-oriented Newton integration documentation explaining Newton
+  physics state and solvers, PhysicsNeMo's role beyond plain PyTorch, NeRD
+  learned dynamics, distributed execution, and the end-to-end path from
+  simulator-generated teacher data to live learned deployment.
+- Adds QKV/output bias controls and native causal-attention forwarding to
+  `physicsnemo.nn.TimmSelfAttention`.
 
 ### Changed
 
@@ -135,6 +193,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `repair.fix_orientation`; random point sampling drawing barycentric weights in
   float32 for float64 meshes; and `Mesh.merge` not validating `point_data` /
   `global_data` key consistency.
+- Fix NeRD distributed trainers to preserve the configured global loss with
+  uneven rank-local batches and make the RJ45 example report all held-out
+  trajectory shards through distributed evaluation.
 - Fixed `DefaultTrainingLoop` reading `DistributedManager.device` at the class
   level (a `property` descriptor) instead of `DistributedManager().device`, which
   left the loop's device set to a `property` object under an initialized

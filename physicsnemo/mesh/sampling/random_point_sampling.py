@@ -31,6 +31,7 @@ def sample_random_points_on_cells(
     mesh: "Mesh",
     cell_indices: Sequence[int] | Int[torch.Tensor, " n_samples"] | None = None,
     alpha: float = 1.0,
+    generator: torch.Generator | None = None,
 ) -> Float[torch.Tensor, "n_samples n_spatial_dims"]:
     """Sample random points uniformly distributed on specified cells of the mesh.
 
@@ -55,6 +56,9 @@ def sample_random_points_on_cells(
         - alpha = 1.0: Uniform distribution over the simplex (default)
         - alpha > 1.0: Concentrates samples toward the center of each cell
         - alpha < 1.0: Concentrates samples toward vertices and edges
+    generator : torch.Generator, optional
+        Random generator used when ``alpha=1``. This enables reproducible
+        sampling without modifying global PyTorch random state.
 
     Returns
     -------
@@ -111,16 +115,22 @@ def sample_random_points_on_cells(
     n_samples = len(cell_indices)
 
     ### Sample from Gamma(alpha, 1) distribution and normalize to get Dirichlet
-    # When alpha=1, Gamma(1,1) is equivalent to Exponential(1), which is more efficient.
-    # Build the distribution parameters in the mesh's dtype so the barycentric
-    # weights match the mesh precision (otherwise a float64 mesh silently samples
-    # weights in float32, halving precision).
+    # Gamma(1, 1) is Exponential(1). The inverse-CDF form accepts the caller's
+    # generator and draws directly in the mesh dtype.
     dtype = mesh.points.dtype
     if alpha == 1.0:
-        distribution = torch.distributions.Exponential(
-            rate=torch.ones((), device=mesh.points.device, dtype=dtype),
+        uniform = torch.rand(
+            (n_samples, mesh.n_manifold_dims + 1),
+            dtype=dtype,
+            device=mesh.points.device,
+            generator=generator,
+        )
+        raw_barycentric_coords = -torch.log(
+            uniform.clamp_min(torch.finfo(uniform.dtype).tiny)
         )
     else:
+        if generator is not None:
+            raise ValueError("generator is only supported when alpha=1.0.")
         if torch.compiler.is_compiling():
             raise NotImplementedError(
                 f"alpha={alpha!r} is not supported under torch.compile.\n"
@@ -133,8 +143,9 @@ def sample_random_points_on_cells(
             concentration=torch.full((), alpha, device=mesh.points.device, dtype=dtype),
             rate=_rate,
         )
-
-    raw_barycentric_coords = distribution.sample((n_samples, mesh.n_manifold_dims + 1))
+        raw_barycentric_coords = distribution.sample(
+            (n_samples, mesh.n_manifold_dims + 1)
+        )
 
     ### Normalize so they sum to 1
     barycentric_coords = F.normalize(raw_barycentric_coords, p=1, dim=-1)
@@ -145,3 +156,67 @@ def sample_random_points_on_cells(
 
     # Compute weighted sum: (n_samples, n_spatial_dims)
     return (barycentric_coords.unsqueeze(-1) * selected_cell_vertices).sum(dim=1)
+
+
+def sample_random_points(
+    mesh: "Mesh",
+    num_samples: int,
+    *,
+    generator: torch.Generator | None = None,
+) -> Float[torch.Tensor, "num_samples n_spatial_dims"]:
+    """Sample uniformly over the measure of an entire simplicial mesh.
+
+    Cells are selected in proportion to their length, area, or volume, then a
+    point is sampled uniformly inside each selected simplex. For a triangle
+    surface mesh this produces area-uniform point clouds suitable for geometric
+    neural-network inputs.
+
+    Parameters
+    ----------
+    mesh : Mesh
+        Non-empty simplicial mesh.
+    num_samples : int
+        Number of points to return.
+    generator : torch.Generator, optional
+        Random generator for reproducible cell and barycentric sampling.
+
+    Returns
+    -------
+    Float[torch.Tensor, "num_samples n_spatial_dims"]
+        Sampled point coordinates. Each row lies within one mesh cell.
+
+    Raises
+    ------
+    ValueError
+        If ``num_samples`` is not positive, the mesh has no cells, or the cell
+        measures are non-finite or sum to zero.
+
+    Examples
+    --------
+    >>> from physicsnemo.mesh.primitives.surfaces import sphere_icosahedral
+    >>> mesh = sphere_icosahedral.load(subdivisions=2)
+    >>> points = sample_random_points(mesh, 1000)
+    >>> points.shape
+    torch.Size([1000, 3])
+    """
+    if num_samples <= 0:
+        raise ValueError("num_samples must be positive")
+    if mesh.n_cells == 0:
+        raise ValueError("mesh must contain at least one cell")
+    measures = mesh.cell_areas
+    if not torch.compiler.is_compiling():
+        if not bool(torch.isfinite(measures).all()):
+            raise ValueError("mesh cell measures must be finite")
+        if float(measures.sum()) <= 0.0:
+            raise ValueError("mesh must contain positive-measure cells")
+    cell_indices = torch.multinomial(
+        measures,
+        num_samples,
+        replacement=True,
+        generator=generator,
+    )
+    return sample_random_points_on_cells(
+        mesh,
+        cell_indices,
+        generator=generator,
+    )
