@@ -14,11 +14,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import warnings
 from dataclasses import dataclass
 from typing import Any, Dict, Literal, Optional, Tuple, Union
 
+import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from jaxtyping import Float
 
 from physicsnemo.core.meta import ModelMetaData
@@ -82,8 +85,8 @@ class DiT(Module):
         The number of attention heads.
     mlp_ratio : float, optional, default=4.0
         The ratio of the MLP hidden dimension to the embedding dimension.
-    attention_backend : Literal["timm", "transformer_engine", "natten2d"], optional, default="timm"
-        The attention backend to use. See :class:`~physicsnemo.nn.DiTBlock` for a description of each built-in backend.
+    attention_backend : Literal["timm", "transformer_engine", "natten2d", "natten2d_rope"], optional, default="timm"
+        The attention backend to use. See :class:`~physicsnemo.nn.DiTBlock` for a description of each built-in backend. ``"natten2d_rope"`` applies axial 2D rotary position embeddings inside NATTEN; selecting it forces ``pos_embed="none"`` in the tokenizer (additive positional embedding is disabled to avoid double-counting position) and emits a warning if a conflicting ``pos_embed`` was explicitly passed.
     layernorm_backend : Literal["apex", "torch"], optional, default="torch"
         If ``"apex"``, uses FusedLayerNorm from apex. If ``"torch"``, uses :class:`torch.nn.LayerNorm`. Also passed to :class:`~physicsnemo.nn.Natten2DSelfAttention` when ``qk_norm=True``.
     condition_dim : int, optional, default=None
@@ -106,6 +109,8 @@ class DiT(Module):
         DropPath (stochastic depth) rates, one per block. Must have length equal to ``depth``. If ``None``, no drop path is applied.
     force_tokenization_fp32 : bool, optional, default=False
         If ``True``, forces tokenization and de-tokenization to run in fp32.
+    use_nan_mask_tokens : bool, optional, default=False
+        If ``True``, every NATTEN block overwrites invalid spatial tokens with a per-block learned ``mask_token`` immediately before the QKV projection, so the neighborhood window mixes in a single learned feature instead of corrupted (e.g. NaN-padded) signal. Requires a NATTEN attention backend (``"natten2d"`` or ``"natten2d_rope"``). The static invalid pattern is supplied after construction via :meth:`set_nan_pixel_mask`; until then all tokens are treated as valid and behavior is identical to ``use_nan_mask_tokens=False``.
 
     Forward
     -------
@@ -131,6 +136,13 @@ class DiT(Module):
     -----
     Reference: Peebles, W., & Xie, S. (2023). Scalable diffusion models with transformers.
     In Proceedings of the IEEE/CVF International Conference on Computer Vision (pp. 4195-4205).
+
+    Under domain parallelism (the model wrapped with ``distribute_module``), the
+    spatial input ``x`` is a sharded ``ShardTensor`` while the model's buffers and
+    parameters are ``DTensor``s. The non-spatial inputs ``t`` and ``condition``
+    must therefore be passed as ``Replicate`` ``DTensor``s on the same mesh (rather
+    than plain tensors), so they compose with the distributed buffers/parameters
+    (e.g. the timestep embedder's ``freqs``).
 
     Examples
     --------
@@ -197,7 +209,9 @@ class DiT(Module):
         depth: int = 12,
         num_heads: int = 8,
         mlp_ratio: float = 4.0,
-        attention_backend: Literal["timm", "transformer_engine", "natten2d"] = "timm",
+        attention_backend: Literal[
+            "timm", "transformer_engine", "natten2d", "natten2d_rope"
+        ] = "timm",
         layernorm_backend: Literal["apex", "torch"] = "torch",
         condition_dim: Optional[int] = None,
         conditioning_embedder: Literal["dit", "edm", "zero"]
@@ -210,6 +224,7 @@ class DiT(Module):
         attn_kwargs: Dict[str, Any] = {},
         drop_path_rates: list[float] | None = None,
         force_tokenization_fp32: bool = False,
+        use_nan_mask_tokens: bool = False,
     ):
         super().__init__(meta=MetaData())
         self.input_size = (
@@ -229,23 +244,69 @@ class DiT(Module):
         )
         self.num_heads = num_heads
         self.condition_dim = condition_dim
-        if attention_backend == "natten2d":
-            latent_hw = (
-                self.input_size[0] // self.patch_size[0],
-                self.input_size[1] // self.patch_size[1],
-            )
-            self.attn_kwargs_forward = {"latent_hw": latent_hw}
-        else:
-            self.attn_kwargs_forward = {}
 
         # Input validation
-        if attention_backend not in ["timm", "transformer_engine", "natten2d"]:
+        if attention_backend not in [
+            "timm",
+            "transformer_engine",
+            "natten2d",
+            "natten2d_rope",
+        ]:
             raise ValueError(
-                "attention_backend must be one of 'timm', 'transformer_engine', 'natten2d'"
+                "attention_backend must be one of 'timm', 'transformer_engine', 'natten2d', 'natten2d_rope'"
             )
 
         if layernorm_backend not in ["apex", "torch"]:
             raise ValueError("layernorm_backend must be one of 'apex', 'torch'")
+
+        is_natten = attention_backend in ("natten2d", "natten2d_rope")
+
+        # Latent (token) grid size, used by the NATTEN backends.
+        self._latent_h = self.input_size[0] // self.patch_size[0]
+        self._latent_w = self.input_size[1] // self.patch_size[1]
+        latent_hw = (self._latent_h, self._latent_w)
+
+        # Keyword arguments threaded into every attention module's forward.
+        if is_natten:
+            self.attn_kwargs_forward = {"latent_hw": latent_hw}
+        else:
+            self.attn_kwargs_forward = {}
+
+        # NaN-mask-token handling: replace invalid spatial tokens with a learned
+        # per-block mask token before NATTEN. Only valid with a NATTEN backend.
+        self._use_nan_mask_tokens = use_nan_mask_tokens
+        if use_nan_mask_tokens and not is_natten:
+            raise ValueError(
+                "use_nan_mask_tokens=True requires a NATTEN attention backend "
+                "('natten2d' or 'natten2d_rope')"
+            )
+
+        # Constructor-time attention kwargs (copied so the caller's dict is not
+        # mutated). RoPE attention needs the latent grid at construction so its
+        # cos/sin tables can be precomputed; the mask-token backends need to
+        # allocate their learned mask parameter.
+        attn_kwargs = dict(attn_kwargs)
+        if attention_backend == "natten2d_rope":
+            attn_kwargs["latent_hw"] = latent_hw
+        if use_nan_mask_tokens:
+            attn_kwargs["use_mask_token"] = True
+
+        # Using RoPE alongside an additive positional embedding double-counts
+        # position. Force the (patch-based) tokenizer's pos_embed to "none",
+        # warning if a conflicting value was explicitly requested.
+        if attention_backend == "natten2d_rope" and tokenizer == "patch_embed_2d":
+            tokenizer_kwargs = dict(tokenizer_kwargs)
+            requested_pos_embed = tokenizer_kwargs.get("pos_embed", None)
+            if requested_pos_embed not in (None, "none"):
+                warnings.warn(
+                    "attention_backend='natten2d_rope' uses rotary position "
+                    "embeddings; overriding the requested "
+                    f"pos_embed={requested_pos_embed!r} with 'none' to avoid "
+                    "double-counting the positional signal.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+            tokenizer_kwargs["pos_embed"] = "none"
 
         if isinstance(tokenizer, str) and tokenizer not in [
             "patch_embed_2d",
@@ -341,6 +402,21 @@ class DiT(Module):
         if dit_initialization:
             self.initialize_weights()
 
+        # Static patch-level invalid mask used by the NaN-mask-token blocks. A
+        # single copy is kept on the model (not per-block) and passed to every
+        # block in forward. Registered as persistent=False so it is not saved in
+        # checkpoints by default (it is sensor/domain geometry, re-installed via
+        # set_nan_pixel_mask); set_nan_pixel_mask can opt into persistence.
+        # Initialized to all-valid (False) so behavior matches the unmasked path
+        # until a real mask is installed. Built at the global latent size so
+        # distribute_module can shard it if domain parallelism is used.
+        if use_nan_mask_tokens:
+            self.register_buffer(
+                "invalid_token_mask",
+                torch.zeros(self._latent_h, self._latent_w, dtype=torch.bool),
+                persistent=False,
+            )
+
         self.force_tokenization_fp32 = force_tokenization_fp32
         self.register_load_state_dict_pre_hook(self._migrate_legacy_checkpoint)
 
@@ -433,6 +509,80 @@ class DiT(Module):
         for block in self.blocks:
             block.initialize_weights()
 
+    @torch.no_grad()
+    def set_nan_pixel_mask(
+        self,
+        pixel_mask: Float[torch.Tensor, "height width"],
+        persistent: bool = False,
+    ) -> None:
+        r"""Install the static invalid-token mask for the NaN-mask-token blocks.
+
+        Converts a pixel-level ``(H, W)`` boolean mask to a patch-level
+        ``(h_lat, w_lat)`` mask: a patch is marked invalid if *any* pixel within
+        its ``patch_size`` block is invalid. The result replaces the
+        ``invalid_token_mask`` buffer.
+
+        This must be called **before** the model is wrapped for domain
+        parallelism (e.g. ``distribute_module``), so that the buffer can be
+        sharded along height; once the buffer is a DTensor it can no longer be
+        replaced via ``register_buffer``.
+
+        Parameters
+        ----------
+        pixel_mask : torch.Tensor
+            Boolean tensor of shape :math:`(H, W)`, ``True`` where the input
+            pixel is invalid (e.g. NaN-padded / outside sensor coverage). The
+            pattern is treated as static across samples.
+        persistent : bool, optional, default=False
+            Whether the resulting patch-level mask is saved in the model's
+            ``state_dict``. The default (``False``) resets the mask to all-valid
+            on checkpoint load, so a stale mask from a different domain cannot be
+            used accidentally; the trainer reinstalls it via this method. Set
+            ``True`` to keep the mask in the checkpoint as an audit trail.
+        """
+        if not self._use_nan_mask_tokens:
+            raise RuntimeError(
+                "set_nan_pixel_mask called on a DiT constructed with "
+                "use_nan_mask_tokens=False"
+            )
+        if isinstance(pixel_mask, np.ndarray):
+            pixel_mask = torch.from_numpy(pixel_mask)
+        pixel_mask = pixel_mask.to(dtype=torch.bool)
+        if pixel_mask.ndim != 2:
+            raise ValueError(
+                f"pixel_mask must be (H, W); got shape {tuple(pixel_mask.shape)}"
+            )
+        if tuple(pixel_mask.shape) != tuple(self.input_size):
+            raise ValueError(
+                f"pixel_mask shape {tuple(pixel_mask.shape)} does not match the "
+                f"DiT input resolution {tuple(self.input_size)}"
+            )
+
+        # Keep the new buffer on the same device as the existing one.
+        target_device = self.invalid_token_mask.device
+        pix = pixel_mask.to(target_device)
+
+        # Aggregate to patch granularity: any invalid pixel -> invalid patch.
+        patch_mask = (
+            F.max_pool2d(
+                pix.float().unsqueeze(0).unsqueeze(0),
+                kernel_size=self.patch_size,
+                stride=self.patch_size,
+            )
+            .squeeze(0)
+            .squeeze(0)
+            > 0
+        )
+        if tuple(patch_mask.shape) != (self._latent_h, self._latent_w):
+            raise ValueError(
+                f"derived patch mask shape {tuple(patch_mask.shape)} != "
+                f"({self._latent_h}, {self._latent_w})"
+            )
+
+        self.register_buffer(
+            "invalid_token_mask", patch_mask.to(torch.bool), persistent=persistent
+        )
+
     def forward(
         self,
         x: Float[torch.Tensor, "batch in_channels *spatial_dims"],
@@ -455,12 +605,20 @@ class DiT(Module):
         # Compute conditioning embedding
         c = self.conditioning_embedder(t, condition=condition)  # (B, D)
 
+        block_attn_kwargs = {**self.attn_kwargs_forward, **attn_kwargs}
+        if self._use_nan_mask_tokens:
+            # (h_lat, w_lat) -> (L,); after Shard(0) this is the rank-local
+            # (h_local * w_lat,) flattened mask, aligned with the local tokens.
+            block_attn_kwargs.setdefault(
+                "invalid_token_mask", self.invalid_token_mask.reshape(-1)
+            )
+
         for block in self.blocks:
             x = block(
                 x,
                 c,
                 p_dropout=p_dropout,
-                attn_kwargs={**self.attn_kwargs_forward, **attn_kwargs},
+                attn_kwargs=block_attn_kwargs,
             )  # (B, L, D)
 
         # De-tokenize: (B, L, D) -> (B, C, H, W)

@@ -145,6 +145,11 @@ class Trainer:
         # Load regression net if needed
         self.regression_net = self._load_regression_net()
 
+        # Install the static invalid-token mask, if the model was built with
+        # NaN-mask tokens. Must happen before distribute_model: once the mask
+        # buffer becomes a DTensor it can no longer be replaced.
+        self._install_nan_pixel_mask()
+
         # Sharding and FSDP wrapping
         if self.use_shard_tensor:
             self.logger.info(
@@ -427,6 +432,43 @@ class Trainer:
             raise ValueError("model.architecture must be 'unet' or 'dit'")
 
         return net
+
+    def _install_nan_pixel_mask(self) -> None:
+        r"""Install the static invalid-token mask on the network, if enabled.
+
+        No-op unless the model was constructed with ``use_nan_mask_tokens=True``
+        (set in ``model.hyperparameters``). When enabled, the full pixel-level
+        invalid mask is read from the training dataset (attribute
+        ``sensor_nan_mask``, a ``(H, W)`` bool array/tensor) and converted to a
+        patch-level mask via the model's ``set_nan_pixel_mask``. Must be called
+        before ``distribute_model``.
+        """
+        use_nan_mask_tokens = bool(
+            self.cfg.model.hyperparameters.get("use_nan_mask_tokens", False)
+        )
+        if not use_nan_mask_tokens:
+            return
+
+        # Find the (possibly wrapped) submodule exposing set_nan_pixel_mask.
+        target = next(
+            (m for m in self.net.modules() if hasattr(m, "set_nan_pixel_mask")),
+            None,
+        )
+        if target is None:
+            raise RuntimeError(
+                "model.hyperparameters.use_nan_mask_tokens is True but the "
+                "network exposes no set_nan_pixel_mask method"
+            )
+
+        pixel_mask = getattr(self.dataset_train, "sensor_nan_mask", None)
+        if pixel_mask is None:
+            raise ValueError(
+                "use_nan_mask_tokens is True but the training dataset provides "
+                "no 'sensor_nan_mask' (H, W) invalid-pixel mask"
+            )
+
+        target.set_nan_pixel_mask(pixel_mask)
+        self.logger.info("Installed static invalid-token (NaN) mask on the model")
 
     def _load_regression_net(self) -> Module | None:
         r"""

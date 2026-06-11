@@ -118,6 +118,83 @@ def test_dit_constructor(device):
     assert output.shape == (batch_size, out_channels, *input_size)
 
 
+def test_dit_rope_disables_pos_embed_and_warns(device):
+    """Selecting the RoPE NATTEN backend forces pos_embed='none' on the patch
+    tokenizer and warns if a conflicting value was explicitly requested.
+
+    Construction does not run the NATTEN kernel, so this is CPU-friendly.
+    """
+    with pytest.warns(UserWarning, match="rotary"):
+        model = DiT(
+            input_size=(16, 16),
+            patch_size=4,
+            in_channels=3,
+            hidden_size=64,
+            depth=2,
+            num_heads=4,
+            attention_backend="natten2d_rope",
+            attn_kwargs={"attn_kernel": 3},
+            tokenizer_kwargs={"pos_embed": "learnable"},
+        ).to(device)
+    # Additive positional embedding is disabled.
+    assert model.tokenizer.pos_embed == 0.0
+    # The RoPE tables were precomputed at the latent grid size.
+    head_dim = 64 // 4
+    assert model.blocks[0].attention.rope_cos.shape == (4, 4, head_dim)
+
+
+def test_dit_set_nan_pixel_mask(device):
+    """set_nan_pixel_mask aggregates a pixel mask to patch granularity and
+    installs it as the model buffer; it errors when the feature is disabled."""
+    model = DiT(
+        input_size=(16, 16),
+        patch_size=4,
+        in_channels=3,
+        hidden_size=64,
+        depth=2,
+        num_heads=4,
+        attention_backend="natten2d",
+        attn_kwargs={"attn_kernel": 3},
+        use_nan_mask_tokens=True,
+    ).to(device)
+
+    # Default buffer is all-valid and patch-shaped.
+    assert model.invalid_token_mask.shape == (4, 4)
+    assert not model.invalid_token_mask.any()
+    # Each NATTEN block allocated a learned mask token.
+    assert model.blocks[0].attention.mask_token is not None
+
+    # A patch is invalid if ANY pixel inside it is invalid.
+    pixel_mask = torch.zeros(16, 16, dtype=torch.bool, device=device)
+    pixel_mask[0:4, 0:4] = True  # entire top-left patch
+    pixel_mask[5, 5] = True  # single pixel inside patch (1, 1)
+    model.set_nan_pixel_mask(pixel_mask)
+
+    expected = torch.zeros(4, 4, dtype=torch.bool, device=device)
+    expected[0, 0] = True
+    expected[1, 1] = True
+    assert torch.equal(model.invalid_token_mask, expected)
+
+    # Wrong resolution is rejected.
+    with pytest.raises(ValueError):
+        model.set_nan_pixel_mask(torch.zeros(8, 8, dtype=torch.bool, device=device))
+
+    # Calling on a model built without the feature is an error.
+    plain = DiT(
+        input_size=(16, 16),
+        patch_size=4,
+        in_channels=3,
+        hidden_size=64,
+        depth=2,
+        num_heads=4,
+        attention_backend="natten2d",
+        attn_kwargs={"attn_kernel": 3},
+    ).to(device)
+    assert not hasattr(plain, "invalid_token_mask")
+    with pytest.raises(RuntimeError):
+        plain.set_nan_pixel_mask(pixel_mask)
+
+
 class CustomTokenizer(TokenizerModuleBase):
     """Simple N C H W -> N L D mapping."""
 
