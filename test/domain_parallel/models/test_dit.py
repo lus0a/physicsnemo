@@ -38,9 +38,9 @@ Run with, e.g.::
 import pytest
 import torch
 import torch.nn as nn
+from torch.distributed.fsdp import fully_shard
 from torch.distributed.tensor import distribute_module, distribute_tensor
 from torch.distributed.tensor.placement_types import Replicate, Shard
-from torch.distributed.fsdp import fully_shard
 
 from physicsnemo.distributed import DistributedManager
 from physicsnemo.domain_parallel import scatter_tensor
