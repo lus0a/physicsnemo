@@ -1351,6 +1351,8 @@ class ConvDetokenizer(DetokenizerModuleBase):
             hidden_size=hidden_size,
             layernorm_backend=layernorm_backend,
         )
+        if conv_layers < 1:
+            raise ValueError(f"conv_layers must be >= 1; got {conv_layers}")
         pad = conv_kernel // 2
         layers: list[nn.Module] = []
         c_in = out_channels
