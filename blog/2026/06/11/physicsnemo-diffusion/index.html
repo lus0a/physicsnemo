@@ -1124,7 +1124,7 @@ ensemble = sample(denoiser, xN, scheduler, num_steps=50, solver=&quot;heun&quot;
 <p>The same pattern transfers directly to engineering. In Computational Fluid Dynamics (CFD), a deterministic surrogate for a turbulent flow can, at best, return a single realization or the statistical mean of the next snapshots given the past. A diffusion model trained on Large-Eddy Simulation (LES) snapshots instead samples an ensemble of distinct, physically plausible realizations of the flow, capturing the variability that a mean field washes out. That is exactly what an engineer needs to estimate the spread of aerodynamic loads on a vehicle, the variability of heat transfer in a cooling channel, or the chance of a rare pressure excursion, the everyday uncertainty quantification that underpins robust design in Computer-Aided Engineering (CAE).</p>
 <p>In turbulence research, <a href="https://www.nature.com/articles/s42256-024-00810-0">Synthetic Lagrangian Turbulence by Generative Diffusion Models (Li et al., Nature Machine Intelligence, 2024)</a> trains a diffusion model to generate single-particle trajectories in high-Reynolds-number turbulence. The ensemble of generated trajectories reproduces statistics including intermittency, fat-tailed velocity increments, and rare extreme events.</p>
 <h3 id="inverse-problems-and-data-assimilation">Inverse Problems and Data Assimilation</h3>
-<p>Many physics-AI tasks run the arrow backward: infer the state or the parameters that explain a set of measurements. These problems are typically ill-posed, with many states consistent with the same data. A diffusion model addresses this by sampling the posterior $p(x \mid y)$, the distribution over states $x$ conditioned on observations $y$, so the output is not a single answer but a population of data-consistent candidates, each carrying its own uncertainty.</p>
+<p>Many physics-AI tasks run the arrow backward: infer the state or the parameters that explain a set of measurements. These problems are typically ill-posed, with many states consistent with the same data. A diffusion model addresses this by sampling the posterior <span class="arithmatex">\(p(x \mid y)\)</span>, the distribution over states <span class="arithmatex">\(x\)</span> conditioned on observations <span class="arithmatex">\(y\)</span>, so the output is not a single answer but a population of data-consistent candidates, each carrying its own uncertainty.</p>
 <p>The enabling abstraction is guidance. At every denoising step, Diffusion Posterior Sampling (DPS) guidance nudges the sample toward agreement with the observations, turning a generator into a posterior sampler. The module ships a collection of predefined guidance functions for assimilating sparse or dense observations, and because guidance objects compose naturally with the other abstractions, several can be combined into a single multi-guidance sampling pipeline. It handles the mechanics, composing the data term with the learned model and converting between equivalent prediction targets, so in practice the user specifies only what was observed and how much to trust it:</p>
 <pre><code class="language-python">from physicsnemo.diffusion.guidance import (
     DPSScorePredictor, DataConsistencyDPSGuidance,
@@ -1295,6 +1295,10 @@ full_field = sample(denoiser, xN, scheduler, num_steps=50)     # coherent full-d
     
     
       <script src="../../../../../assets/javascripts/bundle.92b07e13.min.js"></script>
+      
+        <script src="../../../../../javascripts/mathjax.js"></script>
+      
+        <script src="https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js"></script>
       
     
   </body>
