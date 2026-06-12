@@ -1365,7 +1365,17 @@ class ConvDetokenizer(DetokenizerModuleBase):
         self.conv_head = nn.Sequential(*layers)
 
     def initialize_weights(self) -> None:
-        """Initialize weights; zero the last conv so the residual starts at zero."""
+        r"""Initialize weights; zero the last conv so the residual starts at zero.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None
+            Modifies module parameters in-place.
+        """
         self.proj.initialize_weights()
         convs = [m for m in self.conv_head if isinstance(m, nn.Conv2d)]
         nn.init.zeros_(convs[-1].weight)

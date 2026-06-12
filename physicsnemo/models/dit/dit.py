@@ -72,8 +72,8 @@ class DiT(Module):
     tokenizer : Union[Literal["patch_embed_2d", "hpx_patch_embed"], Module], optional, default="patch_embed_2d"
         The tokenizer to use. Either a string in ``{"patch_embed_2d", "hpx_patch_embed"}`` or an instantiated PhysicsNeMo :class:`~physicsnemo.core.Module` implementing
         :class:`~physicsnemo.nn.TokenizerModuleBase`, with forward accepting input of shape :math:`(B, C, *\text{spatial\_dims})` and returning :math:`(B, L, D)`.
-    detokenizer : Union[Literal["proj_reshape_2d", "hpx_patch_detokenizer"], Module], optional, default="proj_reshape_2d"
-        The detokenizer to use. Either a string in ``{"proj_reshape_2d", "hpx_patch_detokenizer"}`` or an instantiated PhysicsNeMo :class:`~physicsnemo.core.Module` implementing
+    detokenizer : Union[Literal["proj_reshape_2d", "proj_reshape_2d_conv", "hpx_patch_detokenizer"], Module], optional, default="proj_reshape_2d"
+        The detokenizer to use. Either a string in ``{"proj_reshape_2d", "proj_reshape_2d_conv", "hpx_patch_detokenizer"}`` or an instantiated PhysicsNeMo :class:`~physicsnemo.core.Module` implementing
         :class:`~physicsnemo.nn.DetokenizerModuleBase`, with forward accepting :math:`(B, L, D)` and :math:`(B, D)` and returning :math:`(B, C, *\text{spatial\_dims})`.
     out_channels : Union[None, int], optional, default=None
         The number of output channels. If ``None``, set to ``in_channels``.
@@ -202,7 +202,8 @@ class DiT(Module):
             Literal["patch_embed_2d", "hpx_patch_embed"], Module
         ] = "patch_embed_2d",
         detokenizer: Union[
-            Literal["proj_reshape_2d", "hpx_patch_detokenizer"], Module
+            Literal["proj_reshape_2d", "proj_reshape_2d_conv", "hpx_patch_detokenizer"],
+            Module,
         ] = "proj_reshape_2d",
         out_channels: Optional[int] = None,
         hidden_size: int = 384,
@@ -316,10 +317,11 @@ class DiT(Module):
 
         if isinstance(detokenizer, str) and detokenizer not in [
             "proj_reshape_2d",
+            "proj_reshape_2d_conv",
             "hpx_patch_detokenizer",
         ]:
             raise ValueError(
-                "detokenizer must be 'proj_reshape_2d' or 'hpx_patch_detokenizer'"
+                "detokenizer must be 'proj_reshape_2d', 'proj_reshape_2d_conv', or 'hpx_patch_detokenizer'"
             )
 
         # Tokenizer module: accept string or pre-instantiated PhysicsNeMo Module
