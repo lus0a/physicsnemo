@@ -1,0 +1,1301 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="PhysicsNeMo blog">
+      
+      
+      
+        <link rel="canonical" href="http://www.example.com/blog/2026/06/11/physicsnemo-diffusion/">
+      
+      
+        <link rel="prev" href="../../../05/29/physicsnemo-cfd/">
+      
+      
+      
+      <link rel="icon" href="../../../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.18">
+    
+    
+      
+        <title>Introducing the PhysicsNeMo Diffusion Module: Composable, Extensible Generative Modeling for Physics-AI - NVIDIA PhysicsNeMo</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../../../assets/stylesheets/main.7e37652d.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../../../stylesheets/color-scheme.css">
+    
+      <link rel="stylesheet" href="../../../../../stylesheets/custom-material.css">
+    
+      <link rel="stylesheet" href="../../../../../stylesheets/fonts.css">
+    
+    <script>__md_scope=new URL("../../../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+      
+        <meta  property="og:type"  content="website" >
+      
+        <meta  property="og:title"  content="Introducing the PhysicsNeMo Diffusion Module: Composable, Extensible Generative Modeling for Physics-AI - NVIDIA PhysicsNeMo" >
+      
+        <meta  property="og:description"  content="PhysicsNeMo blog" >
+      
+        <meta  property="og:image"  content="http://www.example.com/assets/images/social/blog/posts/physicsnemo_diffusion.png" >
+      
+        <meta  property="og:image:type"  content="image/png" >
+      
+        <meta  property="og:image:width"  content="1200" >
+      
+        <meta  property="og:image:height"  content="630" >
+      
+        <meta  property="og:url"  content="http://www.example.com/blog/2026/06/11/physicsnemo-diffusion/" >
+      
+        <meta  name="twitter:card"  content="summary_large_image" >
+      
+        <meta  name="twitter:title"  content="Introducing the PhysicsNeMo Diffusion Module: Composable, Extensible Generative Modeling for Physics-AI - NVIDIA PhysicsNeMo" >
+      
+        <meta  name="twitter:description"  content="PhysicsNeMo blog" >
+      
+        <meta  name="twitter:image"  content="http://www.example.com/assets/images/social/blog/posts/physicsnemo_diffusion.png" >
+      
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="light" data-md-color-primary="custom" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#introducing-the-physicsnemo-diffusion-module-composable-extensible-generative-modeling-for-physics-ai" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../../../.." title="NVIDIA PhysicsNeMo" class="md-header__button md-logo" aria-label="NVIDIA PhysicsNeMo" data-md-component="logo">
+      <img id="logo_dark_mode" src="../../../../../assets/images/NVIDIA-Logo-Black.svg" alt="logo">
+<img id="logo_light_mode" src="../../../../../assets/images/NVIDIA-Logo-White.svg" alt="logo">
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            NVIDIA PhysicsNeMo
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Introducing the PhysicsNeMo Diffusion Module: Composable, Extensible Generative Modeling for Physics-AI
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="light" data-md-color-primary="custom" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="dark" data-md-color-primary="custom" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/NVIDIA/physicsnemo" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.0.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path fill="currentColor" d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../../../.." title="NVIDIA PhysicsNeMo" class="md-nav__button md-logo" aria-label="NVIDIA PhysicsNeMo" data-md-component="logo">
+      <img id="logo_dark_mode" src="../../../../../assets/images/NVIDIA-Logo-Black.svg" alt="logo">
+<img id="logo_light_mode" src="../../../../../assets/images/NVIDIA-Logo-White.svg" alt="logo">
+    </a>
+    NVIDIA PhysicsNeMo
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/NVIDIA/physicsnemo" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.0.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path fill="currentColor" d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Home
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../../" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    Blog
+    
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2" id="__nav_2_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Blog
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Archive
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            Archive
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+    
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../archive/2026/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    June 2026
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../archive/2025/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    October 2025
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_3" id="__nav_2_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Categories
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_3">
+            <span class="md-nav__icon md-icon"></span>
+            Categories
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+    
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../category/earth2studio/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Earth2Studio
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../category/physicsnemo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    PhysicsNeMo
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../category/physicsnemo-cfd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    PhysicsNeMo CFD
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-the-module-unlocks" class="md-nav__link">
+    <span class="md-ellipsis">
+      What the Module Unlocks
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="What the Module Unlocks">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#large-ensembles-of-probabilistic-predictions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Large Ensembles of Probabilistic Predictions
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inverse-problems-and-data-assimilation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Inverse Problems and Data Assimilation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#physics-constraints-at-inference-time" class="md-nav__link">
+    <span class="md-ellipsis">
+      Physics Constraints at Inference Time
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#a-generative-engine-for-scientific-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      A Generative Engine for Scientific Data
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#model-backbones-for-scientific-data-modalities" class="md-nav__link">
+    <span class="md-ellipsis">
+      Model Backbones for Scientific Data Modalities
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-the-module-adds-beyond-pure-pytorch" class="md-nav__link">
+    <span class="md-ellipsis">
+      What the Module Adds Beyond Pure PyTorch
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="What the Module Adds Beyond Pure PyTorch">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#clearly-defined-abstractions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Clearly Defined Abstractions
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#performance-you-do-not-have-to-think-about" class="md-nav__link">
+    <span class="md-ellipsis">
+      Performance You Do Not Have to Think About
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scaling-to-large-scientific-domains" class="md-nav__link">
+    <span class="md-ellipsis">
+      Scaling to Large Scientific Domains
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#going-deeper-inside-the-module" class="md-nav__link">
+    <span class="md-ellipsis">
+      Going Deeper: Inside the Module
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Going Deeper: Inside the Module">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#breaking-diffusion-into-clear-abstractions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Breaking Diffusion Into Clear Abstractions
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#a-layered-design-for-customization-and-extensibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      A Layered Design for Customization and Extensibility
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#getting-started" class="md-nav__link">
+    <span class="md-ellipsis">
+      Getting Started
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+  <div class="md-content md-content--post" data-md-component="content">
+    <div class="md-sidebar md-sidebar--post" data-md-component="sidebar" data-md-type="navigation">
+      <div class="md-sidebar__scrollwrap">
+        <div class="md-sidebar__inner md-post">
+          <nav class="md-nav md-nav--primary">
+            <div class="md-post__back">
+              <div class="md-nav__title md-nav__container">
+                <a href="../../../../" class="md-nav__link">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+                  <span class="md-ellipsis">
+                    Back to index
+                  </span>
+                </a>
+              </div>
+            </div>
+            
+              <div class="md-post__authors md-typeset">
+                
+                  <div class="md-profile md-post__profile">
+                    <span class="md-author md-author--long">
+                      <img src="../../../../../author-images/charlelie_headshot.jpg" alt="Charlelie Laurent">
+                    </span>
+                    <span class="md-profile__description">
+                      <strong>
+                        
+                          Charlelie Laurent
+                        
+                      </strong>
+                      <br>
+                      Senior Scientific Machine Learning Software Engineer - Physics
+                    </span>
+                  </div>
+                
+                  <div class="md-profile md-post__profile">
+                    <span class="md-author md-author--long">
+                      <img src="../../../../../author-images/peter_h_headshot.jpg" alt="Peter Harrington">
+                    </span>
+                    <span class="md-profile__description">
+                      <strong>
+                        
+                          Peter Harrington
+                        
+                      </strong>
+                      <br>
+                      Senior Scientific Machine Learning Software Engineer
+                    </span>
+                  </div>
+                
+              </div>
+            
+            <ul class="md-post__meta md-nav__list">
+              <li class="md-nav__item md-nav__item--section">
+                <div class="md-post__title">
+                  <span class="md-ellipsis">
+                    Metadata
+                  </span>
+                </div>
+                <nav class="md-nav">
+                  <ul class="md-nav__list">
+                    <li class="md-nav__item">
+                      <div class="md-nav__link">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 19H5V8h14m-3-7v2H8V1H6v2H5c-1.11 0-2 .89-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-1V1m-1 11h-5v5h5z"/></svg>
+                        <time datetime="2026-06-11 00:00:00+00:00" class="md-ellipsis">June 11, 2026</time>
+                      </div>
+                    </li>
+                    
+                    
+                      <li class="md-nav__item">
+                        <div class="md-nav__link">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9 3v15h3V3zm3 2 4 13 3-1-4-13zM5 5v13h3V5zM3 19v2h18v-2z"/></svg>
+                          <span class="md-ellipsis">
+                            in
+                            
+                              <a href="../../../../category/physicsnemo/">PhysicsNeMo</a></span>
+                        </div>
+                      </li>
+                    
+                    
+                      
+                      <li class="md-nav__item">
+                        <div class="md-nav__link">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 20a8 8 0 0 0 8-8 8 8 0 0 0-8-8 8 8 0 0 0-8 8 8 8 0 0 0 8 8m0-18a10 10 0 0 1 10 10 10 10 0 0 1-10 10C6.47 22 2 17.5 2 12A10 10 0 0 1 12 2m.5 5v5.25l4.5 2.67-.75 1.23L11 13V7z"/></svg>
+                          <span class="md-ellipsis">
+                            
+                              15 min read
+                            
+                          </span>
+                        </div>
+                      </li>
+                    
+                  </ul>
+                </nav>
+              </li>
+            </ul>
+            
+              <ul class="md-post__meta md-nav__list">
+                <li class="md-nav__item md-nav__item--section">
+                  <div class="md-post__title">
+                    <span class="md-ellipsis">
+                      Related links
+                    </span>
+                  </div>
+                  <nav class="md-nav">
+                    <ul class="md-nav__list">
+                      
+                        
+                        
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Homepage
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+                      
+                        
+                        
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Blog index
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+                      
+                        
+                        
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__ref_3" >
+        
+          
+          <label class="md-nav__link" for="__ref_3" id="__ref_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    External links
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__ref_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__ref_3">
+            <span class="md-nav__icon md-icon"></span>
+            External links
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/NVIDIA/physicsnemo" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    PhysicsNeMo GitHub
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/NVIDIA/physicsnemo/tree/main/physicsnemo/diffusion" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    PhysicsNeMo-Diffusion Source
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://docs.nvidia.com/physicsnemo/latest/physicsnemo/api_diffusion.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    PhysicsNeMo-Diffusion API documentation
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+                      
+                    </ul>
+                  </nav>
+                </li>
+              </ul>
+            
+          </nav>
+          
+        </div>
+      </div>
+    </div>
+    <article class="md-content__inner md-typeset">
+      
+        
+  
+
+
+  <nav class="md-tags" >
+    
+      
+      
+      
+        <a href="../../../../tags/#tag:blog" class="md-tag">Blog</a>
+      
+    
+      
+      
+      
+        <a href="../../../../tags/#tag:diffusion" class="md-tag">Diffusion</a>
+      
+    
+      
+      
+      
+        <a href="../../../../tags/#tag:gpu" class="md-tag">GPU</a>
+      
+    
+      
+      
+      
+        <a href="../../../../tags/#tag:scientific-computing" class="md-tag">Scientific Computing</a>
+      
+    
+  </nav>
+
+
+  
+  
+
+
+<h1 id="introducing-the-physicsnemo-diffusion-module-composable-extensible-generative-modeling-for-physics-ai">Introducing the PhysicsNeMo Diffusion Module: Composable, Extensible Generative Modeling for Physics-AI</h1>
+<p>In physics-AI, many problems have not a single answer but a distribution of possible ones, which is what diffusion models sample. The PhysicsNeMo diffusion module brings diffusion to scientific data, built on PyTorch and included in the open-source PhysicsNeMo library.</p>
+<p>Its composable components range from ready-to-use defaults to fully custom research implementations, serving a CAE engineer, a weather modeler, and a diffusion researcher alike. They cover the whole workflow, from training a model to sampling from it. A single trained model then serves many tasks at inference, drawing large ensembles, solving inverse problems by sampling the posterior, and enforcing physical constraints, without retraining. The module is designed for high throughput on large ensembles and for scaling to the large domains typical of scientific applications. In this post, we'll show what the module unlocks, from large ensembles to data assimilation to physics-constrained generation, and how its abstractions fit together.</p>
+<!-- more -->
+
+<p><a href="../../../../../images/physicsnemo-diffusion/intro_corrdiff_downscaling.jpg"><img alt="CorrDiff kilometer-scale weather downscaling" src="../../../../../images/physicsnemo-diffusion/intro_corrdiff_downscaling.jpg" /></a>
+<em>Fig 1: Kilometer-scale weather downscaling with CorrDiff, a conditional diffusion model built with PhysicsNeMo diffusion module. The model turns coarse atmospheric fields into sharp, high-resolution weather, shown here for near-surface wind speed (mph). Sampling it repeatedly produces large ensembles, making it possible to probe extreme events at a localized scale.</em></p>
+<p>From ensemble weather forecasts to turbulent flows, subsurface imaging to materials discovery, many of the hardest problems in physics-AI share a property that deterministic surrogates handle poorly: the answer is not a single field, but a distribution of plausible fields. A convection-allowing forecast admits many physically consistent realizations. A turbulent flow at a given Reynolds number is one draw from a vast space of states consistent with the same boundary conditions. A velocity model that explains a set of seismic recordings is rarely unique. The atomic arrangement of a disordered material consistent with a measured spectrum is one of many. In each case, what we know constrains the answer to a probability cloud, not a point.</p>
+<p>Diffusion models are built for exactly this setting. They set the state of the art in image and video generation, and the same machinery learns to sample from the complex, high-dimensional distributions that arise in science. Just as important, they can be steered at inference time toward observations and physical constraints. That makes them a natural fit not only for probabilistic forward prediction (large ensembles and uncertainty quantification), but also for inverse problems (data assimilation and real-time state estimation) and for physics-informed generation (imposing constraints at sampling time, not only during training).</p>
+<p>The PhysicsNeMo diffusion module is built to let a domain scientist assemble a working pipeline from off-the-shelf parts, while giving a diffusion researcher room to swap in a custom component and inherit the rest. We look under the hood at those abstractions and their design <a href="#going-deeper-inside-the-module">later in the post</a>; first, what they make possible.</p>
+<h2 id="what-the-module-unlocks">What the Module Unlocks</h2>
+<p>The clearest way to understand the module is through what it makes possible. For each capability below, we name the abstraction that enables it, point to an example that puts it to work, and sketch how it carries over to engineering applications.</p>
+<h3 id="large-ensembles-of-probabilistic-predictions">Large Ensembles of Probabilistic Predictions</h3>
+<p>Chaotic systems such as the atmosphere or a turbulent flow are exquisitely sensitive to initial conditions, so a single prediction is rarely enough. An ensemble that traces out the spread of plausible outcomes is what matters. A diffusion model delivers this almost for free: every random seed is a fresh sample from the learned distribution, so a large ensemble is simply many independent draws. Those draws feed whatever is needed downstream, from uncertainty quantification to risk estimates to the statistics of rare events. Because the members are independent, generation is an embarrassingly parallel workload, and this is where inference throughput becomes decisive: the performance optimizations discussed later are what turn ensembles of hundreds or thousands of members from aspiration into routine.</p>
+<p>The capability rests on two abstractions: the <code>NoiseScheduler</code>, the central component that governs how noise is added and removed, and the <code>sample()</code> function, the single entry point for generation. The scheduler initializes a batch of independent noisy states, and <code>sample()</code> integrates each one down to a clean field. Generating a 64-member ensemble from a trained model is a few lines:</p>
+<pre><code class="language-python">from functools import partial
+from physicsnemo.diffusion.noise_schedulers import EDMNoiseScheduler
+from physicsnemo.diffusion.samplers import sample
+
+scheduler = EDMNoiseScheduler()                        # ready-to-use EDM schedule
+x0_predictor = partial(trained_model, condition=cond)  # bind the conditioning
+denoiser = scheduler.get_denoiser(x0_predictor=x0_predictor)
+
+tN = scheduler.timesteps(num_steps=50)[0].expand(64)   # 64 independent members
+xN = scheduler.init_latents(state_shape, tN)           # 64 noisy latents
+ensemble = sample(denoiser, xN, scheduler, num_steps=50, solver=&quot;heun&quot;)
+</code></pre>
+<p>In production, this is the pattern behind <a href="https://github.com/NVIDIA/physicsnemo/tree/main/examples/weather/stormcast">StormCast and Stormscope</a>. StormCast is a generative diffusion model that emulates NOAA's 3 km High-Resolution Rapid Refresh, autoregressively predicting kilometer-scale atmospheric state with realistic storm structure and radar reflectivity. Stormscope is a diffusion-only nowcasting model for clouds and precipitation, built on a diffusion transformer, whose generative formulation lets it quantify the uncertainty of the variables it predicts.</p>
+<p><a href="../../../../../images/physicsnemo-diffusion/stormscope_forecast.gif"><img alt="Stormscope generative nowcast of composite reflectivity over the United States" src="../../../../../images/physicsnemo-diffusion/stormscope_forecast.gif" /></a>
+<em>Fig 2: A generative nowcast from Stormscope, a diffusion-transformer model that predicts composite radar reflectivity and satellite imagery (GOES/MRMS) over the continental United States. Each frame advances the forecast lead time. Because every rollout is a fresh sample from the learned distribution, repeated runs form an ensemble that quantifies forecast uncertainty.</em></p>
+<p>The same pattern transfers directly to engineering. In Computational Fluid Dynamics (CFD), a deterministic surrogate for a turbulent flow can, at best, return a single realization or the statistical mean of the next snapshots given the past. A diffusion model trained on Large-Eddy Simulation (LES) snapshots instead samples an ensemble of distinct, physically plausible realizations of the flow, capturing the variability that a mean field washes out. That is exactly what an engineer needs to estimate the spread of aerodynamic loads on a vehicle, the variability of heat transfer in a cooling channel, or the chance of a rare pressure excursion, the everyday uncertainty quantification that underpins robust design in Computer-Aided Engineering (CAE).</p>
+<p>In turbulence research, <a href="https://www.nature.com/articles/s42256-024-00810-0">Synthetic Lagrangian Turbulence by Generative Diffusion Models (Li et al., Nature Machine Intelligence, 2024)</a> trains a diffusion model to generate single-particle trajectories in high-Reynolds-number turbulence. The ensemble of generated trajectories reproduces statistics including intermittency, fat-tailed velocity increments, and rare extreme events.</p>
+<h3 id="inverse-problems-and-data-assimilation">Inverse Problems and Data Assimilation</h3>
+<p>Many physics-AI tasks run the arrow backward: infer the state or the parameters that explain a set of measurements. These problems are typically ill-posed, with many states consistent with the same data. A diffusion model addresses this by sampling the posterior $p(x \mid y)$, the distribution over states $x$ conditioned on observations $y$, so the output is not a single answer but a population of data-consistent candidates, each carrying its own uncertainty.</p>
+<p>The enabling abstraction is guidance. At every denoising step, Diffusion Posterior Sampling (DPS) guidance nudges the sample toward agreement with the observations, turning a generator into a posterior sampler. The module ships a collection of predefined guidance functions for assimilating sparse or dense observations, and because guidance objects compose naturally with the other abstractions, several can be combined into a single multi-guidance sampling pipeline. It handles the mechanics, composing the data term with the learned model and converting between equivalent prediction targets, so in practice the user specifies only what was observed and how much to trust it:</p>
+<pre><code class="language-python">from physicsnemo.diffusion.guidance import (
+    DPSScorePredictor, DataConsistencyDPSGuidance,
+)
+
+# Steer sampling toward sparse observations y_obs at the masked locations
+guidance = DataConsistencyDPSGuidance(mask=mask, y=y_obs, std_y=0.1)
+guided = DPSScorePredictor(
+    x0_predictor=x0_predictor,             # the data-driven model from above
+    x0_to_score_fn=scheduler.x0_to_score,  # the scheduler handles the conversion
+    guidances=guidance,
+)
+denoiser = scheduler.get_denoiser(score_predictor=guided)
+samples = sample(denoiser, xN, scheduler, num_steps=50)
+</code></pre>
+<p>A complete application is <a href="https://nvidia.github.io/earth2studio/examples/05_data_assimilation/01_stormcast_sda.html">StormCast score-based data assimilation</a>, available in <a href="https://github.com/NVIDIA/earth2studio">Earth2Studio</a>. It uses DPS to fold sparse surface-station observations into a generative forecast, steering the model toward the measurements while preserving physical consistency. This is the engine of a generative digital twin: fuse a forecast model with a streaming sensor feed to maintain an accurate, uncertainty-aware state estimate in real time, a capability deterministic surrogates do not offer as naturally.</p>
+<p><a href="../../../../../images/physicsnemo-diffusion/stormcast_sda_data_assimilation.jpg"><img alt="StormCast score-based data assimilation from sparse observations" src="../../../../../images/physicsnemo-diffusion/stormcast_sda_data_assimilation.jpg" /></a>
+<em>Fig 3: Score-based data assimilation with StormCast. Sparse observations from surface weather stations (markers) are folded into a generative forecast through DPS guidance, reconstructing a full high-resolution atmospheric state from limited measurements. Each column is a successive lead time of the StormCast forecast. Assimilating observations into the forecast this way enables workflows such as weather reanalysis.</em></p>
+<p>In CAE the same machinery reconstructs a physical state from a handful of sensors: the full flow field around a vehicle from a sparse set of surface pressure taps or particle-image-velocimetry probes, or an internal temperature field from a few thermocouples, each with calibrated uncertainty. That is the foundation of an engineering digital twin, a model kept in sync with a physical asset as measurements stream in.</p>
+<p>In materials science, <a href="https://iopscience.iop.org/article/10.1088/2632-2153/ad8c10">Spectroscopy-guided discovery of three-dimensional structures of disordered materials with diffusion models (Kwon et al., Machine Learning: Science and Technology, 2024)</a> combines a diffusion prior over realistic atomic structures with a likelihood from a forward spectroscopy model to reconstruct the 3D structure of amorphous materials from measured spectra. That forward spectroscopy model is highly nonlinear, the kind of operator the PhysicsNeMo diffusion module's plug-and-play DPS guidance accepts.</p>
+<h3 id="physics-constraints-at-inference-time">Physics Constraints at Inference Time</h3>
+<p>Physics-informed neural networks impose physical laws during training, typically by adding a PDE-residual term to the loss so the network learns to satisfy the governing equations on average. Diffusion offers a complementary lever: impose the constraint at sampling time. Because guidance acts at inference, the constraint, the boundary conditions, or the observation operator can change without retraining, and a governing equation can be enforced on each individual generated sample.</p>
+<p>This reuses the very same guidance components that power data assimilation, now wrapping a physics residual instead of a data term, and that generality is the point. The module's guidance interface accepts arbitrary, possibly nonlinear operators, including the residual of a governing PDE. That residual can be expressed with <a href="https://docs.nvidia.com/physicsnemo/latest/user-guide/physics_addition.html"><code>physicsnemo.sym</code></a>, the PhysicsNeMo-Sym module, or with any callable compatible with the torch autograd engine, so a developer can drop in custom numerical schemes, for instance finite-difference or finite-volume kernels written in <a href="https://github.com/NVIDIA/warp">NVIDIA Warp</a>. It evaluates whatever residual is provided as a guidance term on the fly during sampling, with no bespoke solver code.</p>
+<p>One example is <a href="https://docs.nvidia.com/physicsnemo/latest/physicsnemo/examples/geophysics/diffusion_fwi/README.html">diffusion for full-waveform inversion (FWI)</a>. FWI reconstructs subsurface elastic properties from seismic recordings, a strongly nonlinear, ill-posed inverse problem central to hydrocarbon exploration, CO2 storage, and seismology. The example trains a conditional diffusion model and offers two sampling modes: zero-shot, which is purely data-driven, and physics-informed, in which DPS guidance enforces consistency between the elastic wave-equation residual and the observed data. The output is an ensemble of velocity models together with a variance map that flags where the subsurface is poorly constrained, precisely the information an engineer needs to decide where to drill or place the next sensor.</p>
+<p><a href="../../../../../images/physicsnemo-diffusion/diffusion_full_waveform_inversion_physics_informed.jpg"><img alt="Physics-informed diffusion ensemble for full-waveform inversion" src="../../../../../images/physicsnemo-diffusion/diffusion_full_waveform_inversion_physics_informed.jpg" /></a>
+<em>Fig 4: Physics-informed diffusion for full-waveform inversion. Each row is a subsurface elastic parameter: P-wave velocity (vp), S-wave velocity (vs), and density (rho). Columns show individual posterior samples and the ensemble mean, annotated with its mean absolute error (MAE) against ground truth. The model returns a population of data-consistent velocity models rather than a single estimate.</em></p>
+<p>In a CFD setting, the same approach can hold a generated flow field to mass and momentum conservation, or honor an incompressibility constraint or a no-slip boundary, during sampling, bringing physics into the loop at inference instead of through a dedicated physics-informed training run.</p>
+<h3 id="a-generative-engine-for-scientific-data">A Generative Engine for Scientific Data</h3>
+<p>A trained diffusion model is also a general-purpose generator: an unconditional model learns the distribution of an entire class of physical fields and can produce an endless supply of novel, realistic samples. What turns that raw generator into a controllable tool is the module's guidance machinery, the very components introduced above. Because DPS-style guidance is plug-and-play and applied only at inference, a single pretrained generation engine can be steered after the fact toward many different goals, with no retraining: a developer attaches a classifier or a property predictor as a guidance term, composes it with the model exactly as in the data-assimilation example, and the generator preferentially produces samples that exhibit the desired property. The same predefined and custom guidance objects that power assimilation and physics-informed generation are reused here for controllable synthesis.</p>
+<p>This is especially powerful for probing rare or even hypothetical scenarios. Earth2Studio demonstrates it with <a href="https://nvidia.github.io/earth2studio/examples/07_misc/05_cbottle_tc_guidance.html">cBottle</a>, a generative model of the global atmosphere steered toward tropical-cyclone scenarios, rare, high-impact events, by a guidance term applied purely at sampling time. The same idea is compelling in engineering: guide a generative model of turbulent flows toward an extreme gust load, an off-design operating point, a rare flow-separation or stall event, or a target lift or drag, using a small trained predictor as the steering signal. One expensive-to-train generator becomes many task-specific samplers, each defined by the guidance plugged in, letting engineers deliberately oversample the rare, dangerous corners of the design space that matter most.</p>
+<p>In materials discovery, <a href="https://www.nature.com/articles/s41586-025-08628-5">MatterGen (Zeni et al., Nature, 2025)</a> jointly generates the atom types, coordinates, and periodic lattice of inorganic crystals, and conditions on target properties to propose stable, novel materials. Expressed with the PhysicsNeMo diffusion module, this is a backbone plus a scheduler, with property targets supplied through guidance.</p>
+<h3 id="model-backbones-for-scientific-data-modalities">Model Backbones for Scientific Data Modalities</h3>
+<p>Scientific data rarely looks like an RGB image. It lives on structured grids, volumetric fields, and large unstructured meshes, and the model architecture, the backbone, has to match. Crucially, every other part of the module, the scheduler, the loss, the sampler, and guidance, is agnostic to the data modality: it applies unchanged to any scientific data type, as long as the backbone is compatible with that data. The module treats the backbone as just another swappable component and ships options across these modalities. For structured surface or volume data, it provides 2D and 3D U-Nets specialized for diffusion workflows. For grid or mesh data it also provides a diffusion transformer (DiT); with an appropriate tokenizer and de-tokenizer, that same DiT extends to other modalities. In principle, any model from the <a href="https://docs.nvidia.com/physicsnemo/latest/physicsnemo/api_models.html">PhysicsNeMo model zoo</a> can serve as a diffusion backbone, including <a href="https://arxiv.org/abs/2512.20399">GeoTransolver</a> for diffusion on the large unstructured meshes typical of CFD and other CAE workloads.</p>
+<p>And because the module is modular, none of this is locked in. The backbone is a bring-your-own-model slot: a fully custom architecture, or one imported from a third-party library, drops into the same training and sampling pipeline and interoperates seamlessly with every other component. The data modality drives the choice of backbone; everything else stays the same.</p>
+<p>In structural biology, <a href="https://www.nature.com/articles/s41586-023-06415-8">RFdiffusion (Watson et al., Nature, 2023)</a> recasts protein-structure prediction as a generative model of protein backbones, enabling de novo design of binders, enzyme scaffolds, and symmetric assemblies, many of them experimentally validated. It is built on an equivariant network, the kind of custom architecture the PhysicsNeMo diffusion module accepts through its bring-your-own-backbone slot, leaving the scheduler, loss, and sampler unchanged.</p>
+<p>Nothing about these capabilities is tied to a particular field. The same denoise-and-sample recipe, with domain-appropriate data and conditioning, reduces every one of these problems, a weather field, a velocity model, a crystal, a protein, to the same handful of choices: a data representation, a noise schedule, a loss, a sampler, and, where needed, a guidance term, exactly the components the module provides. Diffusion is already established in fields from structural biology to climate, and increasingly in materials, yet it remains under-utilized in CAE, where it is a natural fit for ensembles of unsteady flows, real-time assimilation of sensor data, and physics-constrained generation. The module exists to make those applications as approachable for an engineer as they have become for researchers elsewhere.</p>
+<h2 id="what-the-module-adds-beyond-pure-pytorch">What the Module Adds Beyond Pure PyTorch</h2>
+<h3 id="clearly-defined-abstractions">Clearly Defined Abstractions</h3>
+<p>For a scientist coming from outside machine learning, the diffusion literature is hard to navigate: the same method appears under several formulations, there is little unifying structure, and notations conflict from paper to paper. Compounding this, a diffusion application is much more than a network architecture. It is a noise schedule, a training objective, a sampling procedure, and an ODE or SDE solver, as much as it is a model, a real shift from the deterministic surrogates familiar in scientific computing, where the architecture commands almost all of the attention and the rest of the pipeline is an afterthought.</p>
+<p>The module's components tame that complexity. Together they form a single mathematical framework that spans most state-of-the-art diffusion formulations: many published methods amount to a particular choice of scheduler, loss, solver, and guidance rather than a new codebase. The practical consequences are concrete. A developer reaches for a configuration where they would otherwise reimplement a paper, extends the module by adding one class rather than forking it, and ends up with application code that is short and far less prone to subtle mistakes. For the full breakdown of these abstractions and how they compose, see <a href="#going-deeper-inside-the-module">the deep dive below</a>.</p>
+<p><a href="../../../../../images/physicsnemo-diffusion/line_of_code_comparison.jpg"><img alt="Lines of user code: pure PyTorch versus physicsnemo.diffusion" src="../../../../../images/physicsnemo-diffusion/line_of_code_comparison.jpg" /></a>
+<em>Fig 5: User-facing lines of code for a diffusion pipeline, <code>physicsnemo.diffusion</code> versus an equivalent pure-PyTorch implementation (baseline = 100%). Each bar is the mean over 10 independent implementations of that case. The module cuts code to 59% for training, 59% for inference, and 46% for guided inference (DPS), a 41% to 54% reduction depending on the workflow.</em></p>
+<h3 id="performance-you-do-not-have-to-think-about">Performance You Do Not Have to Think About</h3>
+<p>A core design principle of PhysicsNeMo is to hide performance complexity inside the module, so that lean, readable application code still runs fast. The module's components carry baked-in optimizations. They are written to support full-graph <code>torch.compile</code>, so the compiler can fuse and optimize across the whole pipeline, not only the network but the sampling loop and parts of the noise schedule. That whole-pipeline fusion is especially valuable for multi-diffusion, where the patch-splitting and patch-fusing operations are absorbed into the compiled graph as well. The building blocks themselves are kernel-accelerated, for example with <a href="https://github.com/NVIDIA/apex">APEX-fused layers</a>, among others. A developer opts in with a flag, not a rewrite. Two consequences matter most for physics-AI. First, high throughput is what makes the large ensembles described earlier practical at the scale of hundreds or thousands of members. Second, low latency opens the door to near-real-time applications, the streaming, continuously updated state estimates that a live digital twin needs.</p>
+<p>The two figures below report throughput across a wide range of domain sizes, for training and guided inference. Each compares pure PyTorch, <code>physicsnemo.diffusion</code>, the optimized build (<code>+opt</code>), and optimized multi-diffusion (<code>+multi-diffusion+opt</code>).</p>
+<p><a href="../../../../../images/physicsnemo-diffusion/training_throughput.jpg"><img alt="Training throughput across domain sizes" src="../../../../../images/physicsnemo-diffusion/training_throughput.jpg" /></a>
+<em>Fig 6: Training throughput (samples/s/GPU) on 4x GB200 (DDP, diffusion U-Net, 81M parameters, 16-channel data) versus the global domain size (pixels per edge). At 512x512, the module with all optimizations enabled (compile,
+AMP-bf16, Apex layers) reaches 1.4x the throughput of the pure-PyTorch
+baseline. Beyond that size the baseline runs out of memory (OOM), whereas the
+physicnemo diffusion module built-in optimizations can push to
+1024x1024. For larger domains, only the multi-diffusion implementation is not
+running out of memory, as it trades GPU parallelism for memory, lowering throughput
+but scaling training to domains with up to 64x more pixels than the baseline
+can fit.</em></p>
+<p><a href="../../../../../images/physicsnemo-diffusion/inference_with_guidance_throughput.jpg"><img alt="Guided inference throughput across domain sizes" src="../../../../../images/physicsnemo-diffusion/inference_with_guidance_throughput.jpg" /></a>
+<em>Fig 7: Inference throughput with DPS guidance on a single GB200. The diffusion
+module's optimizations (AMP-bf16, compile, Apex layers) raise generation
+throughput by about 20%-30% for domains smaller than 256x256. On top of that,
+multi-diffusion trades GPU parallelism for memory to scale guided sampling to domains
+64x larger in pixels. This is the regime that makes guided sampling on large scientific domains practical.</em></p>
+<h3 id="scaling-to-large-scientific-domains">Scaling to Large Scientific Domains</h3>
+<p>Scientific domains are often far larger than a single GPU's memory, unlike the natural RGB images diffusion models were first built for. The module scales along two independent axes:</p>
+<ul>
+<li><strong>Domain parallelism</strong> shards a single large sample across GPUs, with the module keeping the diffusion math consistent across shards. Its components are fully compatible with this <a href="https://docs.nvidia.com/physicsnemo/latest/user-guide/domain_parallelism_entry_point.html">domain-parallel execution</a>.</li>
+<li><strong>Multi-diffusion</strong> generates a domain larger than the model ever processes at once, by working on overlapping patches and fusing them into a coherent whole. It contributes its own specialized abstractions, which stay fully transparent to the user.</li>
+</ul>
+<p>Multi-diffusion deserves a closer look. Introduced for image generation in <a href="https://arxiv.org/abs/2302.08113">MultiDiffusion (Bar-Tal et al., 2023)</a>, the idea is to split a large domain into overlapping patches, run the diffusion model on each patch, and fuse the per-patch results into a single coherent full-domain sample. For science, this is what lets a model trained on modest tiles produce a continental weather field or a full flow domain. The module's real contribution is that all of this is transparent to the user: its multi-diffusion components, a patched model wrapper, loss, predictor, and guidance, present exactly the same interfaces as their standard counterparts, so the developer never writes patch-splitting or patch-fusing logic. The backbone is wrapped once, then trained and sampled as usual:</p>
+<pre><code class="language-python">from physicsnemo.diffusion.multi_diffusion import (
+    MultiDiffusionModel2D, MultiDiffusionMSEDSMLoss,
+)
+
+# Wrap any backbone; patch splitting and fusing are handled internally
+md_model = MultiDiffusionModel2D(backbone)
+md_model.set_grid_patching(patch_shape=(128, 128))  # tile a domain too large for one GPU
+
+# Train and sample with the same entry points as a standard model
+loss_fn = MultiDiffusionMSEDSMLoss(md_model, scheduler)        # train as before
+denoiser = scheduler.get_denoiser(x0_predictor=partial(md_model, condition=cond))
+full_field = sample(denoiser, xN, scheduler, num_steps=50)     # coherent full-domain sample
+</code></pre>
+<p>At its core, multi-diffusion trades GPU parallelism for memory. Instead of processing a whole large domain in one parallel pass, it treats the domain's patches as a batch and works through them sequentially, so only part of that batch occupies memory at any time. If anything, it adds a little compute (the patching and fusion operations, plus gradient checkpointing of the model under DPS guidance); the change is in how the work maps onto the GPU, not in how much of it there is. Throughput drops, but domains far larger than a single GPU could hold at once come within reach, even with a moderate GPU count. The throughput figures above make this concrete: multi-diffusion scales both training and guided generation to domains with 64x more pixels (Figs. 6 and 7) than the same pipeline without it. This is what brings diffusion within reach of the very large scientific domains, weather and CFD among them, where grid points run into the billions and no single GPU could hold the full field.</p>
+<h2 id="going-deeper-inside-the-module">Going Deeper: Inside the Module</h2>
+<p>The capabilities above rest on the module's deliberate design. The two sections that follow detail it: how a diffusion application breaks into clear abstractions, and how those abstractions support customization from ready-made defaults to fully custom components.</p>
+<h3 id="breaking-diffusion-into-clear-abstractions">Breaking Diffusion Into Clear Abstractions</h3>
+<p>As discussed above, the diffusion literature can be difficult to navigate, and a diffusion application involves many moving parts beyond the network: a noise schedule, a training objective, a sampler, and an ODE or SDE solver. The module maps each of these parts to one clear, well-scoped abstraction, so they become explicit and recombinable rather than tangled together:</p>
+<ul>
+<li><strong>Forward noising process.</strong> Clean data is progressively corrupted toward pure noise. The module captures this with the <code>NoiseScheduler</code>, its central abstraction. It defines how much noise is added at each level and, because it also produces the reverse-time schedule and the initial noisy state, it is the one component present at nearly every step of both training and sampling. The module ships ready-to-use schedules (EDM, variance-preserving, variance-exploding, and more) and supports custom, user-defined schedules.</li>
+<li><strong>The prediction network.</strong> A neural network learns to recover the clean signal (equivalently, the noise or the score) from a noisy input. This is the model backbone, paired with a preconditioner, a thin abstraction that rescales the network's inputs and outputs so a single model behaves well across noise levels spanning many orders of magnitude. The module ships diffusion-specialized backbones (2D and 3D U-Nets, a diffusion transformer), accepts any architecture from the PhysicsNeMo model zoo, and lets users bring their own; preconditioners follow the same pattern, with ready-to-use options alongside composable abstractions for custom ones.</li>
+<li><strong>The training objective.</strong> The network is fit with a denoising score-matching loss. The module provides several ready-to-use variants of it, and each composes with any noise scheduler, including a custom one, so changing the forward process never means rewriting the objective.</li>
+<li><strong>The reverse, generative process.</strong> Starting from noise, the <code>sample()</code> function, the single entry point for generation, integrates the learned reverse dynamics with a numerical ODE or SDE solver to produce a clean sample. Built-in solvers cover the common first- and second-order choices, but the solver interface is open to integrators of any order. Calling <code>sample()</code> with a batch of independent initial states is all it takes to draw an ensemble.</li>
+<li><strong>Steering the generation (optional).</strong> When samples must be pushed toward observations or physical constraints, the module's abstractions for DPS-style plug-and-play guidance modify the generation at inference, with no retraining. A guidance term is composed with the trained model into a guided predictor, which the noise scheduler turns into a denoiser the sampler uses unchanged. The module ships ready-to-use guidance terms that compose with one another, and any of them can be replaced by a user-defined DPS-style guidance for maximum flexibility. This is the entry point for inverse problems and physics-informed generation, and it is entirely opt-in.</li>
+</ul>
+<p>The split between required and optional pieces is deliberate. Only the noise scheduler, the network, and the loss are needed to start training; the preconditioner, the choice of solver, and guidance are layers added when the application calls for them. The payoff is a shared vocabulary: instead of a monolithic "diffusion model," the application becomes a pipeline, <code>noise scheduler -&gt; preconditioner + network -&gt; sampler</code>, whose every stage can be named, inspected, and replaced.</p>
+<h3 id="a-layered-design-for-customization-and-extensibility">A Layered Design for Customization and Extensibility</h3>
+<p>Diffusion in physics-AI is as much an active research area as an established engineering practice, so the module is designed to be used at very different levels of involvement. Where it makes sense, each abstraction is offered at up to three levels, a layered design that trades convenience against control:</p>
+<ul>
+<li><strong>Protocol (maximum flexibility and extensibility).</strong> Any object that implements the interface an abstraction specifies can be used directly, with no inheritance required. This is the level for a genuinely new idea: a non-Gaussian forward process, a bespoke solver, an exotic guidance term. It is what makes the module extensible rather than closed: you are never blocked by the absence of a built-in class.</li>
+<li><strong>Abstract base class (composable extension).</strong> A base class implements the machinery shared across a family of methods and leaves a few methods open. <code>LinearGaussianNoiseScheduler</code>, for example, already handles the bookkeeping common to every linear-Gaussian schedule, so defining a new one is a few short methods. This level is fully composable: less freedom than a protocol, but far less code to write, and it slots in alongside everything else.</li>
+<li><strong>Ready-to-use components (zero boilerplate).</strong> Fully configured implementations that work out of the box, such as <code>EDMNoiseScheduler</code>, the recommended default. This is where a domain scientist starts.</li>
+</ul>
+<p>Not every abstraction exposes all three levels, but the philosophy is consistent: pick the level that matches your needs, and mix freely. A practitioner can build a strong pipeline entirely from ready-made parts; a researcher can replace a single component with a custom one and keep the rest. That combination of composability and extensibility is exactly what physics-AI demands, where today's application is often tomorrow's research question.</p>
+<p>If you have used <a href="https://github.com/huggingface/diffusers">HuggingFace Diffusers</a>, the noise scheduler will feel familiar, since it plays a broadly similar role. Diffusers is the reference library for image and video generation, with a vast catalog of pretrained pipelines. The PhysicsNeMo diffusion module has a different center of gravity: arbitrary scientific data modalities rather than RGB images, first-class support for inverse problems and physical constraints, and, above all, a higher ceiling for customization and extensibility, the flexibility physics-AI applications need when they sit closer to active research than to a settled engineering protocol.</p>
+<h2 id="getting-started">Getting Started</h2>
+<p>The diffusion module ships with PhysicsNeMo. The <a href="https://docs.nvidia.com/physicsnemo/latest/physicsnemo/api_diffusion.html">API reference</a> documents every abstraction, with the underlying mathematics and worked examples. To see complete applications end to end, start with the <a href="https://github.com/NVIDIA/physicsnemo/tree/main/examples/weather/stormcast">StormCast and Stormscope recipe for regional weather</a>, the <a href="https://docs.nvidia.com/physicsnemo/latest/physicsnemo/examples/geophysics/diffusion_fwi/README.html">diffusion-FWI example</a> for a physics-informed inverse problem, and the <a href="https://nvidia.github.io/earth2studio/examples/05_data_assimilation/01_stormcast_sda.html">StormCast score-based data assimilation example in Earth2Studio</a>.</p>
+<p>We are just getting started on bringing diffusion to more of physics-AI, and to computer-aided engineering in particular. If you build something with the module, or you have questions or feedback, find us in <a href="https://github.com/NVIDIA/physicsnemo/discussions">PhysicsNeMo GitHub Discussions</a>. We are excited to see what you generate.</p>
+<p><a class="md-button" href="https://twitter.com/intent/tweet?text=Introducing%20the%20PhysicsNeMo%20Diffusion%20Module%3A%20Composable%2C%20Extensible%20Generative%20Modeling%20for%20Physics-AI%0A&amp;url=http://www.example.com/blog/2026/06/11/physicsnemo-diffusion/">Share on <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z"/></svg></span></a>
+<a class="md-button" href="https://www.facebook.com/sharer/sharer.php?u=http://www.example.com/blog/2026/06/11/physicsnemo-diffusion/">Share on <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.101 23.691v-7.98H6.627v-3.667h2.474v-1.58c0-4.085 1.848-5.978 5.858-5.978.401 0 .955.042 1.468.103a9 9 0 0 1 1.141.195v3.325a9 9 0 0 0-.653-.036 27 27 0 0 0-.733-.009c-.707 0-1.259.096-1.675.309a1.7 1.7 0 0 0-.679.622c-.258.42-.374.995-.374 1.752v1.297h3.919l-.386 2.103-.287 1.564h-3.246v8.245C19.396 23.238 24 18.179 24 12.044c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.628 3.874 10.35 9.101 11.647"/></svg></span></a>
+<a class="md-button" href="https://www.linkedin.com/sharing/share-offsite/?url=http://www.example.com/blog/2026/06/11/physicsnemo-diffusion/">Share on LinkedIn</a>
+<a class="md-button" href="https://github.com/NVIDIA/physicsnemo/discussions/categories/show-and-tell">Discuss on <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg></span></a></p>
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+      
+    </article>
+  </div>
+
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      © Copyright 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "../../../../..", "features": ["navigation.indexes"], "search": "../../../../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../../../assets/javascripts/bundle.92b07e13.min.js"></script>
+      
+    
+  </body>
+</html>
