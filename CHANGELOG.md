@@ -123,9 +123,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Adds `TrainedNeRDModel.compile_for_inference()` for reusable, checkpoint-safe
   `torch.compile` acceleration of NeRD rollouts and live Newton deployment.
 - Adds the public `examples/newton/` suite with complete training, evaluation,
-  figures, videos, and documentation: a differentiable ball surrogate trained
-  from Warp adjoints, offline neural geometry co-design of an articulated gripper,
-  MPM nozzle inverse design using Newton as an active-learning oracle, a
+  figures, videos, and documentation: a cart-pole surrogate comparing one-step
+  training with rollout BPTT, offline neural geometry co-design of an articulated
+  gripper, MPM nozzle inverse design using Newton as an active-learning oracle, a
   recreation of the NeRD Cartpole experiment, and an entity-aware NeRD model
   replacing the contact-rich VBD solve for an RJ45 cable.
 - Adds beginner-oriented Newton integration documentation explaining Newton

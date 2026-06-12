@@ -1,6 +1,9 @@
 <!-- markdownlint-disable MD033 MD043 -->
 # Neural geometry co-design with PhysicsNeMo and Newton
 
+Part of the [Newton + PhysicsNeMo examples](../README.md); start there if
+Newton or PhysicsNeMo is new to you.
+
 PhysicsNeMo gives you the building blocks to take a physics simulator and turn
 it into an engineering optimizer: sample a design space, run the simulator in
 large batches, train a fast differentiable surrogate on the results, optimize a
@@ -8,15 +11,8 @@ design through that surrogate, and then verify the winner back in the simulator.
 
 This example puts those pieces together on a concrete problem: redesigning the
 geometry of a robot gripper so it holds many different objects more reliably.
-It is meant to be read as a worked example of the **Newton + PhysicsNeMo
-integration**, not as a finished gripper product. The point is to show *why*
-PhysicsNeMo is useful. The same workflow applies to any expensive simulator you
-want to optimize against.
-
-> **In short:** brute-forcing this design search directly in the physics
-> simulator would take an estimated 8 hours. The PhysicsNeMo workflow finds a
-> *better* design, verified by the same simulator, in about 15 minutes, and the
-> design, optimization, and verification code is reusable across problems.
+It is a worked example of the **Newton + PhysicsNeMo integration**; the same
+workflow applies to any expensive simulator you want to optimize against.
 
 ## The problem
 
@@ -59,7 +55,7 @@ searching in the middle.
 
 ![Neural geometry co-design workflow](../../../docs/img/newton/newton_gripper_workflow.svg)
 
-That last step is what makes the result trustworthy as the surrogate can be
+That last step is what makes the result trustworthy: the surrogate can be
 optimistic, so a design is only accepted after Newton confirms it.
 
 The example is built so the gripper itself is the only application-specific
@@ -268,8 +264,8 @@ Snapshots are collected throughout the trajectory, not just at the final step.
 verification stage:
 
 ```python
-candidates, steps, trajectories = result.trajectory_candidates(snapshots=20)
-candidates = select_diverse_designs(
+candidates, steps, trajectory_ids = result.trajectory_candidates(snapshots=20)
+selected = select_diverse_designs(
     candidates,
     surrogate_scores,
     count=48,
@@ -278,6 +274,7 @@ candidates = select_diverse_designs(
     min_per_group=1,
     required_indices=trajectory_anchors,
 )
+candidates = candidates[selected]
 ```
 
 Anchors preserve one local proposal from every optimizer start. Group coverage
@@ -354,7 +351,8 @@ coordinates relative to the best sampled incumbent, including its segment
 profiles, manufactured curvature, palm span, and contact pads.
 
 Exact run metrics, the selected physical geometry, and per-object Newton
-outcomes are written to:
+outcomes are written to (paths relative to this folder; from the repository
+root, `examples/newton/gripper/outputs/...`):
 
 ```text
 outputs/gripper/gripper_design_report.md
@@ -366,11 +364,11 @@ measured dataset generation rate, not a separately timed brute-force run.
 
 ## Run it
 
-Install the Newton extra in the PhysicsNeMo checkout, then run from the
-repository root:
+Install the Newton extra with the CUDA backend matching the host, then run
+from the repository root:
 
 ```bash
-uv sync --extra newton
+uv sync --extra cu13 --extra newton   # or --extra cu12
 
 uv run python \
   examples/newton/gripper/example_gripper_design.py

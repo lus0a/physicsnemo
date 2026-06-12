@@ -1,19 +1,21 @@
 <!-- markdownlint-disable MD033 -->
 # MPM nozzle inverse-design (simulator as oracle)
 
+Part of the [Newton + PhysicsNeMo examples](../README.md); start there if
+Newton or PhysicsNeMo is new to you.
+
 PhysicsNeMo gives you reusable tools for turning a physics simulator into a
 design optimizer. This example is one such workflow. It uses Newton's
 material-point-method (MPM) fluid solver as a black-box oracle and lets a
 PhysicsNeMo active-learning loop discover a good nozzle geometry while spending
 as few expensive simulations as possible.
 
-It is meant to be read as a worked example of the **Newton + PhysicsNeMo
-integration**, not as a finished nozzle tool. The point is to show *why*
-PhysicsNeMo is useful: the same active-learning loop applies to any expensive,
-non-differentiable simulator you want to optimize against. It is the design
-counterpart to the [differentiable ball example](../diffsim/), with one key
-difference. Here Newton's implicit-MPM solver is treated as a black box that
-returns only a score, rather than something we backpropagate through.
+It is a worked example of the **Newton + PhysicsNeMo integration**: the same
+active-learning loop applies to any expensive, non-differentiable simulator
+you want to optimize against. It complements the
+[diffsim cart-pole example](../diffsim/): there a learned surrogate is trained
+from solver trajectories, while here Newton's implicit-MPM solver is treated as
+a black box that returns only a score.
 
 ## The problem
 
@@ -68,7 +70,7 @@ The loop alternates two stages.
    pool, then sends the best-predicted designs plus a small exploration sample
    back to Newton. The surrogate is refit after each Newton batch.
 
-This is exactly the regime where the simulator-as-oracle loop earns its keep:
+This is exactly the regime the simulator-as-oracle loop is designed for:
 the simulator is expensive and gives no gradient, so a fast surrogate is used to
 spend that budget wisely. The total oracle budget is
 `bootstrap + rounds * num_worlds` MPM design evaluations, batched `num_worlds`
@@ -87,9 +89,9 @@ uv run python examples/newton/nozzle/example_mpm_nozzle_design.py
 
 `nozzle_scene.py` is a local sibling module imported by the example, so keep the
 two files in this folder together. By default the MPM oracle runs on Warp's
-default device. Use `--newton-device` for the MPM solve and `--torch-device` for
-the surrogate. The companion `render_nozzle.py` accepts the same
-`--newton-device` flag.
+default device (the GPU when one is visible). Use `--newton-device` for the MPM
+solve and `--torch-device` for the surrogate (the tiny surrogate defaults to
+CPU). The companion `render_nozzle.py` accepts the same `--newton-device` flag.
 
 ### Running
 
@@ -113,8 +115,10 @@ uv run python examples/newton/nozzle/example_mpm_nozzle_design.py \
 ```
 
 Each run writes `nozzle_design_report.md` and
-`newton_nozzle_design.png` to `outputs/nozzle/`. The render and Pareto scripts
-use the same output directory. Use `--media-dir` or `--out` to choose another
+`newton_nozzle_design.png` to `outputs/nozzle/` inside this folder (from the
+repository root, `examples/newton/nozzle/outputs/nozzle/`). The render and
+Pareto scripts use the same output directory. Use `--output-dir`/`--media-dir`
+on the example and renderer, or `--out` on `plot_pareto.py`, to choose another
 location. Pass `--help` for the full flag list.
 `--target-flow` sets the desired normalized mass-flow rate (default 0.75).
 

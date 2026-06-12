@@ -81,6 +81,11 @@ def train_nerd(
     gradient from every frame in the window, but at inference only the final
     frame of the ``context_frames`` window determines the prediction. Choose a
     transformer model when history must be used.
+
+    Under an initialized distributed run, ``trajectories`` is interpreted as
+    this rank's shard (as produced by ``collect_nerd_trajectories``): pass each
+    rank a disjoint subset, not the full dataset, and note that the persisted
+    ``trajectory_count`` metadata is the sum across ranks.
     """
     config = config or NeRDTrainingConfig()
     torch_device = resolve_device(
@@ -143,7 +148,9 @@ def train_nerd(
         raise ValueError(
             "no active NeRD target channels remain after applying loss_weights"
         )
-    weighted_count = weights.sum().clamp_min(1.0)
+    # Zero total weight is already rejected above, so the sum is a valid
+    # weighted-mean denominator even when user weights sum to less than one.
+    weighted_count = weights.sum()
 
     spec = NeRDModelSpec(
         input_dim=int(model_inputs.shape[-1]),

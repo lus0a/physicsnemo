@@ -48,7 +48,10 @@ from physicsnemo.experimental.integrations.newton.env import NewtonEnv
 
 
 class FieldOptimizationRecord(TypedDict):
-    """One real-physics evaluation during field optimization."""
+    """One real-physics evaluation during field optimization.
+
+    ``wall_ms`` and ``solver_evals`` are cumulative since the start of the
+    optimization, not per-step increments."""
 
     step: int
     real_loss: float
@@ -69,7 +72,13 @@ class FieldOptimizationResult(TypedDict):
 
 
 class MultiStartFieldOptimizationResult(FieldOptimizationResult):
-    """Best result plus every branch from multi-start field optimization."""
+    """Best result plus every branch from multi-start field optimization.
+
+    The inherited per-branch fields describe the winning branch, except that
+    ``solver_evals`` and ``total_ms`` are overwritten with the serial
+    cross-branch totals (also available unambiguously as
+    ``total_solver_evals``); read ``runs[best_index]`` for the winning
+    branch's own budget and timing."""
 
     best_index: int
     runs: list[FieldOptimizationResult]
@@ -210,13 +219,8 @@ def optimize_field_in_newton(
             initial, dtype=template.dtype, device=template.device
         ).reshape(template.shape)
     else:
-        param = template.detach().clone()
-    param = (
-        param.to(device=template.device, dtype=template.dtype)
-        .detach()
-        .clone()
-        .requires_grad_(True)
-    )
+        param = template
+    param = param.detach().clone().requires_grad_(True)
     opt = torch.optim.Adam([param], lr=lr, betas=betas)
 
     history: list[FieldOptimizationRecord] = []
@@ -253,7 +257,6 @@ def optimize_field_in_newton(
             raise ValueError(
                 f"Newton optimization adjoint must be finite at step {step}"
             )
-        opt.zero_grad(set_to_none=True)
         param.grad = (
             rollout.adjoint.detach()
             .to(device=param.device, dtype=param.dtype)
@@ -322,7 +325,14 @@ def optimize_field_in_newton_multistart(
         branch keeps ``best_params`` as a detached tensor on the field device.
     """
 
-    starts = field_to_torch(initials).detach()
+    if isinstance(initials, (list, tuple)):
+        # The natural call site mixes proposed-start tensors with the cold
+        # start; ``torch.as_tensor`` cannot convert a sequence of tensors.
+        if not initials:
+            raise ValueError("initials must contain at least one start")
+        starts = torch.stack([field_to_torch(start).detach() for start in initials])
+    else:
+        starts = field_to_torch(initials).detach()
     if starts.ndim == 0 or starts.shape[0] == 0:
         raise ValueError("initials must contain at least one start")
     if starts.ndim == 1:
@@ -350,10 +360,12 @@ def optimize_field_in_newton_multistart(
     # ``solver_evals`` is also overwritten with that total for backward
     # compatibility, so it means per-run budget inside each ``runs`` entry but
     # the serial aggregate at the top level; read ``total_solver_evals`` when an
-    # unambiguous aggregate is wanted.
+    # unambiguous aggregate is wanted. ``total_ms`` is made the cross-branch
+    # total too, so top-level evals-per-ms ratios stay consistent.
     total_solver_evals = int(sum(run["solver_evals"] for run in runs))
     best["total_solver_evals"] = total_solver_evals
     best["solver_evals"] = total_solver_evals
+    best["total_ms"] = float(sum(run["total_ms"] for run in runs))
     return best
 
 

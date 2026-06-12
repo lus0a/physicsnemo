@@ -28,6 +28,7 @@ import torch
 import warp as wp
 from PIL import Image, ImageDraw, ImageFont
 
+from physicsnemo.distributed import DistributedManager
 from physicsnemo.experimental.integrations.newton import (
     NeRDStepModel,
     TrainedNeRDModel,
@@ -238,6 +239,10 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     """Load a checkpoint and render the comparison."""
     args = parse_args()
+    # Without an initialized manager, resolve_device(None) falls back to
+    # torch's default (CPU); initialize like example_rj45_nerd.py so rollouts
+    # land on the accelerator.
+    DistributedManager.initialize()
     device = str(resolve_device(args.device))
     if torch.device(device).type == "cuda":
         torch.set_float32_matmul_precision("high")

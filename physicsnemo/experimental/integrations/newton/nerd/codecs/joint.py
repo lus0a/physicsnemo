@@ -80,6 +80,29 @@ class JointLayout:
         if any(right < left + 4 for left, right in zip(starts, starts[1:])):
             raise ValueError("joint quaternion coordinate ranges must not overlap")
         object.__setattr__(self, "quaternion_q_starts", starts)
+        # Layouts are also rebuilt from checkpoint descriptors, so a malformed
+        # mask or index table should fail here with a clear message rather than
+        # much later with a cryptic boolean-mask size error.
+        for name, mask in (
+            ("continuous_q_mask", self.continuous_q_mask),
+            ("base_translation_mask", self.base_translation_mask),
+        ):
+            if tuple(mask.shape) != (self.dof_q,):
+                raise ValueError(
+                    f"{name} must have shape ({self.dof_q},), got {tuple(mask.shape)}"
+                )
+        for name, indices, width in (
+            ("q_indices", self.q_indices, self.dof_q),
+            ("qd_indices", self.qd_indices, self.dof_qd),
+        ):
+            if indices is not None and tuple(indices.shape) != (
+                self.world_count,
+                width,
+            ):
+                raise ValueError(
+                    f"{name} must have shape ({self.world_count}, {width}), "
+                    f"got {tuple(indices.shape)}"
+                )
 
     @property
     def state_dim(self) -> int:
@@ -248,7 +271,7 @@ def _joint_coordinate_indices(
         for joints in joint_groups
     ]
     counts = {len(group) for group in groups}
-    if len(counts) != 1 or not counts or next(iter(counts)) == 0:
+    if len(counts) != 1 or next(iter(counts)) == 0:
         raise ValueError(
             f"joint state requires equal non-zero {name} coordinate counts per world; "
             f"got {[len(group) for group in groups]}"
@@ -280,8 +303,14 @@ def _state_to_input(
     layout: JointLayout,
     robot_centric: bool = True,
 ) -> torch.Tensor:
-    """Encode generalized state for a NeRD model."""
+    """Encode generalized state for a NeRD model.
+
+    Continuous angles are wrapped to ``[-pi, pi)`` so teacher states (whose
+    revolute coordinates accumulate unboundedly) and deployed states (which
+    ``_delta_to_next_state`` wraps after every integration step) encode the
+    same physical configuration identically."""
     q, qd = _anchor_base(q, qd, layout) if robot_centric else (q, qd)
+    q = _wrap_continuous_joint_q(q, layout)
     q = _canonicalize_joint_quaternions(q, layout)
     return torch.cat((q, qd), dim=-1)
 
@@ -387,6 +416,13 @@ class NeRDJointStateCodec(NeRDStateCodec):
             if model is None:
                 raise ValueError("model or layout is required")
             layout = _joint_layout(model)
+        if robot_centric and layout.root_is_free:
+            # Fail at construction rather than on the first encode deep inside
+            # data collection or training.
+            raise NotImplementedError(
+                "joint-space robot-centric framing does not support free roots; "
+                "use NeRDBodyStateCodec for free-floating systems"
+            )
         self.name = "joint"
         self.model = model
         self.layout = layout
@@ -402,13 +438,15 @@ class NeRDJointStateCodec(NeRDStateCodec):
         if self.layout.q_indices is not None and self.layout.qd_indices is not None:
             q = q.index_select(0, self.layout.q_indices.to(q.device).reshape(-1))
             qd = qd.index_select(0, self.layout.qd_indices.to(qd.device).reshape(-1))
+        # ``torch.cat`` already allocates, so the result is a stable snapshot
+        # rather than a view of the live Warp buffers.
         return torch.cat(
             (
                 q.reshape(self.batch_size, self.layout.dof_q),
                 qd.reshape(self.batch_size, self.layout.dof_qd),
             ),
             dim=-1,
-        ).clone()
+        )
 
     def write(self, state: Any, value: torch.Tensor) -> None:
         """Write packed joint coordinates and velocities into Newton state."""

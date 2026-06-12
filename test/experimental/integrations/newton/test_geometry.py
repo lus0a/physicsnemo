@@ -29,10 +29,10 @@ from physicsnemo.experimental.integrations.newton.geometry import _allocate_coun
 from physicsnemo.mesh import Mesh
 from physicsnemo.mesh.primitives.surfaces import tetrahedron_surface
 
-# Newton is an optional extra; skip the whole module (rather than erroring at
-# collection) when it is absent. The integration itself never imports Newton at
-# import time, so the first-party imports above stay unguarded.
-newton = pytest.importorskip("newton")
+# Newton is an optional extra and most of this module tests pure geometry, so
+# only the two ModelBuilder adapter tests skip when it is absent. The
+# integration itself never imports Newton at import time, so the first-party
+# imports above stay unguarded.
 
 
 def test_compound_rigid_object_sampling_is_deterministic() -> None:
@@ -60,6 +60,7 @@ def test_compound_rigid_object_sampling_is_deterministic() -> None:
 
 
 def test_physicsnemo_mesh_is_shared_with_newton_adapter() -> None:
+    newton = pytest.importorskip("newton")
     mesh = tetrahedron_surface.load(side_length=0.08)
     rigid_object = NewtonRigidObject.from_mesh(
         "mesh-object",
@@ -164,6 +165,7 @@ def test_newton_mesh_rejects_out_of_range_triangle_indices(
 
 
 def test_newton_shape_adapter_enforces_density() -> None:
+    newton = pytest.importorskip("newton")
     rigid_object = NewtonRigidObject(
         "sphere",
         density=300.0,

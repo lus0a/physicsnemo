@@ -38,7 +38,8 @@ The two libraries have separate jobs:
 | **This integration** | Connects Newton's live device state to PhysicsNeMo/PyTorch, then supports training, evaluation, and learned deployment. |
 
 PhysicsNeMo is not a replacement for PyTorch, and it does not silently replace
-Newton's physics. A PhysicsNeMo model is a normal `torch.nn.Module`. During
+Newton's physics. A PhysicsNeMo model is a normal `torch.nn.Module`. The
+*teacher* is the ground-truth solver run that generates training data; during
 teacher generation and validation, Newton remains the source of truth.
 
 ### The Newton physics loop
@@ -61,8 +62,10 @@ next_state = solver(state, control, contacts, dt)
 
 A displayed frame can contain several smaller solver **substeps**. Increasing
 substeps can improve numerical stability or contact resolution, but costs more.
-`NewtonEnv` owns this reset/step/rollout loop while still calling the Newton
-solver and collision pipeline you selected.
+Newton can also replicate one scene into many parallel **worlds** -- independent
+copies of the same physics, batched on one device and advanced by a single
+solver call. `NewtonEnv` owns this reset/step/rollout loop while still calling
+the Newton solver and collision pipeline you selected.
 
 The state fields depend on the physics:
 
@@ -87,8 +90,11 @@ evaluation, and deployment adapters.
 
 ### Smallest complete rollout
 
-This loads a stock Newton scene headlessly, reads its particle state as a Torch
-observation, and advances 60 frames:
+Install the integration first (see
+[Shared run environment](#shared-run-environment) below; in short,
+`pip install "nvidia-physicsnemo[newton]"` or `uv sync --extra newton` from a
+checkout). This then loads a stock Newton scene headlessly, reads its particle
+state as a Torch observation, and advances 60 frames:
 
 ```python
 import torch
@@ -171,7 +177,8 @@ for batch in loader:
 
 `ResidualDynamics` is the plain per-step residual model; the diffsim example
 wraps this same model in `BPTTSurrogate` to add free-running rollout training
-with BPTT.
+with BPTT (backpropagation through time -- the rollout loss is backpropagated
+through the model's own predicted states).
 
 The examples below use higher-level workflows when the problem needs
 feedback through a learned rollout ([diffsim](./diffsim/)),
@@ -242,11 +249,11 @@ env.reset()
 trajectory = env.rollout(steps=120).observations
 ```
 
-Want command-line knobs? Add a `create_parser()` classmethod that returns an
-`argparse.ArgumentParser`. `from_example` parses it with no arguments, and you
-can override individual values with `arg_overrides={...}`. Stock Newton examples
-that perform graph capture in `__init__` work unchanged, because the headless
-loader skips that capture and drives its own rollouts.
+To add command-line options, give the class a `create_parser()` classmethod
+that returns an `argparse.ArgumentParser`. `from_example` parses it with no
+arguments, and you can override individual values with `arg_overrides={...}`.
+Stock Newton examples that perform graph capture in `__init__` work unchanged,
+because the headless loader skips that capture and drives its own rollouts.
 
 ### Option B: skip the class and wrap a model or scene directly
 
@@ -273,28 +280,33 @@ targets, and NeRD needs state/input adapters plus reset randomization. The
 ## Examples
 
 Each folder contains the full problem explanation, commands, results, figures,
-and method references.
+and method references. The right column names the Newton solver and physics
+each example exercises (Featherstone, XPBD, VBD, and implicit MPM are Newton's
+articulation, position-based, vertex-block-descent, and material-point
+solvers).
 
 | Example | What it demonstrates | Newton physics |
 | --- | --- | --- |
 | [diffsim](./diffsim/) | Improve free-running surrogate dynamics with rollout BPTT | Force-driven Featherstone cart-pole |
 | [gripper](./gripper/) | Offline geometry-only co-design of a fixed-topology two-finger gripper's proportions, pre-curvature, and pads through a PointNet surrogate | Batched articulated XPBD grasping |
 | [nozzle](./nozzle/) | Optimize a design with Newton as a simulator oracle | Non-differentiable implicit-MPM nozzle flow |
-| [nerd](./nerd/) | Replace Newton solver steps with NeRD across different state representations | Featherstone Cartpole and contact-rich VBD RJ45 cable |
+| [nerd](./nerd/) | Replace Newton solver steps with NeRD across different state representations | Featherstone cart-pole and contact-rich VBD RJ45 cable |
 
 ## Shared run environment
 
-For an installed PhysicsNeMo package, install the Newton integration:
+For an installed PhysicsNeMo package, install the Newton integration with the
+CUDA backend matching the host:
 
 ```bash
-pip install "nvidia-physicsnemo[newton]"
+pip install "nvidia-physicsnemo[cu13,newton]"   # or [cu12,newton]
 ```
 
-The extra includes Newton's simulator, importer, viewer, and bundled-example
-dependencies. From a PhysicsNeMo source checkout:
+Plain `nvidia-physicsnemo[newton]` also works and uses the default PyPI Torch
+backend. The extra includes Newton's simulator, importer, viewer, and
+bundled-example dependencies. From a PhysicsNeMo source checkout:
 
 ```bash
-uv sync --extra newton
+uv sync --extra cu13 --extra newton   # or --extra cu12
 ```
 
 Run any example from the PhysicsNeMo repository root:
@@ -303,17 +315,22 @@ Run any example from the PhysicsNeMo repository root:
 uv run python examples/newton/diffsim/example_diffsim_cartpole_bptt.py
 uv run python examples/newton/gripper/example_gripper_design.py
 uv run python examples/newton/nozzle/example_mpm_nozzle_design.py
-uv run python examples/newton/nerd/example_cartpole_nerd.py
+uv run python examples/newton/nerd/example_cartpole_nerd.py --smoke
 uv run python examples/newton/nerd/example_rj45_nerd.py --smoke
 ```
 
 To test against an uninstalled Newton source checkout, prepend
 `PYTHONPATH=/path/to/newton` to the same commands.
 
-GPU is recommended for the MPM and contact examples. Training and optimization
-scripts write reports and scorecards. Plotting and rendering utilities write the
-figures or GIFs named in their help text. Pass `--help` for the full flag list.
-The per-folder READMEs provide reduced commands where available.
+**Hardware and runtime expectations.** The examples assume one CUDA GPU; the
+`--smoke` presets finish in seconds to a minute and exist to verify the
+pipeline. Unflagged defaults are real GPU jobs -- the NeRD cart-pole default is
+roughly 40 minutes on one data-center GPU, and the per-folder READMEs record
+measured budgets for the larger runs. Outputs land inside each example folder
+(`examples/newton/<example>/outputs/`). Training and optimization scripts write
+reports and scorecards; plotting and rendering utilities write the figures or
+GIFs named in their help text. Pass `--help` for the full flag list. The
+per-folder READMEs provide reduced commands where available.
 
 ## The integration library
 
@@ -339,7 +356,8 @@ installed:
 
 - **Differentiable rollout.** `differentiable_rollout(env,
   steps=..., loss_fn=..., field=...)` runs a Warp-tape rollout and
-  returns the trajectory, the adjoint, and the loss.
+  returns the trajectory, the adjoint (the gradient of the loss with respect
+  to the chosen initial-state field, from Warp's tape), and the loss.
 - **Surrogate training.** `BPTTSurrogate` trains `ResidualDynamics` with
   one-step supervision plus a free-running rollout loss backpropagated through
   predicted states.

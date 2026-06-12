@@ -41,7 +41,9 @@ def _validated_transform(
     tuple[float, float, float, float],
 ]:
     translation = np.asarray(position, dtype=np.float64)
-    rotation = np.asarray(quaternion, dtype=np.float64)
+    # Force a copy: the normalization/sign flips below must not write back
+    # into a caller-owned float64 array.
+    rotation = np.array(quaternion, dtype=np.float64)
     if translation.shape != (3,) or not np.isfinite(translation).all():
         raise ValueError("position must contain three finite values")
     if rotation.shape != (4,) or not np.isfinite(rotation).all():
@@ -207,9 +209,12 @@ class NewtonMesh:
             raise ValueError("mesh points must be finite")
         object.__setattr__(self, "position", position)
         object.__setattr__(self, "quaternion", quaternion)
+        # Validation walks every triangle in Python; cache the volume so later
+        # ``volume``/``approximate_mass`` reads do not repeat that work.
         volume = _closed_mesh_volume(self.mesh)
         if volume <= 1.0e-12:
             raise ValueError("mesh must enclose a nonzero volume")
+        object.__setattr__(self, "_cached_volume", volume)
 
     @classmethod
     def from_arrays(
@@ -229,17 +234,18 @@ class NewtonMesh:
 
     @property
     def volume(self) -> float:
-        """Enclosed volume, summed over consistently oriented closed components."""
-        return _closed_mesh_volume(self.mesh)
+        """Enclosed volume, summed over consistently oriented closed components.
+
+        Each closed component contributes the absolute value of its signed
+        volume, so an interior cavity (an inward-wound shell nested inside an
+        outer shell) adds to the total instead of being subtracted from it.
+        """
+        return float(self._cached_volume)  # type: ignore[attr-defined]
 
     @property
     def surface_area(self) -> float:
         """Return the triangle-mesh surface area."""
-        vertices = self.mesh.points[self.mesh.cells]
-        vectors = vertices[:, 1:] - vertices[:, :1]
-        from physicsnemo.mesh.geometry import compute_cell_areas  # noqa: PLC0415
-
-        return float(compute_cell_areas(vectors).sum())
+        return float(self.mesh.cell_areas.sum())
 
     @property
     def bounds(self) -> tuple[np.ndarray, np.ndarray]:
@@ -503,12 +509,9 @@ def _allocate_counts(weights: np.ndarray, total: int) -> np.ndarray:
     while counts.sum() < total:
         counts[int(np.argmax(raw - counts))] += 1
     while counts.sum() > total:
-        eligible = counts > 1
-        if not bool(eligible.any()):
-            raise RuntimeError(
-                "could not allocate at least one sample per surface part"
-            )
-        excess = np.where(eligible, counts - raw, -np.inf)
+        # ``total >= len(weights)`` (checked above) guarantees some count
+        # exceeds 1 whenever the sum exceeds ``total``.
+        excess = np.where(counts > 1, counts - raw, -np.inf)
         counts[int(np.argmax(excess))] -= 1
     return counts
 

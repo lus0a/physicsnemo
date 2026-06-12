@@ -77,5 +77,6 @@ def nerd_state_codec(
     if representation == "particle":
         return NeRDParticleStateCodec(model)
     raise ValueError(
-        "representation must be 'joint', 'body', 'particle', or an explicit sequence"
+        "representation must be 'joint', 'body', 'particle', or an explicit "
+        f"sequence; got {representation!r}"
     )

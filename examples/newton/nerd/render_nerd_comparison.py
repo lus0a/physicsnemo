@@ -23,13 +23,16 @@ state; the right clip is then driven entirely by NeRD (fully autoregressive,
 free-running from an empty history). The cartpole is the real Newton scene, so
 this renders true physics on the left and the learned dynamics on the right.
 
-A small NeRD model is trained inline (so the script is self-contained), then a
-single-world cartpole is replayed under each stepper. GIFs are assembled with PIL
-because imageio is not in the Newton venv.
+Pass ``--checkpoint`` to load a bundle saved by ``example_cartpole_nerd.py``,
+so a figure tweak never retrains. Without it, a small NeRD model is trained
+inline (so the script stays self-contained). Either way, a single-world
+cartpole is then replayed under each stepper. GIFs are assembled with Pillow,
+which the ``newton`` extra already provides.
 
 Run from the PhysicsNeMo repository root:
     uv run python \
-        examples/newton/nerd/render_nerd_comparison.py
+        examples/newton/nerd/render_nerd_comparison.py \
+        [--checkpoint outputs/cartpole_nerd/cartpole_nerd.pt]
 """
 
 from __future__ import annotations
@@ -42,8 +45,10 @@ import newton
 import numpy as np
 import torch
 
+from physicsnemo.distributed import DistributedManager
 from physicsnemo.experimental.integrations.newton import (
     NeRDTrainingConfig,
+    TrainedNeRDModel,
     field_to_torch,
     fit_nerd,
     resolve_device,
@@ -190,12 +195,21 @@ def _camera(scene, traj_q):
 
 
 def run(args: argparse.Namespace) -> str:
-    """Train the inline learned model, render both rollouts, and return the GIF path."""
+    """Load or train the learned model, render both rollouts, and return the GIF path."""
     out_dir = Path(args.output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+    # Without an initialized manager, resolve_device(None) falls back to
+    # torch's default (CPU); initialize like example_cartpole_nerd.py so the
+    # training-scale render job lands on the accelerator.
+    DistributedManager.initialize()
     device = str(resolve_device(args.device))
 
-    trained = _train_nerd(args, device)
+    if args.checkpoint is not None:
+        trained = TrainedNeRDModel.load(args.checkpoint, device=device)
+        nerd_label = "NeRD checkpoint"
+    else:
+        trained = _train_nerd(args, device)
+        nerd_label = "scaled inline NeRD"
 
     render_scene = cartpole.CartpoleScene(1, device)
     # A representative passive swing: the pole released well off the hanging
@@ -210,9 +224,7 @@ def run(args: argparse.Namespace) -> str:
     teacher_frames = _replay_frames(
         render_scene, viewer, teacher_q, camera, "analytical solver", args
     )
-    nerd_frames = _replay_frames(
-        render_scene, viewer, nerd_q, camera, "scaled inline NeRD", args
-    )
+    nerd_frames = _replay_frames(render_scene, viewer, nerd_q, camera, nerd_label, args)
 
     frames = [
         stack_horizontal([a, b], gap=4) for a, b in zip(teacher_frames, nerd_frames)
@@ -229,6 +241,12 @@ def parse_args() -> argparse.Namespace:
         "--output-dir",
         type=Path,
         default=Path(__file__).parent / "outputs" / "cartpole_nerd",
+    )
+    parser.add_argument(
+        "--checkpoint",
+        type=Path,
+        help="load a NeRD bundle saved by example_cartpole_nerd.py instead of "
+        "training inline (training-only options are ignored)",
     )
     parser.add_argument("--num-worlds", type=int, default=1024)
     parser.add_argument(

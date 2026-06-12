@@ -83,12 +83,14 @@ class DesignSurrogate(Module):
 
         if design_dim <= 0:
             raise ValueError("design_dim must be positive")
+        if depth <= 0:
+            raise ValueError("depth must be positive")
         return cls(
             FullyConnected(
                 in_features=design_dim,
                 out_features=1,
                 layer_size=hidden_dim,
-                num_layers=max(1, depth),
+                num_layers=depth,
                 activation_fn="silu",
             ),
             device=device,
@@ -177,6 +179,10 @@ class DesignResult:
     as an opaque black-box evaluator. The differentiable per-candidate optimizers
     in this package instead minimize a *loss* (see :class:`GroupedDesignResult`);
     see :func:`optimize_design` for the score-vs-loss convention.
+
+    ``history`` records the best measured score so far: one entry after the
+    initial batch, then one after each optimization round
+    (``rounds + 1`` entries in total).
     """
 
     normalized_designs: np.ndarray

@@ -169,8 +169,6 @@ class NeRDProblem:
             env.step(before_substep=before_substep)
 
         def observe_env(inputs: torch.Tensor, frame: int) -> Any:
-            if observe_inputs is None:
-                return inputs
             return observe_inputs(env, inputs, frame)
 
         return cls(

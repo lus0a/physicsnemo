@@ -144,6 +144,8 @@ class WorldView:
         self, values: torch.Tensor, *, mask: torch.Tensor | None = None
     ) -> torch.Tensor:
         """Mean of ``values`` within each world (empty/masked-out worlds give 0)."""
+        if not isinstance(values, torch.Tensor):
+            raise ValueError("values must be a tensor shaped (num_entities, *feature)")
         dtype = (
             values.dtype
             if values.is_floating_point() or values.is_complex()

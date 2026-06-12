@@ -1,8 +1,13 @@
 <!-- markdownlint-disable MD003 MD022 MD032 MD033 MD049 -->
 # Rollout BPTT for learned cart-pole dynamics
 
-This example isolates one training question: can a learned dynamics model remain
-accurate when it must consume its own predictions?
+Part of the [Newton + PhysicsNeMo examples](../README.md); start there if
+Newton or PhysicsNeMo is new to you.
+
+This example isolates one training question: can a learned dynamics model
+remain accurate when it must consume its own predictions? BPTT
+(backpropagation through time) here means the free-running rollout loss is
+backpropagated through the model's own predicted states.
 
 Newton generates force-driven cart-pole trajectories. Two identical
 `ResidualDynamics` models start from the same weights and see the same data:

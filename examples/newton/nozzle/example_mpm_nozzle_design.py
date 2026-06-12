@@ -23,9 +23,9 @@ which acts as the oracle in a lightweight PhysicsNeMo design loop. A fast
 6-parameter design to a flow-quality objective, and a surrogate-guided query
 spends the expensive simulator only on the designs most likely to improve it.
 
-This example treats the implicit-MPM solve as a black-box oracle (contrast the
-differentiable ball example, which backprops through its solver). The physics
-lives in ``nozzle_scene.py``;
+This example treats the implicit-MPM solve as a black-box oracle (contrast
+``differentiable_rollout``/``optimize_field_in_newton``, which backprop through
+the solver). The physics lives in ``nozzle_scene.py``;
 PhysicsNeMo owns the reusable design loop in
 ``physicsnemo.experimental.integrations.newton.optimize_design``.
 

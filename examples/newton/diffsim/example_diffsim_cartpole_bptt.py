@@ -331,6 +331,7 @@ def _synchronize(device: torch.device) -> None:
 
 
 def parse_args() -> argparse.Namespace:
+    """Parse the example's command-line options."""
     parser = argparse.ArgumentParser(
         description="Compare one-step and rollout-BPTT Newton cart-pole surrogates"
     )

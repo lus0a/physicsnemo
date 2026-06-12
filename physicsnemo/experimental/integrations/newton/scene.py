@@ -32,7 +32,7 @@ def load_example_scene(
     *,
     device: str | torch.device | None = None,
     substeps: int | None = None,
-    verbose: bool = False,
+    verbose: bool | None = None,
     args: argparse.Namespace | None = None,
     arg_overrides: Mapping[str, Any] | None = None,
 ) -> Any:
@@ -54,7 +54,9 @@ def load_example_scene(
     substeps : int, optional
         Override for the scene's ``sim_substeps`` and corresponding ``sim_dt``.
     verbose : bool, optional
-        Value forwarded to the example as ``args.verbose``.
+        Override for the example's ``args.verbose``. When omitted, a
+        caller-supplied ``args.verbose`` is preserved; otherwise the example
+        runs quietly.
     args : argparse.Namespace, optional
         Pre-built example argument namespace.
     arg_overrides : Mapping[str, Any], optional
@@ -69,6 +71,9 @@ def load_example_scene(
     from physicsnemo.experimental.integrations.newton.dependencies import require_newton
     from physicsnemo.experimental.integrations.newton.distributed import resolve_device
 
+    if substeps is not None and substeps <= 0:
+        # Validate before the (potentially expensive) scene construction.
+        raise ValueError("substeps must be positive")
     ViewerNull = require_newton().viewer.ViewerNull
     device = resolve_device(device)
 
@@ -91,7 +96,10 @@ def load_example_scene(
         # values) is fully isolated from our mutations below and from in-place
         # changes a Newton Example might make during construction.
         args = copy.deepcopy(args)
-    args.verbose = verbose
+    if verbose is not None:
+        args.verbose = verbose
+    elif not hasattr(args, "verbose"):
+        args.verbose = False
     for name, value in dict(arg_overrides or {}).items():
         setattr(args, name, value)
 
@@ -100,8 +108,6 @@ def load_example_scene(
     scene.graph = None
 
     if substeps is not None:
-        if substeps <= 0:
-            raise ValueError("substeps must be positive")
         frame_dt = getattr(scene, "frame_dt", None)
         if frame_dt is None:
             sim_dt = getattr(scene, "sim_dt", None)

@@ -41,6 +41,7 @@ from physicsnemo.experimental.integrations.newton.nerd.checkpoint import (
     _deployment_codec,
 )
 from physicsnemo.experimental.integrations.newton.nerd.codecs import (
+    NeRDCompositeStateCodec,
     NeRDJointStateCodec,
     NeRDStateCodec,
 )
@@ -189,9 +190,15 @@ class TrainedNeRDModel:
         if (
             not isinstance(bundle, dict)
             or bundle.get("format") != "physicsnemo.experimental.newton.nerd"
-            or bundle.get("version") != _CHECKPOINT_VERSION
         ):
             raise ValueError(f"{path} is not a supported {cls.__name__} checkpoint")
+        if bundle.get("version") != _CHECKPOINT_VERSION:
+            raise ValueError(
+                f"{path} has {cls.__name__} checkpoint version "
+                f"{bundle.get('version')!r}; this release supports version "
+                f"{_CHECKPOINT_VERSION}. Retrain or load it with a matching "
+                "PhysicsNeMo release."
+            )
         model = model or _model_from_descriptor(bundle["model"])
         if model is None:
             raise ValueError(
@@ -452,9 +459,10 @@ class NeRDRolloutEvaluation:
     Attributes
     ----------
     error_by_frame : numpy.ndarray
-        Per-frame error averaged over finite trajectories. It has length
-        ``steps - 1`` and excludes frame 0, so ``error_by_frame[i]`` aligns with
-        ``predictions[:, i + 1]`` and ``truth[:, i + 1]``.
+        Per-frame error averaged over finite trajectories, with one entry per
+        *predicted* frame: for ``F``-frame held-out trajectories (a ``rollout``
+        of ``F - 1`` steps) it has length ``F - 1``, and ``error_by_frame[i]``
+        aligns with ``predictions[:, i + 1]`` and ``truth[:, i + 1]``.
     final_error : float
         Error at the last predicted frame.
     mean_error : float
@@ -462,8 +470,8 @@ class NeRDRolloutEvaluation:
     finite_trajectory_fraction : float
         Fraction of trajectories that stayed finite across all frames.
     predictions : torch.Tensor
-        Free-running predictions with all ``steps`` frames, including the
-        supplied initial state at frame 0.
+        Free-running predictions with all ``F`` frames, including the supplied
+        initial state at frame 0.
     """
 
     error_by_frame: np.ndarray
@@ -569,7 +577,17 @@ class NeRDStepModel:
             raise ValueError(
                 "deployment state_codec is semantically incompatible with the trained codec"
             )
-        if isinstance(self.codec, NeRDJointStateCodec) and self.codec.model is None:
+        # Fail at construction (also for joint codecs nested in a composite)
+        # rather than at the first step's forward-kinematics refresh.
+        components = (
+            self.codec.components
+            if isinstance(self.codec, NeRDCompositeStateCodec)
+            else (self.codec,)
+        )
+        if any(
+            isinstance(component, NeRDJointStateCodec) and component.model is None
+            for component in components
+        ):
             raise ValueError(
                 "joint-state deployment requires a live state_codec built from the "
                 "deployment Newton model"

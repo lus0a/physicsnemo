@@ -13,8 +13,9 @@ These examples couple two complementary libraries:
 Start with the :doc:`Newton integration overview
 <api/physicsnemo.experimental.integrations.newton>` if either library is new to you. It
 explains Newton's model/state/control/solver objects, what PhysicsNeMo provides
-over a raw PyTorch training script, and includes a complete first rollout plus
-a small training loop.
+over a raw PyTorch training script, and includes a complete first rollout; the
+:doc:`examples overview <examples/newton/README>` adds a small first training
+loop.
 
 Then choose an example by the question you want to answer:
 
@@ -23,8 +24,8 @@ Then choose an example by the question you want to answer:
 
    * - Question
      - Start with
-   * - How do I read Newton state and learn gradients through a solver?
-     - The differentiable ball example
+   * - How do I train a surrogate that stays accurate over free-running rollouts?
+     - The diffsim cart-pole example
    * - How do I optimize a design when the solver is a black box?
      - The articulated gripper or MPM nozzle example
    * - How do I learn a Newton solver replacement?

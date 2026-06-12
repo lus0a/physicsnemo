@@ -200,7 +200,7 @@ class NewtonEnv:
         device: str | torch.device | None = None,
         substeps: int | None = None,
         horizon: int | None = None,
-        verbose: bool = False,
+        verbose: bool | None = None,
         args: argparse.Namespace | None = None,
         arg_overrides: Mapping[str, Any] | None = None,
         requires_grad: bool = False,
@@ -231,7 +231,9 @@ class NewtonEnv:
         horizon : int, optional
             Default number of environment steps for :meth:`rollout`.
         verbose : bool, optional
-            Value forwarded to the Newton example arguments.
+            Override for the example's ``args.verbose``. When omitted, a
+            caller-supplied ``args.verbose`` is preserved; otherwise the
+            example runs quietly.
         args : argparse.Namespace, optional
             Pre-built Newton example argument namespace.
         arg_overrides : Mapping[str, Any], optional

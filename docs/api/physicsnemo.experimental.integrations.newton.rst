@@ -23,8 +23,8 @@ Install the published package with the CUDA backend matching the host:
 
 .. code-block:: bash
 
-    pip install "nvidia-physicsnemo[cu12,newton]"  # CUDA 12
     pip install "nvidia-physicsnemo[cu13,newton]"  # CUDA 13
+    pip install "nvidia-physicsnemo[cu12,newton]"  # CUDA 12
 
 Use ``nvidia-physicsnemo[newton]`` when the default PyPI Torch backend is
 intended and the PhysicsNeMo CUDA/RAPIDS extras are not needed. This does not
@@ -36,7 +36,7 @@ From a PhysicsNeMo checkout:
 
 .. code-block:: bash
 
-    uv sync --extra cu12 --extra newton
+    uv sync --extra cu13 --extra newton
 
 Nothing in ``physicsnemo.experimental.integrations.newton`` imports Newton at module load
 time. PhysicsNeMo therefore remains usable without the optional runtime.
@@ -77,7 +77,8 @@ A Newton simulation has a few core objects:
     * - ``state``
       - Positions, orientations, and velocities at one instant
     * - ``control``
-      - Inputs applied while advancing the world
+      - Actuator targets, forces, or other inputs applied while advancing the
+        world
     * - collision pipeline and ``contacts``
       - Geometric interactions found for the current state
     * - ``solver``
@@ -783,8 +784,10 @@ not re-exported from the package root.
 
 .. important::
 
-    Newton releases before 1.2.2 can segfault when ``ViewerGL.get_frame`` reads
-    from a CPU viewer on a host where CUDA is available. For those releases,
+    The packaged ``newton`` extra requires Newton 1.3 or newer. When running
+    against an older Newton source checkout via ``PYTHONPATH``, note that
+    releases before 1.2.2 can segfault when ``ViewerGL.get_frame`` reads from a
+    CPU viewer on a host where CUDA is available. For those releases,
     :func:`~physicsnemo.experimental.integrations.newton.visualization.capture_frame`
     raises a clear error first; build the model on CUDA or upgrade Newton.
 

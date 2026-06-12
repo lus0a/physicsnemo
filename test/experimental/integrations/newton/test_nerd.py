@@ -275,6 +275,68 @@ def test_joint_codec_wraps_angles_and_anchors_the_base() -> None:
     assert torch.allclose(_wrap_to_pi(torch.tensor([3.5])), torch.tensor([-2.7831853]))
 
 
+def test_joint_codec_encode_wraps_continuous_angles() -> None:
+    # Teacher states accumulate unbounded continuous angles, while deployment
+    # states are wrapped after every integration step. Encoding must map both
+    # representations of the same physical configuration to identical inputs.
+    layout = _fake_joint_layout()
+    codec = NeRDJointStateCodec(layout=layout, robot_centric=False)
+    accumulated = torch.tensor([[0.5, torch.pi + 0.25, 0.1, 0.2]])
+    wrapped = torch.tensor([[0.5, -torch.pi + 0.25, 0.1, 0.2]])
+    encoded = codec.encode_state(accumulated)
+    assert torch.allclose(encoded, codec.encode_state(wrapped), atol=1.0e-6)
+    assert torch.allclose(
+        encoded, torch.tensor([[0.5, -torch.pi + 0.25, 0.1, 0.2]]), atol=1.0e-6
+    )
+    # The non-continuous coordinate is left untouched even outside [-pi, pi).
+    large_base = torch.tensor([[7.0, 0.0, 0.0, 0.0]])
+    assert torch.allclose(codec.encode_state(large_base), large_base)
+
+
+def test_joint_codec_rejects_free_root_robot_centric_at_construction() -> None:
+    layout = JointLayout(
+        world_count=1,
+        dof_q=2,
+        dof_qd=2,
+        continuous_q_mask=torch.tensor([False, True]),
+        base_translation_mask=torch.tensor([False, False]),
+        root_is_free=True,
+        up_axis_index=2,
+        quaternion_q_starts=(),
+    )
+    with pytest.raises(NotImplementedError, match="free roots"):
+        NeRDJointStateCodec(layout=layout, robot_centric=True)
+    # World-frame encoding of a free-root articulation remains supported.
+    NeRDJointStateCodec(layout=layout, robot_centric=False)
+
+
+def test_joint_layout_validates_mask_and_index_shapes() -> None:
+    with pytest.raises(ValueError, match="continuous_q_mask"):
+        JointLayout(
+            world_count=1,
+            dof_q=2,
+            dof_qd=2,
+            continuous_q_mask=torch.tensor([False, True, False]),
+            base_translation_mask=torch.tensor([False, False]),
+            root_is_free=False,
+            up_axis_index=2,
+            quaternion_q_starts=(),
+        )
+    with pytest.raises(ValueError, match="q_indices"):
+        JointLayout(
+            world_count=2,
+            dof_q=2,
+            dof_qd=2,
+            continuous_q_mask=torch.tensor([False, True]),
+            base_translation_mask=torch.tensor([False, False]),
+            root_is_free=False,
+            up_axis_index=2,
+            quaternion_q_starts=(),
+            q_indices=torch.zeros((2, 3), dtype=torch.long),
+            qd_indices=torch.zeros((2, 2), dtype=torch.long),
+        )
+
+
 @pytest.mark.parametrize(
     "joint_type_name",
     ("BALL", "FREE", "DISTANCE"),
@@ -470,12 +532,21 @@ def test_joint_codec_packs_multiple_quaternions_with_scalar_coordinates() -> Non
 
 
 def test_joint_codec_groups_multiple_articulations_by_newton_world() -> None:
+    joint_types = _require_newton().JointType
     model = SimpleNamespace(
         world_count=2,
         articulation_count=5,
         joint_count=5,
         joint_world=torch.tensor([0, 0, 1, 1, -1]),
-        joint_type=torch.tensor([0, 1, 0, 1, 0]),
+        joint_type=torch.tensor(
+            [
+                int(joint_types.PRISMATIC),
+                int(joint_types.REVOLUTE),
+                int(joint_types.PRISMATIC),
+                int(joint_types.REVOLUTE),
+                int(joint_types.PRISMATIC),
+            ]
+        ),
         joint_q_start=torch.tensor([0, 1, 2, 3, 4, 5]),
         joint_qd_start=torch.tensor([0, 1, 2, 3, 4, 5]),
         joint_limit_lower=torch.tensor([-100.0, -10.0, -100.0, -10.0, -1.0]),
@@ -503,12 +574,20 @@ def test_joint_codec_groups_multiple_articulations_by_newton_world() -> None:
 
 
 def test_joint_codec_rejects_inconsistent_world_semantics() -> None:
+    joint_types = _require_newton().JointType
     model = SimpleNamespace(
         world_count=2,
         articulation_count=4,
         joint_count=4,
         joint_world=torch.tensor([0, 0, 1, 1]),
-        joint_type=torch.tensor([0, 1, 0, 1]),
+        joint_type=torch.tensor(
+            [
+                int(joint_types.PRISMATIC),
+                int(joint_types.REVOLUTE),
+                int(joint_types.PRISMATIC),
+                int(joint_types.REVOLUTE),
+            ]
+        ),
         joint_q_start=torch.tensor([0, 1, 2, 3, 4]),
         joint_qd_start=torch.tensor([0, 1, 2, 3, 4]),
         joint_limit_lower=torch.tensor([-100.0, -10.0, -100.0, -10.0]),

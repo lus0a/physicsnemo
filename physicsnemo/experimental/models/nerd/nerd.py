@@ -238,6 +238,14 @@ class NeRDTransformer(Module):
 
     def forward(self, tokens: Float[Tensor, "b t f"]) -> Float[Tensor, "b t p"]:
         """Predict a dynamics delta for every token in the causal history."""
+        if tokens.ndim != 3:
+            raise ValueError(
+                f"tokens must have shape [batch, time, features], got {tokens.ndim} dims"
+            )
+        if tokens.shape[-1] != self.input_dim:
+            raise ValueError(
+                f"tokens must have {self.input_dim} features, got {tokens.shape[-1]}"
+            )
         time_count = tokens.shape[1]
         if time_count == 0:
             raise ValueError("sequence length must be at least 1")

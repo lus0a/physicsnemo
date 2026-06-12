@@ -500,7 +500,7 @@ class DesignSpace:
         realize_discrete: bool = False,
         clip: bool = True,
     ) -> dict[str, np.ndarray | torch.Tensor]:
-        """Decode physical coordinates into a dictionary keyed by name.
+        """Decode normalized coordinates into physical values keyed by variable name.
 
         A scene can intentionally reuse one named value for several parts to
         encode exact parameter sharing or symmetry.
@@ -582,7 +582,10 @@ class DesignSpace:
         seed: int = 0,
         device: str | torch.device | None = None,
     ) -> np.ndarray | torch.Tensor:
-        """Sample normalized designs with a reproducible scrambled Sobol sequence."""
+        """Sample normalized designs with a reproducible scrambled Sobol sequence.
+
+        Returns a NumPy array when ``device`` is ``None`` (the default), and a
+        Torch tensor on ``device`` otherwise."""
         if count <= 0:
             raise ValueError("count must be positive")
         samples = torch.quasirandom.SobolEngine(
@@ -705,9 +708,9 @@ class DesignRegularizer:
         object.__setattr__(self, "constraints", constraints)
 
     def __call__(self, normalized: torch.Tensor) -> torch.Tensor:
-        self.design_space._check_last_dimension(normalized)
         if not torch.is_tensor(normalized):
             raise TypeError("design regularizers require a torch.Tensor")
+        self.design_space._check_last_dimension(normalized)
         result = torch.zeros(
             normalized.shape[:-1],
             dtype=normalized.dtype,

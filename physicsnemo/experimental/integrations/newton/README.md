@@ -23,9 +23,13 @@ A Newton simulation has a few core objects:
 | --- | --- |
 | `model` | Mostly fixed bodies, particles, shapes, masses, joints, and materials |
 | `state` | Positions, orientations, and velocities at one instant |
-| `control` | Actuator targets, forces, or other inputs for a step |
+| `control` | Actuator targets, forces, or other inputs applied while advancing the world |
 | collision pipeline / `contacts` | Interactions found for the current state |
 | `solver` | Numerical method that advances `state_in` to `state_out` |
+
+Newton can replicate one scene into many parallel **worlds**: independent
+copies of the same physics, batched on one device and advanced by a single
+solver call. Shapes such as `[worlds, features]` below refer to that batch.
 
 PhysicsNeMo is built on PyTorch, so users retain ordinary tensors, modules,
 losses, autograd, and optimizers. This integration adds the reusable parts a raw
@@ -48,11 +52,16 @@ PyTorch script does not know:
 | Learn and deploy a Newton step | `NeRDProblem`, `NeRDControlInput`, `fit_nerd`, `TrainedNeRDModel` |
 | Scale a NeRD run | automatic trajectory sharding, global statistics, and DDP |
 
-Newton remains the reference solver during teacher generation and validation. A
-learned model replaces a solver step only when explicitly deployed through
+Newton remains the reference solver during *teacher* generation (the
+ground-truth solver runs that produce training data) and validation. A learned
+model replaces a solver step only when explicitly deployed through
 `NewtonStepModel`.
 
 ## First rollout
+
+Install the optional integration first (see
+[the installation note](#installation) at the end of this document; in short,
+`pip install "nvidia-physicsnemo[cu13,newton]"`, or `cu12` for CUDA 12).
 
 ```python
 import torch
@@ -325,9 +334,11 @@ Use `resolve_device(args.device)` for rank-local Newton/model placement and
 `is_main_process()` to guard one-off reports and checkpoints. Other workflows
 remain normal per-process Python unless their documentation states otherwise.
 
+## Installation
+
 Nothing imports Newton at module load time. Install the minimal runtime with the
 CUDA backend matching the host, for example
-`pip install "nvidia-physicsnemo[cu12,newton]"`. From a source checkout, use
-`uv sync --extra cu12 --extra newton` to run the documented examples
-and renderers. The `newton` extra includes Newton's MuJoCo solver runtime
-and its example/importer dependencies.
+`pip install "nvidia-physicsnemo[cu13,newton]"` (or `cu12`). From a source
+checkout, use `uv sync --extra cu13 --extra newton` to run the documented
+examples and renderers. The `newton` extra includes Newton's MuJoCo solver
+runtime and its example/importer dependencies.

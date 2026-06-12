@@ -68,7 +68,6 @@ from physicsnemo.experimental.integrations.newton.nerd.codecs import (
 from physicsnemo.experimental.integrations.newton.nerd.codecs.base import (
     _body_label,
     _entity_semantic_ids,
-    _has_per_world_entities,
     _model_labels,
     _normalized_label,
     _optional_numpy_field,

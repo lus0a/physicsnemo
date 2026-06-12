@@ -246,11 +246,13 @@ class ResidualDynamics(Module):
         ``physicsnemo.models.mlp.FullyConnected`` MLP."""
         from physicsnemo.models.mlp import FullyConnected
 
+        if depth <= 0:
+            raise ValueError("depth must be positive")
         core = FullyConnected(
             in_features=state_dim + input_dim,
             out_features=state_dim,
             layer_size=hidden_dim,
-            num_layers=max(1, depth),
+            num_layers=depth,
             activation_fn="silu",
         )
         return cls(core, state_dim=state_dim, input_dim=input_dim)
@@ -466,14 +468,17 @@ class BPTTSurrogate:
                 "weight_decay, rollout_weight, and rollout_warmup_epochs "
                 "must be finite and non-negative"
             )
-        self.horizon = states.shape[1] - 1
-        self.param_mean = params.mean(0, keepdim=True)
-        self.param_std = params.std(0, keepdim=True, unbiased=False).clamp_min(1.0e-6)
+        horizon = states.shape[1] - 1
         with torch.no_grad():
             initial, inputs = self._inputs(params, batch)
-            self.stats = _RolloutStats(
-                *_standardize(states), *_input_stats(inputs, self.horizon)
-            )
+            stats = _RolloutStats(*_standardize(states), *_input_stats(inputs, horizon))
+        # Commit fitted state only after every input/statistics computation has
+        # succeeded, so a failed re-fit cannot leave a half-updated surrogate
+        # (new horizon/param stats with stale rollout stats and weights).
+        self.horizon = horizon
+        self.param_mean = params.mean(0, keepdim=True)
+        self.param_std = params.std(0, keepdim=True, unbiased=False).clamp_min(1.0e-6)
+        self.stats = stats
         state_mean, state_std = self.stats.state_mean, self.stats.state_std
         normalized_states = (states - state_mean) / state_std
         normalized_inputs = _normalize_inputs(inputs, self.stats, self.horizon)
@@ -532,7 +537,7 @@ class BPTTSurrogate:
         return {
             "samples": int(states.shape[0]),
             "horizon": int(self.horizon),
-            "task_loss_scale": self.task_scale,
+            "task_scale": self.task_scale,
             "epochs": int(epochs),
             "rollout_weight": float(rollout_weight),
             "rollout_warmup_epochs": int(rollout_warmup_epochs),
@@ -589,8 +594,8 @@ class BPTTSurrogate:
         batch : TeacherBatch
             Tasks and inputs used by ``to_inputs`` and ``task_loss``.
         samples : int, optional
-            Number of leading tasks from ``batch`` to optimize. Ignored when
-            ``initial_params`` is provided.
+            Number of leading tasks from ``batch`` to optimize, clamped to the
+            batch size. Ignored when ``initial_params`` is provided.
         initial_params : Any, optional
             Initial parameters shaped ``(sample, param_dim)``. The row count
             must match ``batch``. Starts outside ``z_clip`` are projected onto
@@ -693,7 +698,9 @@ class BPTTSurrogate:
                     "min_task_loss": float(task_values.min()),
                 }
             )
-            improved = task_values < best_tasks
+            # Treat a NaN best as infinitely bad so a non-finite initial loss
+            # cannot lock out every later (finite) improvement.
+            improved = task_values < torch.nan_to_num(best_tasks, nan=torch.inf)
             if bool(improved.any()):
                 best_tasks[improved] = task_values[improved]
                 best_params[improved] = params_of()[improved]

@@ -20,6 +20,10 @@ The Cartpole-specific scene and state/control policy live in
 ``cartpole_problem.py``. This script owns the user-facing training workflow,
 scorecard, and command-line presets.
 
+Training saves the deployable bundle next to the report, so the report and
+scorecard can be regenerated later with ``--load-checkpoint`` without paying
+for retraining.
+
 Run from the PhysicsNeMo repository root:
 
 .. code-block:: bash
@@ -39,10 +43,18 @@ import torch
 from physicsnemo.distributed import DistributedManager
 from physicsnemo.experimental.integrations.newton import (
     NeRDTrainingConfig,
+    TrainedNeRDModel,
     fit_nerd,
     is_main_process,
     resolve_device,
 )
+
+# Maps the checkpoint's recorded model class back to the --model choice so a
+# loaded bundle reports and names its artifacts after the model it trained.
+MODEL_CHOICE_BY_CLASS = {
+    "NeRDTransformer": "nerd-transformer",
+    "FullyConnected": "fully-connected",
+}
 
 
 def format_report(
@@ -85,34 +97,54 @@ def format_report(
 
 
 def run(args: argparse.Namespace) -> str:
-    """Train NeRD and evaluate held-out passive Cartpole rollouts."""
+    """Train or reload NeRD and evaluate held-out passive Cartpole rollouts."""
     DistributedManager.initialize()
     device = str(resolve_device(args.device))
     torch.manual_seed(args.seed)
 
-    scene = cartpole.CartpoleScene(args.num_worlds, device)
-    dynamics_model, model_kwargs = cartpole.model_selection(args)
-    problem = cartpole.make_problem(
-        scene,
-        cart_band=args.cart_band,
-        init_velocity=args.init_velocity,
-        force_scale=args.force_scale,
-    )
-    log = print if args.verbose else (lambda _message: None)
-    trained = fit_nerd(
-        problem,
-        num_trajectories=args.num_trajectories,
-        steps=args.steps,
-        config=cartpole.training_config(args),
-        dynamics_model=dynamics_model,
-        model_kwargs=model_kwargs,
-        max_abs_state=1.0e5,
-        device=device,
-        seed=args.seed,
-        log=log,
-    )
+    if args.load_checkpoint is not None:
+        trained = TrainedNeRDModel.load(args.load_checkpoint, device=device)
+        # The saved codec layout records the trained world count; reusing it
+        # keeps the held-out evaluation identical to the training run.
+        scene = cartpole.CartpoleScene(trained.codec.layout.world_count, device)
+        model_class = str(trained.metadata.get("model_class", "")).rsplit(".", 1)[-1]
+        args.model = MODEL_CHOICE_BY_CLASS.get(model_class, args.model)
+    else:
+        scene = cartpole.CartpoleScene(args.num_worlds, device)
+        dynamics_model, model_kwargs = cartpole.model_selection(args)
+        problem = cartpole.make_problem(
+            scene,
+            cart_band=args.cart_band,
+            init_velocity=args.init_velocity,
+            force_scale=args.force_scale,
+        )
+        log = print if args.verbose else (lambda _message: None)
+        trained = fit_nerd(
+            problem,
+            num_trajectories=args.num_trajectories,
+            steps=args.steps,
+            config=cartpole.training_config(args),
+            dynamics_model=dynamics_model,
+            model_kwargs=model_kwargs,
+            max_abs_state=1.0e5,
+            device=device,
+            seed=args.seed,
+            log=log,
+        )
     if not is_main_process():
         return ""
+
+    output = Path(args.output_dir)
+    output.mkdir(parents=True, exist_ok=True)
+    stem = cartpole.artifact_stem(args)
+    if args.load_checkpoint is None:
+        # Save before evaluation so a figure tweak can rerun with
+        # --load-checkpoint (or render_nerd_comparison.py --checkpoint)
+        # instead of retraining.
+        checkpoint = output / f"{stem}.pt"
+        temporary_checkpoint = checkpoint.with_suffix(".pt.tmp")
+        trained.save(temporary_checkpoint)
+        temporary_checkpoint.replace(checkpoint)
 
     init_q, init_qd = cartpole.evaluation_initial_state(
         trained.codec.layout,
@@ -133,9 +165,6 @@ def run(args: argparse.Namespace) -> str:
     report = format_report(
         f"cartpole {label}", evaluation, trained.config, trained.metadata
     )
-    output = Path(args.output_dir)
-    output.mkdir(parents=True, exist_ok=True)
-    stem = cartpole.artifact_stem(args)
     (output / f"{stem}_report.md").write_text(report, encoding="utf-8")
     plot_report(
         trained.metadata,
@@ -222,8 +251,11 @@ def plot_report(
     teacher = evaluation.overlay["teacher_q"][:window]
     prediction = evaluation.overlay["nerd_q"][:window]
     time = np.arange(window) * dt
-    axes[1, 0].plot(time, teacher[:, 1], color=slate, label="analytical solver")
-    axes[1, 0].plot(time, prediction[:, 1], "--", color=green, label=model_label)
+    # NeRD states are intrinsically wrapped to [-pi, pi); display the teacher's
+    # accumulated angle in the same convention so the curves overlay.
+    wrap = lambda angle: np.arctan2(np.sin(angle), np.cos(angle))  # noqa: E731
+    axes[1, 0].plot(time, wrap(teacher[:, 1]), color=slate, label="analytical solver")
+    axes[1, 0].plot(time, wrap(prediction[:, 1]), "--", color=green, label=model_label)
     axes[1, 0].set(
         title="(c) free-running pole angle",
         xlabel="time (s)",
@@ -322,6 +354,12 @@ def parse_args() -> argparse.Namespace:
         default="nerd-transformer",
     )
     parser.add_argument("--horizons", type=int, nargs="+", default=[100, 500, 1000])
+    parser.add_argument(
+        "--load-checkpoint",
+        type=Path,
+        help="load a saved NeRD bundle and regenerate the report and scorecard "
+        "without retraining (training-only options are ignored)",
+    )
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--device")
     parser.add_argument("--verbose", action="store_true")

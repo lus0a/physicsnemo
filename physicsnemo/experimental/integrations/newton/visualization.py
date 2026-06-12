@@ -55,6 +55,7 @@ __all__ = [
     "draw_text",
     "frame_bounding_box",
     "headless_viewer",
+    "look_at",
     "save_gif",
     "stack_horizontal",
 ]
@@ -116,7 +117,10 @@ def frame_bounding_box(
 
     ``position`` is a ``warp.vec3`` ready to splat into ``viewer.set_camera``.
     ``margin`` > 1 leaves padding around the box; a wider ``fov`` pulls the camera
-    in closer. ``azim``/``elev`` are in degrees.
+    in closer. ``azim``/``elev`` are in degrees and give the direction the camera
+    *faces* (its view direction), not its bearing from the box -- the opposite of
+    matplotlib's ``view_init`` convention. A camera above the scene looking down
+    therefore uses a negative ``elev``.
     """
     import warp as wp
 
@@ -146,8 +150,9 @@ def aim_camera(
 ) -> None:
     """Frame ``[lo, hi]`` and apply it to ``viewer`` via ``set_camera``.
 
-    ``set_camera`` must run after ``set_model`` because ``set_model`` rebuilds the
-    camera.
+    ``azim``/``elev`` give the camera's view direction; see
+    :func:`frame_bounding_box`. ``set_camera`` must run after ``set_model``
+    because ``set_model`` rebuilds the camera.
     """
     viewer.set_camera(
         *frame_bounding_box(lo, hi, azim=azim, elev=elev, fov=fov, margin=margin)
@@ -160,6 +165,11 @@ def headless_viewer(width: int, height: int, *, vsync: bool = False) -> Any:
     The viewer's compute device is selected by Warp/the model device (e.g.
     ``--newton-device cuda``), not by this function.
     """
+    from physicsnemo.experimental.integrations.newton.dependencies import (
+        require_newton,
+    )
+
+    require_newton()  # Surface the install hint before importing a submodule.
     viewer_module = importlib.import_module("newton.viewer")
 
     return viewer_module.ViewerGL(
@@ -174,7 +184,9 @@ def capture_frame(viewer: Any) -> "PILImage":
     frame = np.asarray(viewer.get_frame().numpy())
     if frame.ndim == 3 and frame.shape[-1] == 4:
         frame = frame[..., :3]
-    return Image.fromarray(np.ascontiguousarray(frame.copy()))
+    # ``copy()`` already yields a C-contiguous array (also when ``frame`` is the
+    # RGBA-stripping slice view above).
+    return Image.fromarray(frame.copy())
 
 
 def _as_image(frame: Frame) -> "PILImage":

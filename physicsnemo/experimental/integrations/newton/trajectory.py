@@ -174,8 +174,9 @@ def trajectory_dataset(
     leading feature axes (e.g. across all ``N`` particles of a ``(time, N, 3)``
     trajectory) -- and applies a shared
     :class:`~physicsnemo.datapipes.transforms.normalize.Normalize` to ``input`` and
-    ``target`` (same feature axis, so one stat set is correct). The returned dataset
-    works directly with ``torch.utils.data.DataLoader``.
+    ``target`` (same feature axis, so one stat set is correct). Iterate the
+    returned dataset with ``physicsnemo.datapipes.DataLoader`` (samples are
+    TensorDicts, which plain ``torch.utils.data.DataLoader`` cannot collate).
     """
     reader = TrajectoryWindowReader(
         trajectories, window=window, predict_steps=predict_steps, stride=stride

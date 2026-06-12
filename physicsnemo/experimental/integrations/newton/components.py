@@ -120,7 +120,7 @@ def _components_from_scene(scene: Any) -> NewtonComponents:
 def _require(scene: Any, name: str) -> Any:
     value = getattr(scene, name, None)
     if value is None:
-        raise AttributeError(f"Newton scene must expose a '{name}' attribute.")
+        raise AttributeError(f"Newton scene must expose a non-None '{name}' attribute.")
     return value
 
 

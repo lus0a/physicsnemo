@@ -845,6 +845,45 @@ def test_bptt_surrogate_fit_and_evaluate() -> None:
     )
 
 
+def test_bptt_surrogate_state_dict_roundtrip_reproduces_rollouts() -> None:
+    fitted = _surrogate()
+    fitted.fit(_synthetic_batch(), epochs=3)
+    restored = _surrogate()
+    restored.load_state_dict(fitted.state_dict())
+    batch = _synthetic_batch(seed=2).head(2)
+    parameters = torch.zeros(2, 2)
+    torch.testing.assert_close(
+        restored.rollout(parameters, batch), fitted.rollout(parameters, batch)
+    )
+    assert restored.evaluate(_synthetic_batch(seed=1)) == fitted.evaluate(
+        _synthetic_batch(seed=1)
+    )
+
+
+def test_bptt_surrogate_failed_refit_keeps_fitted_state_consistent() -> None:
+    # ``to_inputs`` emits a fixed 4-frame input sequence, valid only for
+    # horizon-4 batches.
+    surrogate = BPTTSurrogate(
+        state_dim=2,
+        param_dim=2,
+        input_dim=2,
+        to_inputs=lambda params, batch: (
+            batch.states[:, 0, :].to(params),
+            params[:, None, :].repeat(1, 4, 1),
+        ),
+        task_loss=lambda pred, params, batch: (pred[:, -1, :] ** 2).sum(-1),
+        hidden_dim=8,
+        depth=1,
+    )
+    surrogate.fit(_synthetic_batch(horizon=4), epochs=2)
+    with pytest.raises(ValueError, match="time dimension"):
+        surrogate.fit(_synthetic_batch(horizon=6), epochs=2)
+    # The failed re-fit must not have half-committed the new batch's horizon.
+    assert surrogate.horizon == 4
+    held = surrogate.evaluate(_synthetic_batch(horizon=4, seed=1))
+    assert np.isfinite(held["rollout_rmse"])
+
+
 def test_bptt_surrogate_requires_fit_and_valid_callback_shapes() -> None:
     surrogate = _surrogate()
     with pytest.raises(RuntimeError, match="fit the surrogate"):
@@ -1006,7 +1045,40 @@ def test_optimize_field_in_newton_multistart_returns_best_and_total(
     assert result["best_loss"] == pytest.approx(0.25)
     assert result["per_start_solver_evals"] == 4
     assert result["solver_evals"] == 8
+    assert result["total_ms"] == pytest.approx(2.0)
     assert len(result["runs"]) == 2
+
+
+def test_optimize_field_in_newton_multistart_accepts_a_list_of_tensors(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # The documented workflow mixes the cold start with proposed-start tensors.
+    def fake_optimize(_env, *, initial, optimization_steps, **_kwargs):
+        loss = float(initial.square().sum())
+        return {
+            "best_params": initial.detach().clone(),
+            "best_loss": loss,
+            "initial_loss": loss,
+            "optimization_steps": optimization_steps,
+            "total_ms": 1.0,
+            "solver_evals": optimization_steps + 1,
+            "history": [],
+        }
+
+    monkeypatch.setattr(newton_adjoint, "optimize_field_in_newton", fake_optimize)
+    result = optimize_field_in_newton_multistart(
+        object(),
+        loss_fn=lambda _states: None,
+        initials=[torch.tensor([2.0, 0.0]), torch.tensor([0.5, 0.0])],
+        optimization_steps=3,
+    )
+    assert result["best_index"] == 1
+    torch.testing.assert_close(result["best_params"], torch.tensor([0.5, 0.0]))
+    assert result["starts"] == 2
+    with pytest.raises(ValueError, match="at least one start"):
+        optimize_field_in_newton_multistart(
+            object(), loss_fn=lambda _states: None, initials=[]
+        )
 
 
 def test_optimize_field_defaults_to_current_env_value(
@@ -1383,6 +1455,17 @@ def test_optimize_grouped_design_validates_callback_shape() -> None:
         )
 
 
+def test_optimize_grouped_design_rejects_detached_losses() -> None:
+    with pytest.raises(ValueError, match="differentiable"):
+        optimize_grouped_design(
+            lambda designs: designs.detach()[:, :, None].square(),
+            design_dim=2,
+            starts=2,
+            steps=2,
+            device="cpu",
+        )
+
+
 def test_optimize_grouped_design_respects_trust_region() -> None:
     starts = np.asarray([[0.20, 0.80], [0.70, 0.30]], dtype=np.float32)
 
@@ -1525,6 +1608,30 @@ def test_world_view_groups_and_reduces_dropping_globals() -> None:
     assert torch.equal(worlds.per_world_count(mask), torch.tensor([1, 1, 1]))
 
 
+def test_world_view_masked_reductions_use_masked_denominators() -> None:
+    from physicsnemo.experimental.integrations.newton.worlds import WorldView
+
+    model = SimpleNamespace(
+        world_count=3,
+        particle_world=torch.tensor([0, 0, 1, 2, 2, -1], dtype=torch.int32),
+    )
+    worlds = WorldView(model, "particle")
+    values = torch.tensor([[1.0], [3.0], [5.0], [7.0], [9.0], [100.0]])
+    # Mask drops one of world 0's rows and all of world 1; the global -1 row
+    # stays excluded regardless of the mask.
+    mask = torch.tensor([True, False, False, True, True, True])
+    assert torch.allclose(
+        worlds.per_world_sum(values, mask=mask).squeeze(1),
+        torch.tensor([1.0, 0.0, 16.0]),
+    )
+    # Means divide by the number of *masked-in* rows; fully masked-out worlds
+    # report 0 instead of NaN.
+    assert torch.allclose(
+        worlds.per_world_mean(values, mask=mask).squeeze(1),
+        torch.tensor([1.0, 0.0, 8.0]),
+    )
+
+
 def test_world_view_rejects_misaligned_values_and_masks() -> None:
     from physicsnemo.experimental.integrations.newton.worlds import WorldView
 
@@ -1535,6 +1642,8 @@ def test_world_view_rejects_misaligned_values_and_masks() -> None:
         worlds.per_world_sum(torch.zeros(3, 1))
     with pytest.raises(ValueError, match="boolean"):
         worlds.per_world_count(torch.ones(2))
+    with pytest.raises(ValueError, match="tensor"):
+        worlds.per_world_mean(np.zeros((2, 1)))
     with pytest.raises(ValueError, match="invalid id"):
         WorldView(SimpleNamespace(world_count=2, particle_world=torch.tensor([0, 2])))
     with pytest.raises(ValueError, match="invalid id"):

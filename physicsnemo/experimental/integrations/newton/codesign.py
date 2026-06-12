@@ -44,7 +44,8 @@ def shortlist_grouped_candidates(
     *score*; see :func:`optimize_design` for the score-vs-loss convention. The
     array may have any number of leading dimensions; its final dimension is
     interpreted as the candidate axis. Returned indices are ordered from lowest
-    to highest loss and have the same leading dimensions plus ``count``. This is
+    to highest loss and have the same leading dimensions plus a final dimension
+    of ``min(count, candidates)``. This is
     useful for surrogate-first workflows that send only a small action or pose
     shortlist back to an authoritative simulator.
     """
@@ -97,8 +98,8 @@ def grouped_candidate_ranking_loss(
     losses = []
     for group in torch.unique(group_ids, sorted=True):
         mask = group_ids == group
-        predicted = torch.log1p(predicted_losses[:, mask].clamp_min(0.0))
-        target = torch.log1p(target_losses[:, mask].clamp_min(0.0))
+        predicted = torch.log1p(predicted_losses[:, mask])
+        target = torch.log1p(target_losses[:, mask])
         logits = -predicted / temperature
         target_distribution = torch.softmax(-target / temperature, dim=-1)
         soft_ranking = -(target_distribution * torch.log_softmax(logits, dim=-1)).sum(
@@ -124,6 +125,10 @@ class GroupedDesignResult:
     differentiable loss; the black-box :func:`optimize_design` oracle instead
     reports an opaque *score* (see :func:`optimize_design` for the score-vs-loss
     convention).
+
+    The supplied arrays are stored without copying and are marked read-only on
+    construction, so the ``best_*`` views cannot silently mutate the result.
+    Pass copies when constructing one directly from arrays you keep writing to.
     """
 
     designs: np.ndarray
@@ -308,6 +313,13 @@ def optimize_grouped_design(
         if step == steps:
             break
 
+        if not losses.requires_grad:
+            raise ValueError(
+                "grouped_losses must return losses differentiable w.r.t. the "
+                "designs; the returned tensor carries no gradient (check for "
+                "detach()/numpy conversions in the callback, or a surrounding "
+                "torch.no_grad())"
+            )
         # Compute the gradient explicitly and assign it rather than calling
         # ``objective.sum().backward()``; the schedule advances top_k between
         # steps, so each iteration builds a fresh graph and there is no

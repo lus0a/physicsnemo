@@ -1,18 +1,20 @@
 <!-- markdownlint-disable MD033 -->
 # Neural Robot Dynamics for Newton
 
+Part of the [Newton + PhysicsNeMo examples](../README.md); start there if
+Newton or PhysicsNeMo is new to you.
+
 PhysicsNeMo gives you the reusable tools to train a neural network that replaces
 a physics solver, then deploy that learned model back into the simulator. These
 examples are a worked demonstration of that on top of the **Newton + PhysicsNeMo
 integration**, using [Neural Robot Dynamics](https://neural-robot-dynamics.github.io/) (NeRD).
 
-The point is to show *why* PhysicsNeMo is useful. The same workflow learns a
-single Newton simulation step and then runs that learned model on its own, frame
-after frame, in place of the analytical solver. It is not meant to be a finished
-robotics product, but a reusable pattern you can apply to your own physics.
+The same workflow learns a single Newton simulation step and then runs that
+learned model on its own, frame after frame, in place of the analytical
+solver -- a reusable pattern you can apply to your own physics.
 
-We include two deliberately different problems so you can watch the same workflow
-stretch across very different physics:
+Two deliberately different problems show the same workflow applied to very
+different physics:
 
 | Example | Newton state learned by NeRD | Teacher |
 | --- | --- | --- |
@@ -25,7 +27,7 @@ writing a new trainer or deployment API.
 
 ## What NeRD learns
 
-The core idea is small but powerful. Instead of learning an entire trajectory,
+Instead of learning an entire trajectory,
 NeRD learns to reproduce a *single* simulation step. Newton's solver advances the
 world by one frame, and NeRD learns to imitate that one transition. Once it can
 do that reliably, you can call it over and over, feeding each prediction back in
@@ -94,7 +96,7 @@ The reusable API has just four pieces:
 | `fit_nerd` | Collect or consume trajectories, normalize them, and train (advanced: `train_nerd` is the lower-level entry point) |
 | `TrainedNeRDModel` | Evaluate, save/load, predict, and create a `NewtonStepModel` |
 
-For a standard Newton scene, a new problem can be refreshingly small:
+For a standard Newton scene, a new problem needs only a small amount of code:
 
 ```python
 import numpy as np
@@ -167,9 +169,9 @@ flags, commands, or a zero-width tensor for fully autonomous dynamics:
 - A run with custom controllers, multiple solvers, or unusual frame logic can
   construct `NeRDProblem(codec, get_state, reset, advance, sample_inputs)`
   directly.
-- Already have data? Import `NeRDDataset` and `train_nerd` from
-  `physicsnemo.experimental.integrations.newton.nerd` and skip collection
-  entirely.
+- Applications that already have trajectories can import `NeRDDataset` and
+  `train_nerd` from `physicsnemo.experimental.integrations.newton.nerd` and
+  skip collection entirely.
 
 State representation is explicit. Pass `"joint"`, `"body"`, `"particle"`, a
 sequence such as `("particle", "body")`, or a ready `NeRDStateCodec`. The
@@ -316,7 +318,8 @@ uv run python \
   examples/newton/nerd/example_cartpole_nerd.py --smoke
 
 # Scaled short run: the unflagged default is still a 10K-trajectory /
-# 100K-optimizer-update GPU job, not a quick check
+# 100K-optimizer-update GPU job (roughly 40 minutes on one data-center
+# GPU), not a quick check
 uv run python \
   examples/newton/nerd/example_cartpole_nerd.py
 
@@ -330,6 +333,18 @@ uv run torchrun --standalone \
   examples/newton/nerd/example_cartpole_nerd.py --paper
 ```
 
+Every training run saves the deployable bundle next to the report
+(`examples/newton/nerd/outputs/cartpole_nerd/cartpole_nerd.pt` by default, with
+the model-specific stem for `--model fully-connected`). Regenerating the report
+or scorecard, for example after a plotting tweak, therefore never needs a
+retrain:
+
+```bash
+uv run python \
+  examples/newton/nerd/example_cartpole_nerd.py \
+  --load-checkpoint examples/newton/nerd/outputs/cartpole_nerd/cartpole_nerd.pt
+```
+
 ![NeRD Cartpole scorecard](../../../docs/img/newton/cartpole_nerd_scorecard.png)
 
 All values below use the same error, averaged over every predicted frame and
@@ -339,9 +354,9 @@ not a failed reproduction (see the note below the table).
 
 | Horizon | Paper, published | Released checkpoint by paper authors | Scaled short run |
 | ---: | ---: | ---: | ---: |
-| 100 | 0.0002 m / 0.0004 rad | 0.0002 m / 0.0004 rad | 0.0035 m / 0.0067 rad |
-| 500 | 0.004 m / 0.013 rad | 0.0042 m / 0.0149 rad | 0.0976 m / 0.1574 rad |
-| 1000 | 0.033 m / 0.075 rad | 0.0318 m / 0.0761 rad | 0.4116 m / 0.3955 rad |
+| 100 | 0.0002 m / 0.0004 rad | 0.0002 m / 0.0004 rad | 0.0025 m / 0.0030 rad |
+| 500 | 0.004 m / 0.013 rad | 0.0042 m / 0.0149 rad | 0.0517 m / 0.0921 rad |
+| 1000 | 0.033 m / 0.075 rad | 0.0318 m / 0.0761 rad | 0.2545 m / 0.3088 rad |
 
 The plotted solid curves come from a scaled short run: 10K trajectories and
 100K optimizer updates. The released-checkpoint column records the paper authors'
@@ -350,10 +365,18 @@ short-run column uses this implementation and metric, and its gap simply reflect
 the much smaller optimization budget, not a claim that it reproduces the released
 checkpoint.
 
-The renderer trains a compact model and shows the analytical and learned
-cartpoles face-on. It writes to `outputs/cartpole_nerd/` by default:
+The renderer shows the analytical and learned cartpoles face-on and writes to
+`outputs/cartpole_nerd/` by default. Pass `--checkpoint` to reuse a bundle
+saved by `example_cartpole_nerd.py`; without it the renderer trains a compact
+model inline:
 
 ```bash
+# Reuse the saved training bundle (fast: render only, no training)
+uv run python \
+  examples/newton/nerd/render_nerd_comparison.py \
+  --checkpoint examples/newton/nerd/outputs/cartpole_nerd/cartpole_nerd.pt
+
+# Or stay self-contained and train the compact render model inline
 uv run python \
   examples/newton/nerd/render_nerd_comparison.py
 ```
@@ -413,8 +436,12 @@ uv run python \
   examples/newton/nerd/render_rj45_nerd_comparison.py
 ```
 
-The RJ45 renderer writes to `outputs/rj45_nerd/` by default. Use `--out` to
-choose another location.
+Unlike the cart-pole renderer, the RJ45 renderer does not train inline: it
+loads `examples/newton/nerd/outputs/rj45_nerd/rj45_nerd_model.pt`, so run
+`example_rj45_nerd.py` with `--save-checkpoint` first (the `--smoke` preset
+alone does not save one). The renderer writes to the same
+`outputs/rj45_nerd/` folder by default; use `--out` to choose another
+location and `--checkpoint` to point at a different saved bundle.
 
 By default, `example_rj45_nerd.py` compiles the checkpoint with
 `torch.compile(mode="reduce-overhead")` and warms every causal history length

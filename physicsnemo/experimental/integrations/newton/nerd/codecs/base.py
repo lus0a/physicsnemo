@@ -100,7 +100,10 @@ def _entity_semantic_ids(
     if not labels:
         return (relative_order, ())
     rows = tuple(
-        tuple(_normalized_label(labels[int(index)]) for index in row)
+        tuple(
+            _normalized_label(labels[int(index)]) if int(index) < len(labels) else ""
+            for index in row
+        )
         for row in indices.detach().cpu().numpy()
     )
     if any(row != rows[0] for row in rows[1:]):
@@ -178,7 +181,7 @@ def _uniform_world_indices(model: Any, entity: str) -> torch.Tensor:
     learned per-world topology -- except in the all-(-1) unreplicated
     single-world case, where every entity forms the one learned topology. Note
     that Newton "worlds" (replicated simulation instances) are unrelated to the
-    distributed ``world_size`` used for DDP sharding elsewhere in this module.
+    distributed ``world_size`` used for DDP sharding in the NeRD trainers.
     """
     world_count = int(getattr(model, "world_count", 0) or 1)
     count = int(getattr(model, f"{entity}_count", 0))
@@ -219,25 +222,12 @@ def _uniform_world_indices(model: Any, entity: str) -> torch.Tensor:
         for world in range(world_count)
     ]
     counts = {int(group.numel()) for group in groups}
-    if len(counts) != 1 or not counts or next(iter(counts)) == 0:
+    if len(counts) != 1 or next(iter(counts)) == 0:
         raise ValueError(
             f"NeRD requires equal non-zero {entity} counts per world; "
             f"got {[int(group.numel()) for group in groups]}"
         )
     return torch.stack(tuple(groups))
-
-
-def _has_per_world_entities(model: Any, entity: str) -> bool:
-    """Whether ``entity`` has state owned by at least one learned world."""
-    count = int(getattr(model, f"{entity}_count", 0))
-    if count <= 0:
-        return False
-    world_count = int(getattr(model, "world_count", 0) or 1)
-    world_field = getattr(model, f"{entity}_world", None)
-    if world_count == 1 or world_field is None:
-        return True
-    world_ids = field_to_torch(world_field).long()
-    return bool(((world_ids >= 0) & (world_ids < world_count)).any())
 
 
 def _validate_state_value(

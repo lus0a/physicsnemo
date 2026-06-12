@@ -235,9 +235,14 @@ class _NeRDEntityStateCodec(NeRDStateCodec):
         if indices is None:
             indices = _uniform_world_indices(model, entity)
         self.indices = torch.as_tensor(indices, dtype=torch.long)
-        if self.indices.ndim != 2 or self.indices.shape[1] == 0:
+        if (
+            self.indices.ndim != 2
+            or self.indices.shape[0] == 0
+            or self.indices.shape[1] == 0
+        ):
             raise ValueError(
-                f"{entity} indices must have shape [worlds, entities_per_world]"
+                f"{entity} indices must have shape [worlds, entities_per_world] "
+                "with at least one world and one entity"
             )
         self.batch_size = int(self.indices.shape[0])
         self.state_shape = (int(self.indices.shape[1]), state_width)
@@ -314,11 +319,11 @@ class NeRDBodyStateCodec(_NeRDEntityStateCodec):
             root_body_index = self._resolve_reference_body(model, reference_frame.body)
             up_axis = reference_frame.up_axis
             if up_axis is None:
-                model_up_axis = getattr(model, "up_axis", 2) if model is not None else 2
-                up_axis = int(model_up_axis)
+                up_axis = getattr(model, "up_axis", 2)
             reference_frame = NeRDBodyHeadingFrame(
                 body=root_body_index,
-                up_axis=int(up_axis),
+                # ``getattr(..., "value", ...)`` unwraps a possible enum axis.
+                up_axis=int(getattr(up_axis, "value", up_axis)),
             )
         self.reference_frame = reference_frame
 
@@ -395,7 +400,7 @@ class NeRDBodyStateCodec(_NeRDEntityStateCodec):
             Vectors in the configured model frame, or ``vectors`` unchanged
             when world coordinates are used.
         """
-        frame_quaternion, global_shape = self._vector_frame(state, vectors)
+        _, frame_quaternion, global_shape = self._vector_frame(state, vectors)
         if self.reference_frame is None:
             return vectors
         if vectors.shape == global_shape:
@@ -411,12 +416,11 @@ class NeRDBodyStateCodec(_NeRDEntityStateCodec):
         This is useful for geometry observations such as targets, landmarks, or
         nearest-surface points that must use the same coordinates as body state.
         """
-        _, global_shape = self._vector_frame(state, points)
+        frame_position, frame_quaternion, global_shape = self._vector_frame(
+            state, points
+        )
         if self.reference_frame is None:
             return points
-        frame_position, frame_quaternion = self._model_frame(
-            _canonicalize_body_state(state)
-        )
         if points.shape == global_shape:
             frame_position = frame_position.squeeze(-2)
             frame_quaternion = frame_quaternion.squeeze(-2)
@@ -494,7 +498,8 @@ class NeRDBodyStateCodec(_NeRDEntityStateCodec):
 
     def _vector_frame(
         self, state: torch.Tensor, vectors: torch.Tensor
-    ) -> tuple[torch.Tensor | None, tuple[int, ...]]:
+    ) -> tuple[torch.Tensor | None, torch.Tensor | None, tuple[int, ...]]:
+        """Validate ``vectors`` against ``state`` and compute the model frame once."""
         body_aligned_shape = (*state.shape[:-1], 3)
         global_shape = (*state.shape[:-2], 3)
         if vectors.shape not in (global_shape, body_aligned_shape):
@@ -502,9 +507,11 @@ class NeRDBodyStateCodec(_NeRDEntityStateCodec):
                 "values must be global per-world or body-aligned with final width 3"
             )
         if self.reference_frame is None:
-            return None, global_shape
-        _, frame_quaternion = self._model_frame(_canonicalize_body_state(state))
-        return frame_quaternion, global_shape
+            return None, None, global_shape
+        frame_position, frame_quaternion = self._model_frame(
+            _canonicalize_body_state(state)
+        )
+        return frame_position, frame_quaternion, global_shape
 
     @staticmethod
     def _to_frame(
@@ -569,8 +576,10 @@ class NeRDParticleStateCodec(_NeRDEntityStateCodec):
         q = field_to_torch(state.particle_q, dtype=torch.float32)
         qd = field_to_torch(state.particle_qd, dtype=torch.float32)
         index = self._indices_on(q.device).reshape(-1)
+        # ``torch.cat`` already allocates, so the result is a stable snapshot
+        # rather than a view of the live Warp buffers.
         value = torch.cat((q.index_select(0, index), qd.index_select(0, index)), dim=-1)
-        return value.reshape(self.batch_size, *self.state_shape).clone()
+        return value.reshape(self.batch_size, *self.state_shape)
 
     def write(self, state: Any, value: torch.Tensor) -> None:
         """Write particle positions and velocities into Newton state."""
