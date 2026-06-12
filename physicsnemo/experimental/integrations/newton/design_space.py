@@ -156,6 +156,8 @@ def select_diverse_designs(
         )
         for reserve_round in range(min_per_group):
             for group in group_order:
+                if sum(groups[index] == group for index in selected) > reserve_round:
+                    continue
                 candidates = [
                     int(index)
                     for index in order

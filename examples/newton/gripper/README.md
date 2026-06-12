@@ -331,7 +331,7 @@ families more reliably than the straight baseline.
 The handled-cup close-up and parameter table make the change visible: the
 optimized fingers are shorter, thicker, and pre-curved, with wider contact pads.
 
-The recorded CUDA run with seed 31 produced:
+The recorded run with seed 31 produced:
 
 | Metric | Result |
 | --- | ---: |
@@ -370,12 +370,10 @@ Install the Newton extra in the PhysicsNeMo checkout, then run from the
 repository root:
 
 ```bash
-uv sync --extra cu12 --extra newton
+uv sync --extra newton
 
 uv run python \
-  examples/newton/gripper/example_gripper_design.py \
-  --newton-device cuda \
-  --torch-device cuda
+  examples/newton/gripper/example_gripper_design.py
 ```
 
 The simulation dataset is cached. Regenerate it after changing object geometry,
@@ -384,8 +382,6 @@ poses, actuation, solver settings, or the design schema:
 ```bash
 uv run python \
   examples/newton/gripper/example_gripper_design.py \
-  --newton-device cuda \
-  --torch-device cuda \
   --regenerate-dataset
 ```
 
@@ -395,8 +391,7 @@ regenerated):
 
 ```bash
 uv run python \
-  examples/newton/gripper/render_gripper.py \
-  --device cuda
+  examples/newton/gripper/render_gripper.py
 ```
 
 ## Adapt it to your own problem

@@ -112,7 +112,7 @@ is the tested physics-AI layer around them:
         :func:`joints`
     * - Differentiable Newton trajectories and Warp adjoints
       - :func:`differentiable_rollout`
-    * - Gradient-matched surrogate training
+    * - Free-running surrogate training with rollout BPTT
       - :class:`BPTTSurrogate`
     * - Simulator-as-oracle optimization
       - :class:`DesignSurrogate` and :func:`optimize_design`
@@ -306,8 +306,8 @@ Choose a workflow
     * - Goal
       - Start with
       - Complete example
-    * - Learn from trajectories and solver gradients
-      - :func:`differentiable_rollout`, :class:`BPTTSurrogate`
+    * - Learn free-running dynamics from trajectories
+      - :class:`BPTTSurrogate`
       - :doc:`/examples/newton/diffsim/README`
     * - Optimize with a solver that is a black box
       - :func:`optimize_design`, :class:`DesignSurrogate`,

@@ -18,9 +18,8 @@
 
 Three entry points share the same Warp tape:
 
-* :func:`differentiable_rollout` rolls out once and returns the trajectory, the
-  adjoint, and the loss as detached *data products* (the teacher signal a
-  surrogate learns from).
+* :func:`differentiable_rollout` rolls out once and returns the trajectory,
+  adjoint, and loss as detached *data products*.
 * :func:`optimize_field_in_newton` runs the simulator-in-the-loop optimizer:
   every step rolls the real solver out, backpropagates the physics loss to an
   initial-state field, and takes a Torch optimizer step on that field, feeding
@@ -35,7 +34,6 @@ import time
 from collections.abc import Callable
 from typing import Any, TypedDict, cast
 
-import numpy as np
 import torch
 import warp as wp
 
@@ -61,7 +59,7 @@ class FieldOptimizationRecord(TypedDict):
 class FieldOptimizationResult(TypedDict):
     """Result returned by :func:`optimize_field_in_newton`."""
 
-    best_params: np.ndarray
+    best_params: torch.Tensor
     best_loss: float
     initial_loss: float
     optimization_steps: int
@@ -172,8 +170,7 @@ def optimize_field_in_newton(
     env : NewtonEnv
         Environment finalized with ``requires_grad=True``.
     loss_fn : Callable[[list[Any]], Any]
-        Scalar Warp loss over the kept rollout states, matching the loss used to
-        harvest teacher gradients.
+        Scalar Warp loss over the kept rollout states.
     field : str, optional
         Name of the initial-state field to optimize, such as ``"particle_qd"``
         for an initial velocity.
@@ -194,8 +191,9 @@ def optimize_field_in_newton(
     Returns
     -------
     FieldOptimizationResult
-        Result containing the best field value and loss, initial loss, timing,
-        solver evaluation count, and per-step optimization history.
+        Result containing the best field value as a detached tensor on the
+        field device, plus scalar losses, timing, solver evaluation count, and
+        per-step optimization history.
     """
 
     steps = _resolve_steps(env, steps)
@@ -223,19 +221,24 @@ def optimize_field_in_newton(
 
     history: list[FieldOptimizationRecord] = []
     best_loss = float("inf")
-    best_params = param.detach().cpu().numpy().copy()
+    best_params = param.detach().clone()
     initial_loss = float("inf")
     start = time.perf_counter()
 
     for step in range(optimization_steps + 1):
         env.reset(**{field: param.detach()})
         rollout = differentiable_rollout(env, steps=steps, loss_fn=loss_fn, field=field)
+        if not bool(torch.isfinite(rollout.loss)):
+            raise ValueError(
+                f"Newton optimization loss must be finite; got {float(rollout.loss)} "
+                f"at step {step}"
+            )
         real_loss = float(rollout.loss)
         if step == 0:
             initial_loss = real_loss
         if real_loss < best_loss:
             best_loss = real_loss
-            best_params = param.detach().cpu().numpy().copy()
+            best_params = param.detach().clone()
         history.append(
             {
                 "step": step,
@@ -246,6 +249,10 @@ def optimize_field_in_newton(
         )
         if step == optimization_steps:
             break
+        if not bool(torch.isfinite(rollout.adjoint).all()):
+            raise ValueError(
+                f"Newton optimization adjoint must be finite at step {step}"
+            )
         opt.zero_grad(set_to_none=True)
         param.grad = (
             rollout.adjoint.detach()
@@ -311,13 +318,11 @@ def optimize_field_in_newton_multistart(
     -------
     MultiStartFieldOptimizationResult
         Best branch result plus every branch, the selected branch index, start
-        count, per-start evaluation budget, and aggregate solver work.
+        count, per-start evaluation budget, and aggregate solver work. Each
+        branch keeps ``best_params`` as a detached tensor on the field device.
     """
 
-    if isinstance(initials, torch.Tensor):
-        starts = initials.detach().cpu().numpy()
-    else:
-        starts = np.asarray(initials)
+    starts = field_to_torch(initials).detach()
     if starts.ndim == 0 or starts.shape[0] == 0:
         raise ValueError("initials must contain at least one start")
     if starts.ndim == 1:
@@ -335,7 +340,7 @@ def optimize_field_in_newton_multistart(
         )
         for initial in starts
     ]
-    best_index = int(np.argmin([run["best_loss"] for run in runs]))
+    best_index = min(range(len(runs)), key=lambda index: runs[index]["best_loss"])
     best = dict(runs[best_index])
     best["best_index"] = best_index
     best["runs"] = runs

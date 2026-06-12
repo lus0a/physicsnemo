@@ -330,13 +330,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--torch-device",
         default="cpu",
-        help="device for the tiny surrogate (Newton MPM uses the GPU)",
+        help="device for the tiny surrogate",
     )
     parser.add_argument(
         "--newton-device",
         default=None,
-        help="Warp device for the MPM solve, e.g. cpu or cuda:0 "
-        "(default: Warp's default device, the GPU when one is visible)",
+        help="Warp device for the MPM solve (default: Warp's default device)",
     )
     parser.add_argument(
         "--save-pareto-data",

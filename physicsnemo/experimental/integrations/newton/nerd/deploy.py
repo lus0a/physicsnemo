@@ -316,6 +316,8 @@ class TrainedNeRDModel:
             raise ValueError(
                 f"initial_state must have shape {expected}, got {tuple(current.shape)}"
             )
+        if steps is not None and steps < 0:
+            raise ValueError("steps must be non-negative")
         if inputs is None:
             if steps is None:
                 raise ValueError("steps is required for autonomous rollout")
@@ -344,8 +346,6 @@ class TrainedNeRDModel:
                     f"inputs must have shape {expected_inputs}, "
                     f"got {tuple(input_tensor.shape)}"
                 )
-        if steps is None or steps < 0:
-            raise ValueError("steps must be non-negative")
 
         model = _model_for_device(self.model, torch_device).eval()
         normalizers = self.normalizers.to(torch_device)
@@ -494,6 +494,21 @@ def evaluate_nerd(
         raise ValueError(
             "held-out trajectories use a semantically incompatible NeRD state codec"
         )
+    if (
+        trained.frame_dt is not None
+        and trajectories.frame_dt is not None
+        and not math.isclose(
+            trajectories.frame_dt,
+            trained.frame_dt,
+            rel_tol=1.0e-6,
+            abs_tol=1.0e-12,
+        )
+    ):
+        raise ValueError(
+            "held-out trajectories use frame_dt="
+            f"{trajectories.frame_dt:g}, but the NeRD model was trained at "
+            f"frame_dt={trained.frame_dt:g}"
+        )
     predictions = trained.rollout(
         trajectories.states[:, 0],
         trajectories.inputs,
@@ -621,8 +636,9 @@ class NeRDStepModel:
             self.codec.encode_state(current).unsqueeze(1), frame_inputs.unsqueeze(1)
         )[:, 0]
         norm = self.normalizers
-        self.history.append(((model_input - norm.input_mean) / norm.input_std).detach())
-        context = torch.stack(tuple(self.history), dim=1)
+        token = ((model_input - norm.input_mean) / norm.input_std).detach()
+        context_tokens = (*self.history, token)[-self.config.context_frames :]
+        context = torch.stack(context_tokens, dim=1)
         with torch.inference_mode():
             delta = _predict_delta(
                 self.model,
@@ -638,6 +654,7 @@ class NeRDStepModel:
             self.codec.finalize_state(state_out)
             if self.post_step is not None:
                 self.post_step(state_out)
+        self.history.append(token)
 
     def step_with_inputs(
         self,

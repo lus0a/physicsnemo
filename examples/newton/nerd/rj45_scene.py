@@ -237,7 +237,7 @@ def build_rj45_world() -> tuple[newton.ModelBuilder, RJ45WorldLayout]:
     except (ImportError, ModuleNotFoundError) as error:
         raise RuntimeError(
             "The RJ45 example requires Pixar USD Python bindings. Install the "
-            "PhysicsNeMo 'newton' extra; Python 3.14 requires usd-core>=26.5."
+            "PhysicsNeMo 'newton' extra."
         ) from error
     from newton import usd as newton_usd
 
@@ -534,7 +534,7 @@ class BatchedRJ45Scene:
         return float(np.linalg.norm(plug - seated) * 1000.0)
 
     def capture(self) -> None:
-        """Capture one batched frame on CUDA."""
+        """Capture one batched frame when graph capture is available."""
         if wp.get_device(self.model.device).is_cuda:
             with wp.ScopedCapture() as capture:
                 self.simulate()

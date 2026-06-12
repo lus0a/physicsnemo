@@ -81,15 +81,17 @@ class WorldView:
             raise ValueError("model.world_count must be positive")
         # `<entity>_world` is a wp.int32 array; bincount/scatter need int64 indices.
         world_ids = field_to_torch(getattr(model, self._WORLD_ATTR[entity])).long()
+        invalid = (world_ids < -1) | (world_ids >= self.world_count)
+        if bool(invalid.any()):
+            bad_id = int(world_ids[invalid][0])
+            raise ValueError(
+                f"{self._WORLD_ATTR[entity]} contains invalid id {bad_id}; "
+                f"expected -1 for globals or an id in [0, {self.world_count - 1}]"
+            )
         self._world_ids = world_ids
         self._valid = (
             world_ids >= 0
         )  # drop -1 globals (shared ground, etc.); never clamp them to world 0
-        if bool((world_ids[self._valid] >= self.world_count).any()):
-            raise ValueError(
-                f"{self._WORLD_ATTR[entity]} contains an id outside "
-                f"[0, {self.world_count - 1}]"
-            )
 
     @property
     def world_index(self) -> torch.Tensor:

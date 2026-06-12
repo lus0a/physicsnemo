@@ -170,24 +170,24 @@ for batch in loader:
 ```
 
 `ResidualDynamics` is the plain per-step residual model; the diffsim example
-wraps this same model in `BPTTSurrogate` to add gradient-matched training and
-full-rollout optimization.
+wraps this same model in `BPTTSurrogate` to add free-running rollout training
+with BPTT.
 
 The examples below use higher-level workflows when the problem needs
-differentiable physics gradients ([diffsim](./diffsim/)), simulator-as-oracle
-design optimization ([nozzle](./nozzle/)), or learned dynamics that condition on
-a causal history (the recent window of past states the model sees) and deploy as
-a replacement solver step ([nerd](./nerd/)). The full beginner-oriented API
-guide is the
+feedback through a learned rollout ([diffsim](./diffsim/)),
+simulator-as-oracle design optimization ([nozzle](./nozzle/)), or learned
+dynamics that condition on a causal history (the recent window of past states
+the model sees) and deploy as a replacement solver step ([nerd](./nerd/)). The
+full beginner-oriented API guide is the
 [Newton integration documentation](https://docs.nvidia.com/physicsnemo/latest/physicsnemo/api/physicsnemo.experimental.integrations.newton.html).
 
 ## Bring your own Newton scene
 
-The diffsim ball and contact-rich RJ45 examples adapt scenes from
-`newton.examples`; Cartpole, gripper, and nozzle build their Newton scenes
-locally. Your own physics works through either route because PhysicsNeMo does
-not require a custom scene type. It reads a small set of attributes from the
-scene object you provide.
+The contact-rich RJ45 example adapts a scene from `newton.examples`; the
+cart-pole, gripper, and nozzle examples build their Newton scenes locally. Your
+own physics works through either route because PhysicsNeMo does not require a
+custom scene type. It reads a small set of attributes from the scene object you
+provide.
 
 ### What PhysicsNeMo needs from a scene
 
@@ -210,7 +210,7 @@ allocating fresh state buffers on every `reset()`).
 
 A Newton example is just a class whose `__init__(self, viewer, args)` builds the
 world. PhysicsNeMo constructs it headlessly for you, passing Newton's no-op
-`ViewerNull`, so you never open a window or capture a CUDA graph:
+`ViewerNull`, so you never open a window or perform graph capture:
 
 ```python
 import newton
@@ -245,7 +245,7 @@ trajectory = env.rollout(steps=120).observations
 Want command-line knobs? Add a `create_parser()` classmethod that returns an
 `argparse.ArgumentParser`. `from_example` parses it with no arguments, and you
 can override individual values with `arg_overrides={...}`. Stock Newton examples
-that capture a CUDA graph in `__init__` work unchanged, because the headless
+that perform graph capture in `__init__` work unchanged, because the headless
 loader skips that capture and drives its own rollouts.
 
 ### Option B: skip the class and wrap a model or scene directly
@@ -277,38 +277,34 @@ and method references.
 
 | Example | What it demonstrates | Newton physics |
 | --- | --- | --- |
-| [diffsim](./diffsim/) | Train a surrogate from trajectories and solver gradients | Differentiable semi-implicit ball simulation |
+| [diffsim](./diffsim/) | Improve free-running surrogate dynamics with rollout BPTT | Force-driven Featherstone cart-pole |
 | [gripper](./gripper/) | Offline geometry-only co-design of a fixed-topology two-finger gripper's proportions, pre-curvature, and pads through a PointNet surrogate | Batched articulated XPBD grasping |
 | [nozzle](./nozzle/) | Optimize a design with Newton as a simulator oracle | Non-differentiable implicit-MPM nozzle flow |
 | [nerd](./nerd/) | Replace Newton solver steps with NeRD across different state representations | Featherstone Cartpole and contact-rich VBD RJ45 cable |
 
 ## Shared run environment
 
-For an installed PhysicsNeMo package, select the CUDA backend matching the host
-and install the Newton integration:
+For an installed PhysicsNeMo package, install the Newton integration:
 
 ```bash
-pip install "nvidia-physicsnemo[cu12,newton]"  # CUDA 12
-pip install "nvidia-physicsnemo[cu13,newton]"  # CUDA 13
+pip install "nvidia-physicsnemo[newton]"
 ```
 
 The extra includes Newton's simulator, importer, viewer, and bundled-example
 dependencies. From a PhysicsNeMo source checkout:
 
 ```bash
-uv sync --extra cu12 --extra newton
+uv sync --extra newton
 ```
 
 Run any example from the PhysicsNeMo repository root:
 
 ```bash
-uv run python examples/newton/diffsim/example_diffsim_ball_surrogate_bptt.py \
-  --newton-device cuda --torch-device cuda
+uv run python examples/newton/diffsim/example_diffsim_cartpole_bptt.py
 uv run python examples/newton/gripper/example_gripper_design.py
 uv run python examples/newton/nozzle/example_mpm_nozzle_design.py
 uv run python examples/newton/nerd/example_cartpole_nerd.py
-uv run python \
-  examples/newton/nerd/example_rj45_nerd.py --smoke --device cuda
+uv run python examples/newton/nerd/example_rj45_nerd.py --smoke
 ```
 
 To test against an uninstalled Newton source checkout, prepend
@@ -344,8 +340,9 @@ installed:
 - **Differentiable rollout.** `differentiable_rollout(env,
   steps=..., loss_fn=..., field=...)` runs a Warp-tape rollout and
   returns the trajectory, the adjoint, and the loss.
-- **Surrogate training.** `BPTTSurrogate` trains a gradient-matched
-  `ResidualDynamics` model from batches built by `collect_teacher_batch`.
+- **Surrogate training.** `BPTTSurrogate` trains `ResidualDynamics` with
+  one-step supervision plus a free-running rollout loss backpropagated through
+  predicted states.
 - **Design optimization.** `optimize_design(...)` supports simulator-as-oracle
   queries, while `optimize_grouped_design(...)` performs bounded shared-design
   optimization over grouped task and control candidates.

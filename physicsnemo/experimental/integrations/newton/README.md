@@ -36,7 +36,7 @@ PyTorch script does not know:
 | Drive a Newton scene headlessly | `NewtonEnv`, `load_example_scene` |
 | Read/write live Newton arrays as Torch tensors | `field_to_torch`, `particles`, `bodies`, `joints` |
 | Differentiate through a Newton rollout | `differentiable_rollout` |
-| Train from trajectories and solver gradients | `BPTTSurrogate`, `trajectory_dataset` |
+| Train one-step and free-running dynamics from trajectories | `BPTTSurrogate`, `trajectory_dataset` |
 | Use Newton as an optimization oracle | `DesignSurrogate`, `optimize_design` |
 | Describe reusable physical design variables | `physicsnemo.experimental.integrations.newton.DesignSpace` |
 | Share rigid geometry between Newton and neural features | `NewtonRigidObject`, `NewtonPrimitive`, `NewtonMesh` |
@@ -295,7 +295,7 @@ applying predictions to the wrong physical objects.
 
 | Goal | Entry point | Example |
 | --- | --- | --- |
-| Train from trajectories and Warp solver gradients | `differentiable_rollout`, `BPTTSurrogate` | [diffsim](../../../../examples/newton/diffsim) |
+| Train free-running dynamics with rollout BPTT | `BPTTSurrogate` | [diffsim](../../../../examples/newton/diffsim) |
 | Co-design one shared design over task/control candidates | `optimize_grouped_design` | [gripper](../../../../examples/newton/gripper) |
 | Optimize when the solver is a black box | `optimize_design`, `DesignSurrogate` | [nozzle](../../../../examples/newton/nozzle) |
 | Replace a solver with learned dynamics | `fit_nerd`, `TrainedNeRDModel.as_step_model` | [nerd](../../../../examples/newton/nerd) |

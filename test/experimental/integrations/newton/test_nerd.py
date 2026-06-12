@@ -387,6 +387,24 @@ def test_joint_codec_uses_rotation_vector_deltas_for_quaternions() -> None:
         _codec_from_descriptor(descriptor)
 
 
+def test_joint_codec_canonicalizes_equivalent_180_degree_quaternions() -> None:
+    codec = NeRDJointStateCodec(
+        layout=_fake_ball_joint_layout(),
+        robot_centric=False,
+    )
+    positive = torch.tensor([[1.0, 0.0, 0.0, 0.0, 1.0, 2.0, 3.0]])
+    negative = torch.tensor([[-1.0, 0.0, 0.0, 0.0, 1.0, 2.0, 3.0]])
+
+    torch.testing.assert_close(
+        codec.encode_state(positive),
+        codec.encode_state(negative),
+    )
+    torch.testing.assert_close(
+        codec.state_to_delta(positive, negative),
+        torch.zeros(1, 6),
+    )
+
+
 def test_joint_codec_packs_multiple_quaternions_with_scalar_coordinates() -> None:
     layout = JointLayout(
         world_count=1,
@@ -847,6 +865,13 @@ def test_fixed_body_frame_checkpoint_descriptor_round_trip() -> None:
     assert restored.compatibility_signature() == codec.compatibility_signature()
 
 
+def test_fixed_body_frame_canonicalizes_equivalent_half_turns() -> None:
+    positive = NeRDFixedFrame(quaternion=(1.0, 0.0, 0.0, 0.0))
+    negative = NeRDFixedFrame(quaternion=(-1.0, 0.0, 0.0, 0.0))
+
+    assert positive == negative
+
+
 def test_body_codec_accepts_unreplicated_newton_scene_world_ids() -> None:
     model = SimpleNamespace(
         world_count=1,
@@ -855,6 +880,17 @@ def test_body_codec_accepts_unreplicated_newton_scene_world_ids() -> None:
     )
     codec = NeRDBodyStateCodec(model)
     assert codec.indices.tolist() == [[0, 1, 2, 3]]
+
+
+@pytest.mark.parametrize("world_ids", [[-2, -2], [1, 1]])
+def test_body_codec_rejects_invalid_single_world_ids(world_ids: list[int]) -> None:
+    model = SimpleNamespace(
+        world_count=1,
+        body_count=2,
+        body_world=torch.tensor(world_ids),
+    )
+    with pytest.raises(ValueError, match="invalid id"):
+        NeRDBodyStateCodec(model)
 
 
 def test_problem_runner_collects_any_existing_newton_run() -> None:
@@ -1499,6 +1535,27 @@ def test_training_config_and_zero_active_targets_are_rejected() -> None:
         )
 
 
+def test_train_nerd_rejects_nonfinite_teacher_data() -> None:
+    codec = NeRDParticleStateCodec(_model())
+    states = torch.zeros(2, 4, 2, 6)
+    states[0, 1, 0, 0] = float("nan")
+
+    with pytest.raises(ValueError, match="states and inputs must be finite"):
+        train_nerd(
+            NeRDDataset(states=states, codec=codec),
+            NeRDTrainingConfig(
+                context_frames=2,
+                epochs=1,
+                steps_per_epoch=1,
+                batch_size=2,
+            ),
+            dynamics_model="FullyConnected",
+            model_kwargs={"layer_size": 8, "num_layers": 1},
+            device="cpu",
+            log=lambda _message: None,
+        )
+
+
 def test_dataset_validates_trajectory_contract() -> None:
     codec = NeRDParticleStateCodec(_model())
     with pytest.raises(ValueError, match="two frames"):
@@ -1509,6 +1566,102 @@ def test_dataset_validates_trajectory_contract() -> None:
             inputs=torch.zeros(2, 1, 0),
             codec=codec,
         )
+
+
+def test_dataset_detaches_teacher_tensors() -> None:
+    codec = NeRDParticleStateCodec(_model())
+    states = torch.zeros(2, 3, 2, 6, requires_grad=True) + 1.0
+    inputs = torch.zeros(2, 2, 1, requires_grad=True) + 1.0
+
+    dataset = NeRDDataset(states=states, inputs=inputs, codec=codec)
+
+    assert not dataset.states.requires_grad
+    assert dataset.states.grad_fn is None
+    assert not dataset.inputs.requires_grad
+    assert dataset.inputs.grad_fn is None
+
+
+def test_rollout_rejects_negative_steps_before_allocating_inputs() -> None:
+    codec = NeRDParticleStateCodec(_model())
+    trained = TrainedNeRDModel(
+        model=torch.nn.Identity(),
+        normalizers=NeRDNormalizers(
+            input_mean=torch.zeros(2, 6),
+            input_std=torch.ones(2, 6),
+            target_mean=torch.zeros(2, 6),
+            target_std=torch.ones(2, 6),
+        ),
+        codec=codec,
+        config=NeRDTrainingConfig(context_frames=1),
+        external_input_shape=(0,),
+        active_delta_mask=torch.ones(2, 6),
+    )
+
+    with pytest.raises(ValueError, match="steps must be non-negative"):
+        trained.rollout(torch.zeros(1, 2, 6), steps=-1, device="cpu")
+
+
+def test_evaluation_rejects_a_different_frame_duration() -> None:
+    codec = NeRDParticleStateCodec(_model())
+    trained = TrainedNeRDModel(
+        model=torch.nn.Identity(),
+        normalizers=NeRDNormalizers(
+            input_mean=torch.zeros(2, 6),
+            input_std=torch.ones(2, 6),
+            target_mean=torch.zeros(2, 6),
+            target_std=torch.ones(2, 6),
+        ),
+        codec=codec,
+        config=NeRDTrainingConfig(context_frames=1),
+        external_input_shape=(0,),
+        active_delta_mask=torch.ones(2, 6),
+        frame_dt=0.1,
+    )
+    dataset = NeRDDataset(
+        states=torch.zeros(1, 2, 2, 6),
+        codec=codec,
+        frame_dt=0.2,
+    )
+
+    with pytest.raises(ValueError, match="trained at frame_dt=0.1"):
+        evaluate_nerd(trained, dataset, device="cpu")
+
+
+def test_step_model_does_not_advance_history_after_prediction_failure() -> None:
+    class FailOnce(torch.nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.failed = False
+
+        def forward(self, inputs: torch.Tensor) -> torch.Tensor:
+            if not self.failed:
+                self.failed = True
+                raise RuntimeError("prediction failed")
+            return torch.zeros_like(inputs)
+
+    codec = NeRDParticleStateCodec(_model())
+    trained = TrainedNeRDModel(
+        model=FailOnce(),
+        normalizers=NeRDNormalizers(
+            input_mean=torch.zeros(2, 6),
+            input_std=torch.ones(2, 6),
+            target_mean=torch.zeros(2, 6),
+            target_std=torch.ones(2, 6),
+        ),
+        codec=codec,
+        config=NeRDTrainingConfig(context_frames=2),
+        external_input_shape=(0,),
+        active_delta_mask=torch.ones(2, 6),
+        frame_dt=0.1,
+    )
+    runtime = trained.as_step_model(device="cpu")
+
+    with pytest.raises(RuntimeError, match="prediction failed"):
+        runtime(_State(), _State(), None, None, 0.1)
+    assert not runtime.history
+
+    runtime(_State(), _State(), None, None, 0.1)
+    assert len(runtime.history) == 1
 
 
 def test_joint_step_model_requires_a_live_deployment_model() -> None:

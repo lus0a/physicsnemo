@@ -44,7 +44,6 @@ def require_newton() -> Any:
         raise RuntimeError(
             "Newton is required for physicsnemo.experimental.integrations.newton runtime use. "
             "Install it with `uv sync --extra newton`, or install PhysicsNeMo "
-            "with the Newton extra plus the CUDA backend matching your system "
-            '(for example, `pip install "nvidia-physicsnemo[cu12,newton]"`).'
+            'with the Newton extra (`pip install "nvidia-physicsnemo[newton]"`).'
         )
     return importlib.import_module("newton")

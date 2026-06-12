@@ -519,6 +519,8 @@ def _closed_mesh_volume(mesh: Mesh) -> float:
     points = mesh.points.detach().to(device="cpu", dtype=torch.float64).numpy()
     if cells.ndim != 2 or cells.shape[1] != 3:
         raise ValueError("NewtonMesh requires triangular cells")
+    if np.any(cells < 0) or np.any(cells >= len(points)):
+        raise ValueError(f"mesh triangle indices must lie in [0, {len(points) - 1}]")
 
     edge_faces: dict[tuple[int, int], list[tuple[int, int]]] = {}
     for face, triangle in enumerate(cells):

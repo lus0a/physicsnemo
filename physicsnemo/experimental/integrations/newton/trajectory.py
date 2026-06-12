@@ -91,7 +91,8 @@ class TrajectoryWindowReader(Reader):
             else list(trajectories)
         )
         self._traj = [
-            field_to_torch(t, dtype=torch.float32, clone=True).cpu() for t in items
+            field_to_torch(t, dtype=torch.float32, clone=True).detach().cpu()
+            for t in items
         ]
         if not self._traj:
             raise ValueError("trajectories must contain at least one trajectory")
@@ -113,7 +114,7 @@ class TrajectoryWindowReader(Reader):
 
     @property
     def trajectories(self) -> list[torch.Tensor]:
-        """The prepared per-trajectory tensors (converted, validated, float32 CPU)."""
+        """Prepared detached per-trajectory tensors (validated, float32 CPU)."""
         return self._traj
 
     def __len__(self) -> int:

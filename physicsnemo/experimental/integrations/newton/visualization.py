@@ -41,12 +41,10 @@ from __future__ import annotations
 
 import importlib
 import math
-from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Sequence
 
 import numpy as np
-from packaging.version import InvalidVersion, Version
 
 if TYPE_CHECKING:
     from PIL.Image import Image as PILImage
@@ -86,8 +84,8 @@ def _require_pillow(submodule: str = "Image") -> Any:
         raise RuntimeError(
             "Pillow is required for physicsnemo.experimental.integrations.newton "
             "visualization. Install it with `uv sync --extra newton`, or install "
-            "PhysicsNeMo with the Newton extra (for example, `pip install "
-            '"nvidia-physicsnemo[cu12,newton]"`).'
+            "PhysicsNeMo with the Newton extra (`pip install "
+            '"nvidia-physicsnemo[newton]"`).'
         ) from exc
 
 
@@ -170,43 +168,13 @@ def headless_viewer(width: int, height: int, *, vsync: bool = False) -> Any:
 
 
 def capture_frame(viewer: Any) -> "PILImage":
-    """Grab the current viewer frame as an RGB ``PIL.Image`` (copied off the GPU).
-
-    Newton releases before 1.2.2 can segfault when a CPU viewer captures a frame
-    on a host where CUDA is available. For those releases, this helper raises an
-    actionable error before entering the unsafe upstream readback path.
-    """
-    import warp as wp
-
+    """Grab the current viewer frame as a copied RGB ``PIL.Image``."""
     Image = _require_pillow("Image")
-
-    device = getattr(viewer, "device", None)
-    if (
-        _newton_cpu_capture_is_unsafe()
-        and device is not None
-        and not device.is_cuda
-        and wp.is_cuda_available()
-    ):
-        raise RuntimeError(
-            "capture_frame() needs a CUDA viewer device: ViewerGL.get_frame() "
-            "is unsafe on a non-CUDA device in Newton releases before 1.2.2 when "
-            "CUDA is available. Build the model on CUDA so the viewer runs on CUDA, "
-            "e.g. pass --newton-device cuda, or upgrade Newton. "
-            f"Got viewer.device={device!r}."
-        )
 
     frame = np.asarray(viewer.get_frame().numpy())
     if frame.ndim == 3 and frame.shape[-1] == 4:
         frame = frame[..., :3]
     return Image.fromarray(np.ascontiguousarray(frame.copy()))
-
-
-def _newton_cpu_capture_is_unsafe() -> bool:
-    """Return whether the installed Newton predates safe CPU frame readback."""
-    try:
-        return Version(version("newton")) < Version("1.2.2")
-    except (PackageNotFoundError, InvalidVersion):
-        return True
 
 
 def _as_image(frame: Frame) -> "PILImage":

@@ -86,7 +86,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `physicsnemo.experimental.integrations.newton`. The optional integration
   provides headless scene loading, a common reset/step/rollout lifecycle,
   readable zero-copy Warp-to-Torch state views, batched-world access,
-  differentiable rollouts, gradient-matched surrogate training, batched
+  differentiable rollouts, one-step plus rollout-BPTT surrogate training, batched
   multi-start surrogate design, safeguarded Newton multi-start refinement,
   simulator-as-oracle active learning, learned solver-step deployment,
   checkpoint bundles, evaluation, and distributed helpers. Newton remains an

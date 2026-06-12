@@ -14,13 +14,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Reusable gradient-matched surrogate training for Newton teacher rollouts.
+"""BPTT training and design optimization for learned Newton dynamics.
 
 PhysicsNeMo owns the repetitive infrastructure here so a Newton example only has
-to declare its physics. :class:`BPTTSurrogate` trains a residual dynamics
-surrogate to reproduce a Newton teacher's trajectory and its gradients,
-optimizes a new design through the cheap surrogate, and revalidates the choice in
-Newton.
+to declare its physics. :class:`BPTTSurrogate` combines ordinary one-step
+supervision with a free-running rollout loss. During that rollout, each predicted
+state is fed back into the model, so later errors backpropagate through the full
+chain of learned dynamics steps. This is the BPTT signal that teaches the model
+to remain accurate under its own state distribution.
+
+Once fitted, the same differentiable rollout can optimize a control or design
+sequence without a simulator in the loop. Newton remains the source of reference
+trajectories and the final authority for validating the optimized design; solver
+adjoints are not required for surrogate training.
 
 The surrogate network is not special to this module. The per-step model is any
 PhysicsNeMo model (or ``torch.nn.Module``) wrapped as a residual step by
@@ -31,12 +37,12 @@ and a caller can pass any other model with the same input/output width.
 
 from __future__ import annotations
 
+import math
 import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -53,27 +59,24 @@ TaskLoss = Callable[[torch.Tensor, torch.Tensor, "TeacherBatch"], torch.Tensor]
 
 @dataclass
 class TeacherSample:
-    """One differentiable teacher rollout: a state trajectory, the optimized
-    parameters, the gradient (adjoint) of the physics loss w.r.t. them, and the
-    scalar loss."""
+    """One reference rollout and the parameters or controls that generated it."""
 
     states: Any
     parameters: Any
-    adjoints: Any
-    loss: Any
     task_data: Mapping[str, Any] = field(default_factory=dict)
 
 
 @dataclass
 class TeacherBatch:
-    """Stacked teacher samples: ``states`` is ``(sample, time, state_dim)``,
-    ``parameters``/``adjoints`` are ``(sample, param_dim)``, ``losses`` is
-    ``(sample,)``."""
+    """Stacked reference trajectories and their parameters.
+
+    ``states`` has shape ``(sample, time, state_dim)`` and ``parameters`` has
+    shape ``(sample, param_dim)``. ``task_data`` holds any aligned conditioning
+    tensors needed by the input or task-loss callbacks.
+    """
 
     states: torch.Tensor
     parameters: torch.Tensor
-    adjoints: torch.Tensor
-    losses: torch.Tensor
     task_data: dict[str, torch.Tensor] = field(default_factory=dict)
     metadata: dict[str, Any] = field(default_factory=dict)
 
@@ -82,8 +85,6 @@ class TeacherBatch:
         return TeacherBatch(
             self.states.to(device),
             self.parameters.to(device),
-            self.adjoints.to(device),
-            self.losses.to(device),
             {key: value.to(device) for key, value in self.task_data.items()},
             dict(self.metadata),
         )
@@ -107,8 +108,6 @@ class TeacherBatch:
         return TeacherBatch(
             self.states[:n],
             self.parameters[:n],
-            self.adjoints[:n],
-            self.losses[:n],
             {key: value[:n] for key, value in self.task_data.items()},
             dict(self.metadata),
         )
@@ -126,8 +125,6 @@ class TeacherBatch:
         return TeacherBatch(
             self.states.repeat_interleave(repeats, dim=0),
             self.parameters.repeat_interleave(repeats, dim=0),
-            self.adjoints.repeat_interleave(repeats, dim=0),
-            self.losses.repeat_interleave(repeats, dim=0),
             {
                 key: value.repeat_interleave(repeats, dim=0)
                 for key, value in self.task_data.items()
@@ -153,8 +150,6 @@ def collect_teacher_batch(
     batch = TeacherBatch(
         states=_stack(s.states for s in samples),
         parameters=_stack(s.parameters for s in samples),
-        adjoints=_stack(s.adjoints for s in samples),
-        losses=_stack(s.loss for s in samples).reshape(sample_count),
         task_data=_stack_task_data(samples),
         metadata={**dict(metadata or {}), "teacher_ms_per_sample": elapsed_ms},
     )
@@ -162,14 +157,11 @@ def collect_teacher_batch(
 
 
 def _filter_finite(batch: TeacherBatch) -> TeacherBatch:
-    """Drop samples with non-finite states, parameters, adjoints, or losses."""
+    """Drop samples with non-finite states, parameters, or task data."""
 
-    mask = (
-        torch.isfinite(batch.states).flatten(1).all(1)
-        & torch.isfinite(batch.parameters).flatten(1).all(1)
-        & torch.isfinite(batch.adjoints).flatten(1).all(1)
-        & torch.isfinite(batch.losses).reshape(batch.losses.shape[0], -1).all(1)
-    )
+    mask = torch.isfinite(batch.states).flatten(1).all(1) & torch.isfinite(
+        batch.parameters
+    ).flatten(1).all(1)
     for value in batch.task_data.values():
         mask &= torch.isfinite(value).reshape(value.shape[0], -1).all(1)
     metadata = dict(batch.metadata)
@@ -182,8 +174,6 @@ def _filter_finite(batch: TeacherBatch) -> TeacherBatch:
     return TeacherBatch(
         batch.states[mask],
         batch.parameters[mask],
-        batch.adjoints[mask],
-        batch.losses[mask],
         {key: value[mask] for key, value in batch.task_data.items()},
         metadata,
     )
@@ -330,7 +320,6 @@ def _rollout_model(
     inputs: torch.Tensor,
     stats: _RolloutStats,
     horizon: int,
-    tbptt_window: int = 0,
 ) -> torch.Tensor:
     """Roll a per-step dynamics model ``f(state, inputs) -> next_state`` forward in
     normalized space; return denormalized states."""
@@ -345,33 +334,11 @@ def _rollout_model(
         ]
         state = model(state, inputs_norm)
         states.append(state)
-        if 0 < tbptt_window and (step + 1) % tbptt_window == 0 and step + 1 < horizon:
-            state = state.detach()
     return torch.stack(states, dim=1) * stats.state_std + stats.state_mean
 
 
-def _gradient_alignment_loss(
-    pred_grad: torch.Tensor, target_grad: torch.Tensor, *, norm_weight: float = 0.05
-) -> torch.Tensor:
-    """Cosine + magnitude match between surrogate and Newton-teacher gradients.
-
-    The loss is ``cosine_term + norm_weight * magnitude_term``. ``cosine_term``
-    aligns the gradient *directions* (the property the surrogate optimizer relies
-    on), and the scale-normalized magnitude term keeps their lengths comparable.
-    ``norm_weight`` is fixed at a small 0.05 so direction dominates; the magnitude
-    term only damps gross scale mismatch and is deliberately not a tunable knob to
-    keep the public ``fit`` surface small."""
-
-    pred = pred_grad.reshape(pred_grad.shape[0], -1)
-    target = target_grad.reshape(target_grad.shape[0], -1)
-    cosine = 1.0 - F.cosine_similarity(pred, target, dim=-1, eps=1.0e-8).mean()
-    scale = target.norm(dim=-1, keepdim=True).clamp_min(1.0e-8)
-    return cosine + norm_weight * F.smooth_l1_loss(pred / scale, target / scale)
-
-
 class BPTTSurrogate:
-    """Trains a residual surrogate to match a Newton teacher's states and
-    gradients, then optimizes parameters through the surrogate.
+    """Train learned dynamics with rollout BPTT, then optimize through them.
 
     Parameters
     ----------
@@ -384,7 +351,12 @@ class BPTTSurrogate:
         ``(initial_state[B, state_dim], inputs[B, t, input_dim])``.
     task_loss : TaskLoss
         Function mapping ``(predicted_states[B, T+1, state_dim], params, batch)``
-        to a per-sample loss shaped ``[B]``.
+        to a per-sample loss shaped ``[B]``. Required only by :meth:`optimize`
+        and :meth:`optimize_multistart`; trajectory training and evaluation do
+        not need a task objective.
+    task_scale : float, optional
+        Positive scale used to normalize ``task_loss`` during parameter
+        optimization.
     input_dim : int, optional
         Per-step input feature dimension, or zero when there are no inputs.
     model : torch.nn.Module, optional
@@ -396,22 +368,21 @@ class BPTTSurrogate:
         Hidden width of the default MLP. Ignored when ``model`` is supplied.
     depth : int, optional
         Depth of the default MLP. Ignored when ``model`` is supplied.
-    grad_weight : float, optional
-        Weight on the adjoint-alignment term in :meth:`fit`. Larger values
-        prioritize matching the Newton teacher's gradients over trajectory
-        fidelity.
     device : torch.device or str, optional
         Device used for training and optimization.
 
     Notes
     -----
-    Training loss (see :meth:`fit`) is a weighted sum of three terms:
-    ``state_loss + task_weight * task_loss + grad_weight * grad_loss``. The
-    trajectory-reconstruction ``state_loss`` (normalized-space Smooth-L1) carries
-    an implicit weight of 1.0; ``task_weight`` weights the scaled task objective;
-    and ``grad_weight`` weights adjoint alignment. Raising ``grad_weight`` (or
-    lowering ``task_weight``) biases the fit toward matching gradients over
-    matching states, and vice versa.
+    Let ``F_theta`` be the learned one-step model and ``u_t`` the input at time
+    ``t``. :meth:`fit` combines teacher-forced local supervision,
+
+    ``F_theta(s_t, u_t) ~= s_{t+1}``,
+
+    with a free-running rollout ``s_hat[t+1] = F_theta(s_hat[t], u_t)``. The
+    rollout error at a later time differentiates through every earlier predicted
+    state. Its parameter gradient therefore contains products of learned state
+    Jacobians, which is precisely backpropagation through time. No task loss or
+    Newton adjoint is minimized while fitting the dynamics.
     """
 
     def __init__(
@@ -420,12 +391,12 @@ class BPTTSurrogate:
         state_dim: int,
         param_dim: int,
         to_inputs: ToInputs,
-        task_loss: TaskLoss,
+        task_loss: TaskLoss | None = None,
+        task_scale: float = 1.0,
         input_dim: int = 0,
         model: nn.Module | None = None,
         hidden_dim: int = 128,
         depth: int = 3,
-        grad_weight: float = 0.35,
         device: torch.device | str | None = None,
     ) -> None:
         self.device = resolve_device(device)
@@ -434,11 +405,11 @@ class BPTTSurrogate:
         self.state_dim = int(state_dim)
         self.param_dim = int(param_dim)
         self.input_dim = int(input_dim)
-        self.grad_weight = float(grad_weight)
+        self.task_scale = float(task_scale)
         if self.state_dim <= 0 or self.param_dim <= 0 or self.input_dim < 0:
             raise ValueError("state_dim and param_dim must be positive; input_dim >= 0")
-        if self.grad_weight < 0.0:
-            raise ValueError("grad_weight must be non-negative")
+        if not math.isfinite(self.task_scale) or self.task_scale <= 0.0:
+            raise ValueError("task_scale must be finite and positive")
         if model is None:
             model = ResidualDynamics.mlp(
                 state_dim, input_dim, hidden_dim=hidden_dim, depth=depth
@@ -447,7 +418,6 @@ class BPTTSurrogate:
         self.stats: _RolloutStats | None = None
         self.param_mean: torch.Tensor | None = None
         self.param_std: torch.Tensor | None = None
-        self.task_scale = 1.0
         self.horizon = 0
         self.history: list[dict[str, float]] = []
 
@@ -458,78 +428,55 @@ class BPTTSurrogate:
         epochs: int,
         lr: float = 2.0e-3,
         weight_decay: float = 1.0e-5,
-        task_weight: float = 0.02,
+        rollout_weight: float = 0.05,
+        rollout_warmup_epochs: int = 100,
         grad_clip: float = 10.0,
-        tbptt_window: int = 0,
     ) -> dict[str, float]:
-        """Train on a teacher batch. Returns training/diagnostic metrics.
+        """Train from reference trajectories with one-step and rollout losses.
 
-        The minimized loss is
-        ``state_loss + task_weight * scaled_task.mean() + grad_weight * grad_loss``
-        (``grad_weight`` is set on the surrogate; see the class docstring):
-
-        - ``state_loss``: normalized-space Smooth-L1 trajectory reconstruction,
-          implicit weight 1.0.
-        - ``task_weight``: weight on the scaled task objective (the per-sample
-          ``task_loss`` divided by an auto-computed scale). Defaults small so the
-          objective nudges rather than dominates the fit.
-        - ``grad_weight``: weight on adjoint/gradient alignment (see
-          ``_gradient_alignment_loss``); raise it to favor matching the
-          teacher's gradients over its states.
-
-        ``tbptt_window`` truncates backprop-through-time every ``window`` steps
-        (0 disables truncation)."""
+        The one-step term evaluates every transition from the reference state.
+        The rollout term starts from the reference initial state, feeds each
+        prediction back into the next model step, and compares the resulting
+        free-running trajectory with the reference. ``rollout_weight`` controls
+        that BPTT term. Its weight ramps linearly over
+        ``rollout_warmup_epochs`` so early optimization first learns a useful
+        local transition map.
+        """
 
         batch = batch.to(self.device)
-        if batch.states.shape[0] == 0:
-            raise ValueError("teacher batch must contain at least one sample")
+        self._validate_batch(batch)
         states, params = batch.states.float(), batch.parameters.float()
-        adjoints = batch.adjoints.float()
-        if states.ndim != 3 or states.shape[-1] != self.state_dim:
-            raise ValueError(
-                "batch.states must have shape "
-                f"[samples, time, {self.state_dim}], got {tuple(states.shape)}"
-            )
-        expected_parameters = (states.shape[0], self.param_dim)
-        if tuple(params.shape) != expected_parameters:
-            raise ValueError(
-                f"batch.parameters must have shape {expected_parameters}, "
-                f"got {tuple(params.shape)}"
-            )
-        if tuple(adjoints.shape) != expected_parameters:
-            raise ValueError(
-                f"batch.adjoints must have shape {expected_parameters}, "
-                f"got {tuple(adjoints.shape)}"
-            )
-        if tuple(batch.losses.shape) != (states.shape[0],):
-            raise ValueError("batch.losses must contain one scalar per sample")
-        if not all(
-            bool(torch.isfinite(value).all())
-            for value in (states, params, adjoints, batch.losses)
-        ):
-            raise ValueError(
-                "teacher states, parameters, adjoints, and losses must be finite"
-            )
-        if states.shape[1] < 2:
-            raise ValueError("batch.states must contain an initial and next state")
         if epochs <= 0:
             raise ValueError("epochs must be positive")
-        if lr <= 0.0 or grad_clip <= 0.0:
-            raise ValueError("lr and grad_clip must be positive")
-        if weight_decay < 0.0 or task_weight < 0.0 or tbptt_window < 0:
+        if (
+            not math.isfinite(lr)
+            or not math.isfinite(grad_clip)
+            or lr <= 0.0
+            or grad_clip <= 0.0
+        ):
+            raise ValueError("lr and grad_clip must be finite and positive")
+        if (
+            not math.isfinite(weight_decay)
+            or not math.isfinite(rollout_weight)
+            or weight_decay < 0.0
+            or rollout_weight < 0.0
+            or rollout_warmup_epochs < 0
+        ):
             raise ValueError(
-                "weight_decay, task_weight, and tbptt_window must be non-negative"
+                "weight_decay, rollout_weight, and rollout_warmup_epochs "
+                "must be finite and non-negative"
             )
         self.horizon = states.shape[1] - 1
-        self.task_scale = max(float(batch.losses.abs().mean()), 1.0)
         self.param_mean = params.mean(0, keepdim=True)
         self.param_std = params.std(0, keepdim=True, unbiased=False).clamp_min(1.0e-6)
         with torch.no_grad():
-            _, inputs = self._inputs(params, batch)
+            initial, inputs = self._inputs(params, batch)
             self.stats = _RolloutStats(
                 *_standardize(states), *_input_stats(inputs, self.horizon)
             )
         state_mean, state_std = self.stats.state_mean, self.stats.state_std
+        normalized_states = (states - state_mean) / state_std
+        normalized_inputs = _normalize_inputs(inputs, self.stats, self.horizon)
 
         opt = torch.optim.AdamW(
             self.model.parameters(), lr=lr, weight_decay=weight_decay
@@ -537,24 +484,36 @@ class BPTTSurrogate:
         self.model.train()
         self.history = []
         for epoch in range(epochs):
-            p = params.detach().clone().requires_grad_(True)
-            initial, inputs = self._inputs(p, batch)
-            pred = _rollout_model(
-                self.model, initial, inputs, self.stats, self.horizon, tbptt_window
+            one_step_prediction = _one_step_model(
+                self.model,
+                normalized_states[:, :-1],
+                normalized_inputs,
             )
-            state_loss = F.smooth_l1_loss(
-                (pred - state_mean) / state_std, (states - state_mean) / state_std
+            one_step_loss = F.smooth_l1_loss(
+                one_step_prediction,
+                normalized_states[:, 1:],
             )
-            scaled_task = self._task_losses(pred, p, batch) / self.task_scale
-            pred_grad = torch.autograd.grad(
-                scaled_task.sum(), p, create_graph=True, retain_graph=True
-            )[0]
-            grad_loss = _gradient_alignment_loss(pred_grad, adjoints / self.task_scale)
-            loss = (
-                state_loss
-                + task_weight * scaled_task.mean()
-                + self.grad_weight * grad_loss
+            current_rollout_weight = (
+                rollout_weight
+                if rollout_warmup_epochs == 0
+                else rollout_weight
+                * min(1.0, float(epoch + 1) / float(rollout_warmup_epochs))
             )
+            if current_rollout_weight > 0.0:
+                prediction = _rollout_model(
+                    self.model,
+                    initial,
+                    inputs,
+                    self.stats,
+                    self.horizon,
+                )
+                rollout_loss = F.smooth_l1_loss(
+                    (prediction[:, 1:] - state_mean) / state_std,
+                    normalized_states[:, 1:],
+                )
+            else:
+                rollout_loss = one_step_loss.new_zeros(())
+            loss = one_step_loss + current_rollout_weight * rollout_loss
             loss_value = float(loss.detach())
             opt.zero_grad(set_to_none=True)
             loss.backward()
@@ -564,8 +523,9 @@ class BPTTSurrogate:
                 {
                     "epoch": float(epoch),
                     "loss": loss_value,
-                    "state_loss": float(state_loss.detach()),
-                    "grad_loss": float(grad_loss.detach()),
+                    "one_step_loss": float(one_step_loss.detach()),
+                    "rollout_loss": float(rollout_loss.detach()),
+                    "rollout_weight": current_rollout_weight,
                 }
             )
         self.model.eval()
@@ -574,7 +534,8 @@ class BPTTSurrogate:
             "horizon": int(self.horizon),
             "task_loss_scale": self.task_scale,
             "epochs": int(epochs),
-            "teacher_loss_mean": float(batch.losses.mean()),
+            "rollout_weight": float(rollout_weight),
+            "rollout_warmup_epochs": int(rollout_warmup_epochs),
             "teacher_ms_per_sample": float(
                 batch.metadata.get("teacher_ms_per_sample", 0.0)
             ),
@@ -585,34 +546,20 @@ class BPTTSurrogate:
         }
 
     def evaluate(self, batch: TeacherBatch) -> dict[str, float]:
-        """Held-out rollout RMSE, gradient (adjoint) cosine vs the Newton teacher,
-        and ``gradient_eval_throughput_ratio``: per-sample teacher
-        sample-generation time
-        (the full ``sample_fn`` cost, including its forward rollout and adjoint)
-        divided by the amortized per-sample cost of one batched surrogate
-        forward-plus-gradient evaluation. This is a throughput comparison, not
-        single-sample latency, and an end-to-end stand-in rather than a
-        teacher-adjoint-only comparison because ``sample_fn`` is opaque."""
+        """Return held-out one-step, free-running, and terminal state RMSE."""
 
         self._require_fitted()
         batch = batch.to(self.device)
         self.model.eval()
-        diagnostics = self._diagnostics(batch)
-        teacher_ms = float(batch.metadata.get("teacher_ms_per_sample", 0.0))
-        surrogate_ms = diagnostics.get("surrogate_grad_ms", 0.0)
-        if teacher_ms > 0.0 and surrogate_ms > 0.0:
-            ratio = teacher_ms / surrogate_ms
-            diagnostics["gradient_eval_throughput_ratio"] = ratio
-            # Backward-compatible alias. The denominator has always been an
-            # amortized per-sample cost from a batched surrogate evaluation.
-            diagnostics["gradient_eval_speedup"] = ratio
-        return diagnostics
+        self._validate_batch(batch, fitted_horizon=True)
+        return self._diagnostics(batch)
 
     def rollout(self, parameters: Any, batch: TeacherBatch) -> torch.Tensor:
         """Roll the fitted surrogate for one parameter row per task in ``batch``."""
 
         stats, _, _ = self._require_fitted()
         batch = batch.to(self.device)
+        self._validate_batch(batch, fitted_horizon=True)
         parameters = torch.as_tensor(
             parameters, dtype=torch.float32, device=self.device
         ).reshape(-1, self.param_dim)
@@ -667,9 +614,14 @@ class BPTTSurrogate:
         stats, mean, std = self._require_fitted()
         if steps < 0:
             raise ValueError("steps must be non-negative")
-        if not np.isfinite(lr) or not np.isfinite(z_clip) or lr <= 0.0 or z_clip <= 0.0:
+        if (
+            not math.isfinite(lr)
+            or not math.isfinite(z_clip)
+            or lr <= 0.0
+            or z_clip <= 0.0
+        ):
             raise ValueError("lr and z_clip must be finite and positive")
-        if not np.isfinite(reg) or reg < 0.0:
+        if not math.isfinite(reg) or reg < 0.0:
             raise ValueError("reg must be finite and non-negative")
         if initial_params is None:
             batch = batch.head(samples).to(self.device)
@@ -684,6 +636,7 @@ class BPTTSurrogate:
                 )
             batch = batch.to(self.device)
             start_params = start_params.to(self.device)
+        self._validate_batch(batch, fitted_horizon=True)
         if not bool(torch.isfinite(start_params).all()):
             raise ValueError("initial parameters must contain only finite values")
         self.model.eval()
@@ -703,17 +656,17 @@ class BPTTSurrogate:
                 tasks,
             )  # reg keeps z in distribution
 
-        def params_of() -> np.ndarray:
-            return (mean + z * std).detach().cpu().numpy().astype(np.float32)
+        def params_of() -> torch.Tensor:
+            return (mean + z * std).detach().clone()
 
         self._sync()
         start = time.perf_counter()
         obj, task = objective()
         # Select the best parameters by the (surrogate-predicted) task loss; the
         # L2 term only steers the search and should not pick the reported point.
-        initial_params = params_of()
-        initial_tasks = task.detach().cpu().numpy().astype(np.float32)
-        best_tasks, best_params = initial_tasks.copy(), initial_params.copy()
+        initial_values = params_of()
+        initial_tasks = task.detach().clone()
+        best_tasks, best_params = initial_tasks.clone(), initial_values.clone()
         history = [
             {
                 "step": 0,
@@ -731,7 +684,7 @@ class BPTTSurrogate:
             with torch.no_grad():
                 z.clamp_(-z_clip, z_clip)
             obj, task = objective()
-            task_values = task.detach().cpu().numpy().astype(np.float32)
+            task_values = task.detach()
             history.append(
                 {
                     "step": step,
@@ -741,16 +694,16 @@ class BPTTSurrogate:
                 }
             )
             improved = task_values < best_tasks
-            if improved.any():
+            if bool(improved.any()):
                 best_tasks[improved] = task_values[improved]
                 best_params[improved] = params_of()[improved]
         self._sync()
         opt_ms = 1000.0 * (time.perf_counter() - start)
         return {
-            "initial_params": initial_params,
-            "best_params": best_params,
-            "initial_task_losses": initial_tasks,
-            "best_task_losses": best_tasks,
+            "initial_params": initial_values.detach(),
+            "best_params": best_params.detach(),
+            "initial_task_losses": initial_tasks.detach(),
+            "best_task_losses": best_tasks.detach(),
             "initial_task_loss": float(initial_tasks.mean()),
             "best_task_loss": float(best_tasks.mean()),
             "steps": int(steps),
@@ -817,26 +770,35 @@ class BPTTSurrogate:
             raise ValueError("starts must be positive")
         if steps < 0:
             raise ValueError("steps must be non-negative")
-        if not np.isfinite(lr) or not np.isfinite(z_clip) or lr <= 0.0 or z_clip <= 0.0:
+        if (
+            not math.isfinite(lr)
+            or not math.isfinite(z_clip)
+            or lr <= 0.0
+            or z_clip <= 0.0
+        ):
             raise ValueError("lr and z_clip must be finite and positive")
-        if not np.isfinite(reg) or reg < 0.0:
+        if not math.isfinite(reg) or reg < 0.0:
             raise ValueError("reg must be finite and non-negative")
         if batch.states.shape[0] != 1:
             raise ValueError("optimize_multistart expects a batch containing one task")
+        batch = batch.to(self.device)
+        self._validate_batch(batch, fitted_horizon=True)
 
-        mean, std = mean.cpu(), std.cpu()
+        mean, std = mean.to(self.device), std.to(self.device)
         if initial_params is None:
             engine = torch.quasirandom.SobolEngine(
                 dimension=self.param_dim, scramble=True, seed=int(seed)
             )
-            unit = engine.draw(starts).clamp_(1.0e-6, 1.0 - 1.0e-6)
-            z = (torch.erfinv(2.0 * unit - 1.0) * np.sqrt(2.0)).clamp_(-z_clip, z_clip)
-            z[0] = (batch.parameters[0].cpu() - mean[0]) / std[0]
+            unit = engine.draw(starts).to(self.device).clamp_(1.0e-6, 1.0 - 1.0e-6)
+            z = (torch.erfinv(2.0 * unit - 1.0) * math.sqrt(2.0)).clamp_(
+                -z_clip, z_clip
+            )
+            z[0] = (batch.parameters[0] - mean[0]) / std[0]
             z.clamp_(-z_clip, z_clip)
             candidate_initial_params = mean + z * std
         else:
             candidate_initial_params = torch.as_tensor(
-                initial_params, dtype=torch.float32
+                initial_params, dtype=torch.float32, device=self.device
             ).reshape(-1, self.param_dim)
             if candidate_initial_params.shape[0] != starts:
                 raise ValueError(
@@ -854,17 +816,16 @@ class BPTTSurrogate:
             reg=reg,
             z_clip=z_clip,
         )
-        candidate_losses = np.asarray(candidates["best_task_losses"])
-        # A diverging out-of-distribution start can yield a non-finite surrogate
-        # task loss; np.argmin would then select that NaN/inf as the "best".
-        # Mask non-finite candidates so only finite losses can win, and fail
-        # loudly if none are finite.
-        finite = np.isfinite(candidate_losses)
-        if not finite.any():
+        candidate_losses = candidates["best_task_losses"]
+        finite = torch.isfinite(candidate_losses)
+        if not bool(finite.any()):
             raise RuntimeError(
                 "all multistart candidates produced non-finite task losses"
             )
-        best_index = int(np.nanargmin(np.where(finite, candidate_losses, np.inf)))
+        ranked_losses = torch.where(
+            finite, candidate_losses, torch.full_like(candidate_losses, torch.inf)
+        )
+        best_index = int(torch.argmin(ranked_losses))
         history = [
             {
                 **record,
@@ -895,14 +856,18 @@ class BPTTSurrogate:
         }
 
     def validate_in_newton(
-        self, plan: Mapping[str, Any], newton_loss: Callable[[np.ndarray], float]
+        self, plan: Mapping[str, Any], newton_loss: Callable[[torch.Tensor], float]
     ) -> dict[str, Any]:
         """Re-run the real Newton physics loss on the initial vs surrogate-chosen params."""
 
-        initial = float(
-            np.mean([newton_loss(p) for p in _rows(plan["initial_params"])])
-        )
-        optimized = float(np.mean([newton_loss(p) for p in _rows(plan["best_params"])]))
+        initial_values = [
+            float(newton_loss(row)) for row in _rows(plan["initial_params"])
+        ]
+        optimized_values = [
+            float(newton_loss(row)) for row in _rows(plan["best_params"])
+        ]
+        initial = sum(initial_values) / len(initial_values)
+        optimized = sum(optimized_values) / len(optimized_values)
         return {
             "newton_initial_loss": initial,
             "newton_optimized_loss": optimized,
@@ -962,36 +927,65 @@ class BPTTSurrogate:
         self.model.eval()
         states = batch.states.float()
         params = batch.parameters.float()
-        adjoints = batch.adjoints.float()
         horizon = states.shape[1] - 1
         with torch.no_grad():
             initial, inputs = self._inputs(params, batch)
-            pred = _rollout_model(self.model, initial, inputs, self.stats, horizon)
-            rmse = float(torch.sqrt(torch.mean((pred - states) ** 2)))
-        # Time one batched surrogate gradient. The per-sample value below is
-        # amortized throughput, not the latency of an isolated sample.
-        self._sync()
-        start = time.perf_counter()
-        p = params.detach().clone().requires_grad_(True)
-        initial, inputs = self._inputs(p, batch)
-        pred = _rollout_model(self.model, initial, inputs, self.stats, horizon)
-        pred_grad = torch.autograd.grad(self._task_losses(pred, p, batch).sum(), p)[0]
-        self._sync()
-        grad_batch_ms = 1000.0 * (time.perf_counter() - start)
-        grad_batch_size = max(1, states.shape[0])
-        grad_ms = grad_batch_ms / grad_batch_size
-        cosine = F.cosine_similarity(pred_grad.detach(), adjoints, dim=-1, eps=1.0e-8)
+            normalized_states = (states - self.stats.state_mean) / self.stats.state_std
+            normalized_inputs = _normalize_inputs(inputs, self.stats, horizon)
+            one_step_normalized = _one_step_model(
+                self.model,
+                normalized_states[:, :-1],
+                normalized_inputs,
+            )
+            one_step = (
+                one_step_normalized * self.stats.state_std + self.stats.state_mean
+            )
+            rollout = _rollout_model(self.model, initial, inputs, self.stats, horizon)
         return {
-            "rollout_rmse": rmse,
-            "adjoint_cosine_mean": float(cosine.mean()),
-            "adjoint_cosine_min": float(cosine.min()),
-            "surrogate_grad_batch_ms": grad_batch_ms,
-            "surrogate_grad_batch_size": int(grad_batch_size),
-            "surrogate_grad_ms_per_sample": grad_ms,
-            # Backward-compatible alias. This has always been the amortized
-            # per-sample value from a batched evaluation.
-            "surrogate_grad_ms": grad_ms,
+            "one_step_rmse": float(
+                torch.sqrt(torch.mean((one_step - states[:, 1:]) ** 2))
+            ),
+            "rollout_rmse": float(
+                torch.sqrt(torch.mean((rollout[:, 1:] - states[:, 1:]) ** 2))
+            ),
+            "terminal_rmse": float(
+                torch.sqrt(torch.mean((rollout[:, -1] - states[:, -1]) ** 2))
+            ),
         }
+
+    def _validate_batch(
+        self, batch: TeacherBatch, *, fitted_horizon: bool = False
+    ) -> None:
+        if batch.states.shape[0] == 0:
+            raise ValueError("reference batch must contain at least one sample")
+        if batch.states.ndim != 3 or batch.states.shape[-1] != self.state_dim:
+            raise ValueError(
+                "batch.states must have shape "
+                f"[samples, time, {self.state_dim}], got {tuple(batch.states.shape)}"
+            )
+        if batch.states.shape[1] < 2:
+            raise ValueError("batch.states must contain an initial and next state")
+        expected_parameters = (batch.states.shape[0], self.param_dim)
+        if tuple(batch.parameters.shape) != expected_parameters:
+            raise ValueError(
+                f"batch.parameters must have shape {expected_parameters}, "
+                f"got {tuple(batch.parameters.shape)}"
+            )
+        if not bool(torch.isfinite(batch.states).all()) or not bool(
+            torch.isfinite(batch.parameters).all()
+        ):
+            raise ValueError("reference states and parameters must be finite")
+        for key, value in batch.task_data.items():
+            if value.ndim == 0 or value.shape[0] != batch.states.shape[0]:
+                raise ValueError(
+                    f"batch.task_data[{key!r}] must have one row per sample"
+                )
+            if not bool(torch.isfinite(value).all()):
+                raise ValueError(f"batch.task_data[{key!r}] must be finite")
+        if fitted_horizon and batch.states.shape[1] - 1 != self.horizon:
+            raise ValueError(
+                f"batch horizon must match the fitted horizon ({self.horizon})"
+            )
 
     def _inputs(
         self, params: torch.Tensor, batch: TeacherBatch
@@ -1041,6 +1035,10 @@ class BPTTSurrogate:
     def _task_losses(
         self, states: torch.Tensor, params: torch.Tensor, batch: TeacherBatch
     ) -> torch.Tensor:
+        if self.task_loss is None:
+            raise RuntimeError(
+                "task_loss is required for surrogate parameter optimization"
+            )
         losses = self.task_loss(states, params, batch)
         expected = (params.shape[0],)
         if not isinstance(losses, torch.Tensor) or tuple(losses.shape) != expected:
@@ -1072,8 +1070,36 @@ def _input_stats(
     if inputs.shape[-1] == 0:
         empty = torch.zeros((1, 1, 0), dtype=inputs.dtype, device=inputs.device)
         return empty, empty + 1
-    expanded = inputs.expand(-1, horizon, -1) if inputs.shape[1] == 1 else inputs
-    return _standardize(expanded)
+    return _standardize(_expand_inputs(inputs, horizon))
+
+
+def _expand_inputs(inputs: torch.Tensor, horizon: int) -> torch.Tensor:
+    """Expand a time-invariant input to one input per rollout step."""
+
+    return inputs.expand(-1, horizon, -1) if inputs.shape[1] == 1 else inputs
+
+
+def _normalize_inputs(
+    inputs: torch.Tensor, stats: _RolloutStats, horizon: int
+) -> torch.Tensor:
+    """Expand and standardize the inputs for vectorized one-step training."""
+
+    expanded = _expand_inputs(inputs, horizon)
+    return (expanded - stats.input_mean) / stats.input_std
+
+
+def _one_step_model(
+    model: nn.Module, states: torch.Tensor, inputs: torch.Tensor
+) -> torch.Tensor:
+    """Evaluate every teacher-forced transition as one model batch."""
+
+    batch, horizon, state_dim = states.shape
+    input_dim = inputs.shape[-1]
+    prediction = model(
+        states.reshape(batch * horizon, state_dim),
+        inputs.reshape(batch * horizon, input_dim),
+    )
+    return prediction.reshape(batch, horizon, state_dim)
 
 
 def _stack(values) -> torch.Tensor:
@@ -1092,6 +1118,6 @@ def _tensor(value: Any) -> torch.Tensor:
     return tensor.detach().to("cpu", torch.float32)
 
 
-def _rows(params: np.ndarray) -> np.ndarray:
-    array = np.asarray(params, dtype=np.float32)
-    return array if array.ndim > 1 else array.reshape(1, -1)
+def _rows(params: Any) -> torch.Tensor:
+    tensor = torch.as_tensor(params, dtype=torch.float32)
+    return tensor if tensor.ndim > 1 else tensor.reshape(1, -1)

@@ -399,18 +399,18 @@ evaluation throughput at the cost of additional GPU memory; it does not change
 the learned scene or model architecture.
 
 ```bash
-# Tiny end-to-end smoke check (verifies the pipeline runs on a CUDA GPU)
+# Tiny end-to-end smoke check
 uv run python \
-  examples/newton/nerd/example_rj45_nerd.py --smoke --device cuda
+  examples/newton/nerd/example_rj45_nerd.py --smoke
 
-# Full training and held-out evaluation (the contact scene requires a CUDA GPU)
+# Full training and held-out evaluation
 uv run torchrun --standalone --nproc_per_node=2 \
   examples/newton/nerd/example_rj45_nerd.py --full --world-batch-size 8 \
   --save-checkpoint
 
 # Side-by-side Newton VBD and learned rollout
 uv run python \
-  examples/newton/nerd/render_rj45_nerd_comparison.py --device cuda
+  examples/newton/nerd/render_rj45_nerd_comparison.py
 ```
 
 The RJ45 renderer writes to `outputs/rj45_nerd/` by default. Use `--out` to
@@ -437,9 +437,8 @@ The scorecard separates model quality from inference performance:
 The left and center panels use the fully trained checkpoint and show its 319-step
 free-running accuracy and complete 200-epoch loss curve. The right panel compares
 Newton VBD with the compiled NeRD live deployment adapter, synchronizing after
-every frame for both paths. On two NVIDIA RTX PRO 6000 Blackwell Server Edition
-GPUs, the compiled deployment runs 4.4x faster for each eight-world batched
-frame.
+every frame for both paths. The compiled deployment runs 4.4x faster for each
+eight-world batched frame in the recorded run.
 
 The 9.25 ms and 2.08 ms values are wall-clock latencies for advancing one
 60 Hz frame of an eight-world batch on one rank, averaged across both ranks.

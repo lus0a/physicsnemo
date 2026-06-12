@@ -461,9 +461,8 @@ def evaluate_designs(
     score (see :func:`_combined_metric`) with a manufacturability term (see
     :func:`_engineering_penalty`).
 
-    ``device`` selects the Warp device for the model build and MPM solve (e.g.
-    ``"cpu"`` or ``"cuda:0"``); when ``None`` the solve runs on Warp's default
-    device (the GPU when one is visible).
+    ``device`` selects the Warp device for the model build and MPM solve; when
+    ``None`` the solve runs on Warp's default device.
     """
     designs = np.asarray(designs, dtype=np.float32)
     scope = wp.ScopedDevice(device) if device is not None else nullcontext()

@@ -151,6 +151,18 @@ def test_newton_mesh_rejects_inconsistent_winding() -> None:
         NewtonMesh(Mesh(points=mesh.points, cells=cells))
 
 
+@pytest.mark.parametrize("invalid_index", [-1, 4])
+def test_newton_mesh_rejects_out_of_range_triangle_indices(
+    invalid_index: int,
+) -> None:
+    mesh = tetrahedron_surface.load(side_length=0.08)
+    cells = mesh.cells.clone()
+    cells[0, 0] = invalid_index
+
+    with pytest.raises(ValueError, match="indices"):
+        NewtonMesh(Mesh(points=mesh.points, cells=cells))
+
+
 def test_newton_shape_adapter_enforces_density() -> None:
     rigid_object = NewtonRigidObject(
         "sphere",

@@ -37,7 +37,6 @@ import torch
 import warp as wp
 
 import physicsnemo.experimental.integrations.newton.adjoint as newton_adjoint
-import physicsnemo.experimental.integrations.newton.visualization as newton_visualization
 from physicsnemo.experimental.integrations.newton import (
     BPTTSurrogate,
     DesignSpace,
@@ -74,7 +73,6 @@ from physicsnemo.experimental.integrations.newton.data import (
 )
 from physicsnemo.experimental.integrations.newton.surrogate import (
     _filter_finite,
-    _gradient_alignment_loss,
     _rollout_model,
     _RolloutStats,
     _standardize,
@@ -96,14 +94,6 @@ class FakeState:
     def assign(self, other: "FakeState") -> None:
         self.particle_q = other.particle_q.clone()
         self.particle_qd = other.particle_qd.clone()
-
-
-def test_cpu_capture_guard_is_scoped_to_affected_newton_versions(monkeypatch) -> None:
-    monkeypatch.setattr(newton_visualization, "version", lambda _: "1.2.1")
-    assert newton_visualization._newton_cpu_capture_is_unsafe()
-
-    monkeypatch.setattr(newton_visualization, "version", lambda _: "1.2.2")
-    assert not newton_visualization._newton_cpu_capture_is_unsafe()
 
 
 class FakeModel:
@@ -160,6 +150,24 @@ def _require_newton():
     except Exception as error:  # noqa: BLE001
         pytest.skip(f"Newton unavailable: {error}")
     return newton
+
+
+def test_capture_frame_returns_an_independent_rgb_image() -> None:
+    from physicsnemo.experimental.integrations.newton.visualization import capture_frame
+
+    source = np.zeros((2, 3, 4), dtype=np.uint8)
+    source[..., :3] = (12, 34, 56)
+    source[..., 3] = 255
+    viewer = SimpleNamespace(
+        get_frame=lambda: SimpleNamespace(numpy=lambda: source),
+    )
+
+    image = capture_frame(viewer)
+    source[..., :3] = 0
+
+    assert image.mode == "RGB"
+    assert image.size == (3, 2)
+    assert np.asarray(image)[0, 0].tolist() == [12, 34, 56]
 
 
 # --------------------------------------------------------------------------- #
@@ -338,6 +346,14 @@ def test_env_from_scene_preserves_frame_duration_when_only_substeps_change() -> 
     assert env.substeps == 2
     assert env.dt == pytest.approx(0.2)
     assert env.frame_dt == pytest.approx(0.4)
+
+
+def test_env_from_scene_rejects_zero_substeps_before_rescaling() -> None:
+    scene = SimpleNamespace(
+        model=FakeModel(), solver=FakeSolver(), sim_substeps=4, sim_dt=0.1
+    )
+    with pytest.raises(ValueError, match="substeps"):
+        NewtonEnv.from_scene(scene, observe=observe_q, substeps=0)
 
 
 def test_env_rejects_invalid_timestep() -> None:
@@ -671,18 +687,42 @@ def test_rollout_model_produces_horizon_plus_one_states() -> None:
     assert out.shape == (3, 5, 2)
 
 
-def test_gradient_alignment_loss_zero_for_identical_grads() -> None:
-    grad = torch.randn(4, 3)
-    assert _gradient_alignment_loss(grad, grad).item() == pytest.approx(0.0, abs=1e-6)
-    assert _gradient_alignment_loss(grad, -grad).item() > 1.0
+def test_rollout_loss_backpropagates_through_predicted_states() -> None:
+    class ScaleStep(torch.nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.weight = torch.nn.Parameter(torch.tensor(0.5))
+
+        def forward(self, state: torch.Tensor, _inputs: torch.Tensor) -> torch.Tensor:
+            return self.weight * state
+
+    model = ScaleStep()
+    stats = _RolloutStats(
+        torch.zeros(1, 1, 1),
+        torch.ones(1, 1, 1),
+        torch.zeros(1, 1, 0),
+        torch.ones(1, 1, 0),
+    )
+    rollout = _rollout_model(
+        model,
+        torch.ones(1, 1),
+        torch.empty(1, 1, 0),
+        stats,
+        horizon=3,
+    )
+    rollout[:, 1:].square().sum().backward()
+
+    # The rollout is [1, w, w^2, w^3], so later losses contribute through
+    # every earlier model invocation: d/dw (w^2 + w^4 + w^6).
+    weight = 0.5
+    expected = 2 * weight + 4 * weight**3 + 6 * weight**5
+    assert model.weight.grad == pytest.approx(expected)
 
 
 def test_teacher_batch_to_and_head() -> None:
     batch = TeacherBatch(
         torch.zeros(4, 3, 2),
         torch.zeros(4, 2),
-        torch.zeros(4, 2),
-        torch.zeros(4),
         task_data={"target": torch.arange(4)},
         metadata={"opaque": "kept"},
     )
@@ -697,12 +737,12 @@ def test_teacher_batch_to_and_head() -> None:
 
 def test_collect_teacher_batch_stacks_and_filters_nonfinite() -> None:
     def sample(index: int) -> TeacherSample:
-        loss = float("nan") if index == 1 else float(index)
+        states = torch.zeros(3, 2)
+        if index == 1:
+            states[0, 0] = float("nan")
         return TeacherSample(
-            states=torch.zeros(3, 2),
+            states=states,
             parameters=torch.ones(2) * index,
-            adjoints=torch.ones(2),
-            loss=loss,
             task_data={"target": torch.tensor([index])},
         )
 
@@ -717,10 +757,8 @@ def test_collect_teacher_batch_rejects_all_nonfinite_samples() -> None:
         collect_teacher_batch(
             1,
             lambda _index: TeacherSample(
-                states=torch.zeros(2, 2),
+                states=torch.full((2, 2), float("nan")),
                 parameters=torch.zeros(2),
-                adjoints=torch.zeros(2),
-                loss=float("nan"),
             ),
         )
 
@@ -731,8 +769,6 @@ def test_filter_finite_drops_bad_samples() -> None:
     batch = TeacherBatch(
         states,
         torch.zeros(2, 2),
-        torch.zeros(2, 2),
-        torch.zeros(2),
         task_data={"target": torch.tensor([[1.0], [2.0]])},
     )
     filtered = _filter_finite(batch)
@@ -757,11 +793,15 @@ def test_teacher_batch_repeat_includes_aligned_metadata() -> None:
 
 def _synthetic_batch(n: int = 6, horizon: int = 4, seed: int = 0) -> TeacherBatch:
     g = torch.Generator().manual_seed(seed)
+    parameters = torch.randn(n, 2, generator=g)
+    state = torch.randn(n, 2, generator=g)
+    states = [state]
+    for _ in range(horizon):
+        state = 0.85 * state + 0.15 * parameters
+        states.append(state)
     return TeacherBatch(
-        states=torch.randn(n, horizon + 1, 2, generator=g),
-        parameters=torch.randn(n, 2, generator=g),
-        adjoints=torch.randn(n, 2, generator=g),
-        losses=torch.rand(n, generator=g),
+        states=torch.stack(states, dim=1),
+        parameters=parameters,
         metadata={"teacher_ms_per_sample": 1.0},
     )
 
@@ -783,20 +823,20 @@ def _surrogate() -> BPTTSurrogate:
 
 def test_bptt_surrogate_fit_and_evaluate() -> None:
     surrogate = _surrogate()
-    metrics = surrogate.fit(_synthetic_batch(), epochs=3)
+    metrics = surrogate.fit(
+        _synthetic_batch(), epochs=3, rollout_weight=0.2, rollout_warmup_epochs=2
+    )
     assert {
         "samples",
         "horizon",
+        "train_one_step_rmse",
         "train_rollout_rmse",
-        "train_adjoint_cosine_mean",
+        "train_terminal_rmse",
     } <= metrics.keys()
+    assert surrogate.history[-1]["rollout_weight"] == pytest.approx(0.2)
+    assert {"one_step_loss", "rollout_loss"} <= surrogate.history[-1].keys()
     held = surrogate.evaluate(_synthetic_batch(seed=1))
-    assert {"rollout_rmse", "adjoint_cosine_mean", "adjoint_cosine_min"} <= held.keys()
-    assert held["surrogate_grad_batch_size"] == 6
-    assert held["surrogate_grad_ms_per_sample"] == pytest.approx(
-        held["surrogate_grad_batch_ms"] / held["surrogate_grad_batch_size"]
-    )
-    assert held["surrogate_grad_ms"] == held["surrogate_grad_ms_per_sample"]
+    assert {"one_step_rmse", "rollout_rmse", "terminal_rmse"} <= held.keys()
     assert np.isfinite(held["rollout_rmse"])
     assert surrogate.rollout(torch.zeros(2, 2), _synthetic_batch().head(2)).shape == (
         2,
@@ -810,6 +850,21 @@ def test_bptt_surrogate_requires_fit_and_valid_callback_shapes() -> None:
     with pytest.raises(RuntimeError, match="fit the surrogate"):
         surrogate.evaluate(_synthetic_batch())
 
+    training_only = BPTTSurrogate(
+        state_dim=2,
+        param_dim=2,
+        input_dim=2,
+        to_inputs=lambda params, batch: (
+            batch.states[:, 0].to(params),
+            params[:, None],
+        ),
+        hidden_dim=8,
+        depth=1,
+    )
+    training_only.fit(_synthetic_batch(), epochs=1)
+    with pytest.raises(RuntimeError, match="task_loss is required"):
+        training_only.optimize(_synthetic_batch(), steps=0)
+
     bad_loss = BPTTSurrogate(
         state_dim=2,
         param_dim=2,
@@ -818,8 +873,9 @@ def test_bptt_surrogate_requires_fit_and_valid_callback_shapes() -> None:
         hidden_dim=8,
         depth=1,
     )
+    bad_loss.fit(_synthetic_batch(), epochs=1)
     with pytest.raises(ValueError, match="one value per sample"):
-        bad_loss.fit(_synthetic_batch(), epochs=1)
+        bad_loss.optimize(_synthetic_batch(), steps=0)
 
 
 def test_residual_dynamics_validates_inputs_shape() -> None:
@@ -834,6 +890,7 @@ def test_bptt_surrogate_optimize_tracks_best() -> None:
     surrogate = _surrogate()
     surrogate.fit(_synthetic_batch(), epochs=2)
     plan = surrogate.optimize(_synthetic_batch(seed=2), samples=2, steps=5)
+    assert isinstance(plan["best_params"], torch.Tensor)
     assert plan["best_params"].shape == (2, 2)
     assert plan["best_task_losses"].shape == (2,)
     assert plan["best_task_loss"] <= plan["initial_task_loss"] + 1e-6
@@ -850,9 +907,9 @@ def test_bptt_surrogate_optimize_multistart_selects_best_candidate() -> None:
     assert plan["candidate_best_params"].shape == (4, 2)
     assert plan["starts"] == 4
     assert plan["best_task_loss"] == pytest.approx(
-        float(np.min(plan["candidate_best_task_losses"]))
+        float(plan["candidate_best_task_losses"].min())
     )
-    np.testing.assert_allclose(
+    torch.testing.assert_close(
         plan["best_params"],
         plan["candidate_best_params"][plan["best_index"] : plan["best_index"] + 1],
     )
@@ -866,19 +923,17 @@ def test_bptt_surrogate_optimize_clips_initial_parameters() -> None:
 
     direct = surrogate.optimize(
         task,
-        initial_params=np.asarray([[20.0, 20.0]], np.float32),
+        initial_params=torch.tensor([[20.0, 20.0]]),
         steps=0,
         z_clip=0.5,
     )
-    direct_z = (torch.from_numpy(direct["initial_params"]) - mean.cpu()) / std.cpu()
+    direct_z = (direct["initial_params"].cpu() - mean.cpu()) / std.cpu()
     assert bool((direct_z.abs() <= 0.5 + 1.0e-6).all())
-    np.testing.assert_allclose(direct["best_params"], direct["initial_params"])
+    torch.testing.assert_close(direct["best_params"], direct["initial_params"])
 
     task.parameters.fill_(20.0)
     plan = surrogate.optimize_multistart(task, starts=4, steps=0, z_clip=0.5, seed=7)
-    candidate_z = (
-        torch.from_numpy(plan["candidate_initial_params"]) - mean.cpu()
-    ) / std.cpu()
+    candidate_z = (plan["candidate_initial_params"].cpu() - mean.cpu()) / std.cpu()
     assert bool((candidate_z.abs() <= 0.5 + 1.0e-6).all())
 
 
@@ -890,7 +945,7 @@ def test_bptt_surrogate_optimize_multistart_accepts_explicit_starts() -> None:
     normalized_starts = torch.tensor(
         [[0.0, 0.0], [1.0, -1.0], [-0.5, 0.5]], dtype=torch.float32
     )
-    starts = (mean.cpu() + normalized_starts * std.cpu()).numpy()
+    starts = mean.cpu() + normalized_starts * std.cpu()
     plan = surrogate.optimize_multistart(
         task,
         starts=3,
@@ -898,7 +953,7 @@ def test_bptt_surrogate_optimize_multistart_accepts_explicit_starts() -> None:
         steps=0,
         seed=7,
     )
-    np.testing.assert_allclose(plan["candidate_initial_params"], starts)
+    torch.testing.assert_close(plan["candidate_initial_params"].cpu(), starts)
 
     with pytest.raises(ValueError, match="exactly 4 starts"):
         surrogate.optimize_multistart(
@@ -913,8 +968,8 @@ def test_bptt_surrogate_validate_in_newton() -> None:
     surrogate = _surrogate()
     surrogate.fit(_synthetic_batch(), epochs=1)
     plan = {
-        "initial_params": np.array([[2.0, 0.0]], np.float32),
-        "best_params": np.array([[0.5, 0.0]], np.float32),
+        "initial_params": torch.tensor([[2.0, 0.0]]),
+        "best_params": torch.tensor([[0.5, 0.0]]),
     }
     report = surrogate.validate_in_newton(
         plan, newton_loss=lambda p: float((p**2).sum())
@@ -928,9 +983,9 @@ def test_optimize_field_in_newton_multistart_returns_best_and_total(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     def fake_optimize(_env, *, initial, optimization_steps, **_kwargs):
-        loss = float(np.square(initial).sum())
+        loss = float(initial.square().sum())
         return {
-            "best_params": np.asarray(initial),
+            "best_params": initial.detach().clone(),
             "best_loss": loss,
             "initial_loss": loss,
             "optimization_steps": optimization_steps,
@@ -943,10 +998,11 @@ def test_optimize_field_in_newton_multistart_returns_best_and_total(
     result = optimize_field_in_newton_multistart(
         object(),
         loss_fn=lambda _states: None,
-        initials=np.array([[2.0, 0.0], [0.5, 0.0]], np.float32),
+        initials=torch.tensor([[2.0, 0.0], [0.5, 0.0]]),
         optimization_steps=3,
     )
     assert result["best_index"] == 1
+    torch.testing.assert_close(result["best_params"], torch.tensor([0.5, 0.0]))
     assert result["best_loss"] == pytest.approx(0.25)
     assert result["per_start_solver_evals"] == 4
     assert result["solver_evals"] == 8
@@ -974,7 +1030,39 @@ def test_optimize_field_defaults_to_current_env_value(
         optimization_steps=0,
         steps=1,
     )
-    np.testing.assert_array_equal(result["best_params"], [3.0, 2.0, 1.0])
+    torch.testing.assert_close(result["best_params"], torch.tensor([3.0, 2.0, 1.0]))
+    assert result["best_params"].device == env.state.particle_qd.device
+    assert not result["best_params"].requires_grad
+
+
+@pytest.mark.parametrize("nonfinite", ["loss", "adjoint"])
+def test_optimize_field_rejects_nonfinite_rollouts(
+    monkeypatch: pytest.MonkeyPatch,
+    nonfinite: str,
+) -> None:
+    env = fake_env()
+    env.reset()
+
+    def fake_rollout(environment, *, field, **_kwargs):
+        value = getattr(environment.state, field)
+        return DifferentiableRollout(
+            observations=torch.empty(0),
+            adjoint=(
+                torch.full_like(value, float("nan"))
+                if nonfinite == "adjoint"
+                else torch.zeros_like(value)
+            ),
+            loss=torch.tensor(float("nan") if nonfinite == "loss" else 1.0),
+        )
+
+    monkeypatch.setattr(newton_adjoint, "differentiable_rollout", fake_rollout)
+    with pytest.raises(ValueError, match=nonfinite):
+        optimize_field_in_newton(
+            env,
+            loss_fn=lambda _states: None,
+            optimization_steps=1,
+            steps=1,
+        )
 
 
 # --------------------------------------------------------------------------- #
@@ -1447,8 +1535,10 @@ def test_world_view_rejects_misaligned_values_and_masks() -> None:
         worlds.per_world_sum(torch.zeros(3, 1))
     with pytest.raises(ValueError, match="boolean"):
         worlds.per_world_count(torch.ones(2))
-    with pytest.raises(ValueError, match="outside"):
+    with pytest.raises(ValueError, match="invalid id"):
         WorldView(SimpleNamespace(world_count=2, particle_world=torch.tensor([0, 2])))
+    with pytest.raises(ValueError, match="invalid id"):
+        WorldView(SimpleNamespace(world_count=2, particle_world=torch.tensor([-2, 0])))
 
 
 # --------------------------------------------------------------------------- #
@@ -1485,6 +1575,19 @@ def test_trajectory_windows_validate_public_contract() -> None:
         TrajectoryWindowReader(
             [torch.zeros(4, 2), torch.zeros(4, 3)], window=2, predict_steps=1
         )
+
+
+def test_trajectory_windows_detach_owned_snapshots() -> None:
+    from physicsnemo.experimental.integrations.newton.trajectory import (
+        TrajectoryWindowReader,
+    )
+
+    source = torch.arange(12.0, requires_grad=True).reshape(6, 2)
+    reader = TrajectoryWindowReader(source, window=2)
+
+    assert not reader.trajectories[0].requires_grad
+    assert reader.trajectories[0].grad_fn is None
+    assert not reader._load_sample(0)["input"].requires_grad
 
 
 def test_trajectory_dataset_normalizes() -> None:

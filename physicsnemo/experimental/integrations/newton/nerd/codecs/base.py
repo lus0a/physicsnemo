@@ -190,7 +190,19 @@ def _uniform_world_indices(model: Any, entity: str) -> torch.Tensor:
             )
         return torch.arange(count, dtype=torch.long).reshape(1, count)
     world_ids = field_to_torch(world_field).long()
-    if world_count == 1 and not bool((world_ids == 0).any()) and count > 0:
+    if tuple(world_ids.shape) != (count,):
+        raise ValueError(
+            f"model.{entity}_world must have shape ({count},), "
+            f"got {tuple(world_ids.shape)}"
+        )
+    invalid = (world_ids < -1) | (world_ids >= world_count)
+    if bool(invalid.any()):
+        bad_id = int(world_ids[invalid][0])
+        raise ValueError(
+            f"model.{entity}_world contains invalid id {bad_id}; expected -1 "
+            f"for globals or an id in [0, {world_count - 1}]"
+        )
+    if world_count == 1 and bool((world_ids == -1).all()) and count > 0:
         # Newton commonly leaves every entity at world -1 for an unreplicated
         # single-world scene. In that case all entities belong to the one learned
         # topology; for replicated scenes, -1 remains reserved for shared/global

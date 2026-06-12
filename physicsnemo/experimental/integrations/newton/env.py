@@ -164,6 +164,8 @@ class NewtonEnv:
         if dt is not None:
             timing["dt"] = dt
         if substeps is not None:
+            if substeps <= 0:
+                raise ValueError("substeps must be positive")
             timing["substeps"] = substeps
             if dt is None:
                 if not had_dt:

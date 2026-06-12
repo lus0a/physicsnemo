@@ -101,8 +101,18 @@ class NeRDFixedFrame:
         if norm < 1.0e-8:
             raise ValueError("quaternion must have non-zero norm")
         quaternion /= norm
-        if quaternion[3] < 0.0:
-            quaternion *= -1.0
+        # q and -q describe the same frame. Use w first, then xyz to make the
+        # exact 180-degree case deterministic as well.
+        for component in (
+            quaternion[3],
+            quaternion[0],
+            quaternion[1],
+            quaternion[2],
+        ):
+            if component != 0.0:
+                if component < 0.0:
+                    quaternion *= -1.0
+                break
         object.__setattr__(self, "position", position)
         object.__setattr__(
             self,

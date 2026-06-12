@@ -314,8 +314,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "--newton-device",
         default=None,
-        help="Warp device for the MPM solve, e.g. cpu or cuda:0 "
-        "(default: Warp's default device, the GPU when one is visible)",
+        help="Warp device for the MPM solve (default: Warp's default device)",
     )
     return p.parse_args()
 

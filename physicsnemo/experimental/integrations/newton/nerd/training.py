@@ -101,6 +101,8 @@ def train_nerd(
     inputs = trajectories.inputs.to(torch_device, dtype=torch.float32)
     if states.shape[0] == 0:
         raise ValueError("each distributed rank must receive at least one trajectory")
+    if not bool(torch.isfinite(states).all()) or not bool(torch.isfinite(inputs).all()):
+        raise ValueError("NeRD training states and inputs must be finite")
     trajectory_count = torch.tensor(
         states.shape[0], dtype=torch.int64, device=torch_device
     )

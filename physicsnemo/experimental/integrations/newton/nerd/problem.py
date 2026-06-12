@@ -191,8 +191,9 @@ class NeRDDataset:
     """Teacher states and inputs collected for a NeRD problem.
 
     The dataset takes ownership of (does not copy) the provided ``states`` and
-    ``inputs`` tensors, so callers should not mutate them after construction.
-    Omitting ``frame_dt`` disables deployment-time timestep validation.
+    ``inputs`` tensors and detaches them from any caller autograd graph, so
+    callers should not mutate them after construction. Omitting ``frame_dt``
+    disables deployment-time timestep validation.
     """
 
     states: torch.Tensor
@@ -202,6 +203,7 @@ class NeRDDataset:
     frame_dt: float | None = None
 
     def __post_init__(self) -> None:
+        self.states = self.states.detach()
         expected_ndim = 2 + len(self.codec.state_shape)
         if self.states.ndim != expected_ndim:
             raise ValueError(
@@ -221,6 +223,8 @@ class NeRDDataset:
             self.inputs = self.states.new_empty(
                 (self.states.shape[0], self.states.shape[1] - 1, 0)
             )
+        else:
+            self.inputs = self.inputs.detach()
         if self.inputs.ndim < 3:
             raise ValueError(
                 "inputs must have shape [trajectories, frames, *external_input_shape]"
@@ -300,7 +304,7 @@ def collect_nerd_trajectories(
         initial = problem.codec.read(problem.get_state())
         if torch_device is None:
             torch_device = resolve_device(initial.device)
-        snapshots = [initial.to(torch_device, dtype=torch.float32)]
+        snapshots = [initial.to(torch_device, dtype=torch.float32).detach().clone()]
         inputs = []
         for frame in range(steps):
             if problem.sample_inputs is None:
@@ -348,12 +352,13 @@ def collect_nerd_trajectories(
                     f"expected {external_input_shape}, "
                     f"got {tuple(model_inputs.shape[1:])}"
                 )
-            inputs.append(model_inputs.clone())
+            inputs.append(model_inputs.detach().clone())
             problem.advance(frame_inputs, frame)
             snapshots.append(
-                problem.codec.read(problem.get_state()).to(
-                    torch_device, dtype=torch.float32
-                )
+                problem.codec.read(problem.get_state())
+                .to(torch_device, dtype=torch.float32)
+                .detach()
+                .clone()
             )
 
         states = torch.stack(tuple(snapshots), dim=1)

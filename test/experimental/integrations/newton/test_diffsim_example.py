@@ -14,66 +14,45 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Focused tests for the Newton differentiable-ball benchmark setup."""
+"""Focused tests for the Newton rollout-BPTT cart-pole example."""
 
 from __future__ import annotations
 
 import importlib
 from pathlib import Path
-from types import SimpleNamespace
 
-import numpy as np
 import pytest
+import torch
 
 
-def _diffsim_module(monkeypatch: pytest.MonkeyPatch, name: str):
+def _cartpole_module(monkeypatch: pytest.MonkeyPatch):
     pytest.importorskip("newton")
     root = Path(__file__).resolve().parents[4]
     monkeypatch.syspath_prepend(str(root / "examples" / "newton" / "diffsim"))
-    return importlib.import_module(name)
+    return importlib.import_module("example_diffsim_cartpole_bptt")
 
 
-def test_feasible_sobol_launches_are_bounded_and_reproducible(
+def test_force_sequences_are_bounded_and_reproducible(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    ball = _diffsim_module(monkeypatch, "ball_problem")
-    starts = ball.feasible_sobol_launches(16, seed=7)
-    repeated = ball.feasible_sobol_launches(16, seed=7)
+    cartpole = _cartpole_module(monkeypatch)
+    forces = cartpole.sample_force_sequences(4, 13, seed=7)
+    repeated = cartpole.sample_force_sequences(4, 13, seed=7)
 
-    np.testing.assert_array_equal(starts, repeated)
-    np.testing.assert_array_equal(starts[0], ball.LAUNCH_MEAN)
-    assert np.all((starts[:, 1] >= ball.LAUNCH_Y_CLIP[0]))
-    assert np.all((starts[:, 1] <= ball.LAUNCH_Y_CLIP[1]))
-    assert np.all((starts[:, 2] >= ball.LAUNCH_Z_CLIP[0]))
-    assert np.all((starts[:, 2] <= ball.LAUNCH_Z_CLIP[1]))
+    torch.testing.assert_close(forces, repeated)
+    assert forces.shape == (4, 13)
+    assert bool((forces.abs() <= cartpole.FORCE_LIMIT).all())
 
 
-def test_benchmark_selects_all_targets_before_optimization(
+def test_surrogate_inputs_use_initial_state_and_per_frame_force(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    benchmark = _diffsim_module(monkeypatch, "analyze_diffsim_optimizers")
-    candidates = iter(
-        [
-            np.array([0.2, 0.0, 0.0], np.float32),
-            np.array([1.2, 0.0, 0.0], np.float32),
-            np.array([1.5, 0.0, 0.0], np.float32),
-        ]
-    )
-    monkeypatch.setattr(
-        benchmark.ball,
-        "reachable_target",
-        lambda _env, _rng, _steps: next(candidates),
-    )
-    args = SimpleNamespace(
-        seed=123,
-        steps=36,
-        benchmark_targets=2,
-        min_nominal_miss=1.0,
-    )
+    cartpole = _cartpole_module(monkeypatch)
+    states = torch.randn(3, 6, cartpole.STATE_DIM)
+    forces = torch.randn(3, 5)
+    batch = cartpole.TeacherBatch(states=states, parameters=forces)
 
-    targets, attempts = benchmark._select_benchmark_targets(
-        object(), args, np.zeros(3, np.float32)
-    )
+    initial_state, step_inputs = cartpole.surrogate_inputs(forces, batch)
 
-    assert attempts == 3
-    np.testing.assert_allclose(targets, [[1.2, 0.0, 0.0], [1.5, 0.0, 0.0]])
+    torch.testing.assert_close(initial_state, states[:, 0])
+    torch.testing.assert_close(step_inputs, forces.unsqueeze(-1))

@@ -78,8 +78,8 @@ designs per Newton model.
 
 ### Prerequisites
 
-The example uses Newton's implicit-MPM solver on the GPU. Install the
-PhysicsNeMo `newton` extra, then run from the repository root:
+The example uses Newton's implicit-MPM solver. Install the PhysicsNeMo `newton`
+extra, then run from the repository root:
 
 ```bash
 uv run python examples/newton/nozzle/example_mpm_nozzle_design.py
@@ -87,10 +87,9 @@ uv run python examples/newton/nozzle/example_mpm_nozzle_design.py
 
 `nozzle_scene.py` is a local sibling module imported by the example, so keep the
 two files in this folder together. By default the MPM oracle runs on Warp's
-default device (the GPU when one is visible); pass `--newton-device cpu` or
-`--newton-device cuda:0` to force a specific device for the dominant-cost MPM
-solve. Use `--torch-device cuda` for the tiny surrogate. The companion
-`render_nozzle.py` accepts the same `--newton-device` flag.
+default device. Use `--newton-device` for the MPM solve and `--torch-device` for
+the surrogate. The companion `render_nozzle.py` accepts the same
+`--newton-device` flag.
 
 ### Running
 
@@ -99,7 +98,7 @@ active-learning curve and a clean surrogate-parity plot:
 
 ```bash
 uv run python examples/newton/nozzle/example_mpm_nozzle_design.py \
-    --torch-device cuda --save-pareto-data \
+    --save-pareto-data \
     --num-worlds 8 --bootstrap 32 --rounds 10 \
     --surrogate-epochs 400 --hidden-dim 192 --depth 4 \
     --sim-time 1.5 --fps 90 --substeps 6 --max-iterations 260 --voxel-size 0.010

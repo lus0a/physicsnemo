@@ -22,7 +22,7 @@
       </geometry>
     </collision>
     <inertial>
-      <!-- Realized Warp 1.8 collision-density inertia, including body armature. -->
+      <!-- Realized collision-density inertia, including body armature. -->
       <mass value="50"/>
       <inertia ixx="1.2183334" ixy="0" ixz="0" iyy="1.2183334" iyz="0" izz="2.0933332"/>
     </inertial>
@@ -50,7 +50,7 @@
     </collision>
     <inertial>
       <origin xyz="0 0 0.5"/>
-      <!-- Realized Warp 1.8 collision-density inertia, including body armature. -->
+      <!-- Realized collision-density inertia, including body armature. -->
       <mass value="2.5"/>
       <inertia ixx="0.21885417" ixy="0" ixz="0" iyy="0.21885417" iyz="0" izz="0.01104167"/>
     </inertial>

@@ -70,7 +70,21 @@ def _normalize_quat(quat: torch.Tensor) -> torch.Tensor:
 
 def _canonicalize_quat(quat: torch.Tensor) -> torch.Tensor:
     quat = _normalize_quat(quat)
-    return quat * torch.where(quat[..., 3:4] < 0.0, -1.0, 1.0)
+    # At 180 degrees w is exactly zero, so the usual w >= 0 convention does
+    # not distinguish q from -q. Use the first nonzero x/y/z component as a
+    # deterministic tie-breaker.
+    sign_source = quat[..., 3]
+    unresolved = sign_source == 0.0
+    for index in range(3):
+        component = quat[..., index]
+        sign_source = torch.where(
+            unresolved & (component != 0.0),
+            component,
+            sign_source,
+        )
+        unresolved &= component == 0.0
+    sign = torch.where(sign_source < 0.0, -1.0, 1.0).unsqueeze(-1)
+    return quat * sign
 
 
 def _quat_to_rotvec(quat: torch.Tensor) -> torch.Tensor:

@@ -212,6 +212,23 @@ def test_select_diverse_designs_preserves_required_anchors() -> None:
         )
 
 
+def test_select_diverse_designs_counts_required_anchors_toward_group_coverage() -> None:
+    designs = np.eye(4, dtype=np.float32)
+    scores = np.asarray((0.0, 0.1, 8.0, 9.0), dtype=np.float32)
+    groups = np.asarray((0, 0, 1, 2))
+
+    selected = select_diverse_designs(
+        designs,
+        scores,
+        count=3,
+        group_ids=groups,
+        min_per_group=1,
+        required_indices=(0,),
+    )
+
+    np.testing.assert_array_equal(selected, (0, 2, 3))
+
+
 def test_select_verified_design_retains_or_accepts_against_incumbent() -> None:
     retained = select_verified_design(
         np.asarray((0.30, 0.18, 0.20)),
