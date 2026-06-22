@@ -1,0 +1,66 @@
+# SPDX-FileCopyrightText: Copyright (c) 2023 - 2026 NVIDIA CORPORATION & AFFILIATES.
+# SPDX-FileCopyrightText: All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+hydra:
+  job:
+    chdir: True
+  run:
+    dir: ./outputs_cd_fno
+
+# PDE parameters
+physics:
+  D: 0.001            # diffusivity
+  dt_macro: 0.1       # time span between T0 and T1
+
+# On-the-fly data generation
+data:
+  resolution: 64
+  batch_size: 32
+  nr_ic_modes: 5      # low-pass cutoff for random initial condition
+  nr_vel_modes: 4     # low-pass cutoff for random velocity (streamfunction)
+  u_max: 1.5          # target max speed
+  substeps: 25        # min integration sub-steps (auto-increased for CFL)
+  length: 1.0         # domain side length (periodic)
+  steps_per_epoch: 64
+
+# FNO architecture (input: T0, u, v  ->  output: T1)
+model:
+  in_channels: 3
+  out_channels: 1
+  decoder_layers: 1
+  decoder_layer_size: 64
+  dimension: 2
+  latent_channels: 32
+  num_fno_layers: 4
+  num_fno_modes: 12
+  padding: 8
+
+training:
+  max_epochs: 50
+  start_lr: 1.0e-3
+  gamma: 0.9995
+  physics_weight: 0.1   # set to 0 for pure data-driven training
+  val_every: 5
+  use_amp: false        # enable mixed precision on CUDA (autocast + GradScaler)
+  tf32: true            # allow TF32 matmul/conv on Ampere+ (no-op on CPU)
+  compile: false        # torch.compile the FNO forward (best on CUDA; first
+                        # iterations compile, so use for long runs)
+  compile_mode: default # "default" | "reduce-overhead" | "max-autotune"
+
+seed: 0                 # 0 = no seeding; per-rank seeding when > 0 (DDP-ready)
+
+validation:
+  sample_size: 256
