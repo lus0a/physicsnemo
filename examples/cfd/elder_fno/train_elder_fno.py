@@ -175,6 +175,11 @@ def validation_step(model, datapipe, p_hydro, p_scale, num_iters, epoch, out_dir
             h0 = (batch["p0"] - p_hydro) / p_scale
             c1 = batch["c1"]
             h1 = (batch["p1"] - p_hydro) / p_scale
+            
+            # 提取物理时间信息
+            t0 = batch.get("t0", torch.zeros(c0.shape[0])) 
+            dt_days = batch.get("dt", 0) / (24 * 3600.0)
+            
             invar = torch.cat([c0, h0], dim=1)
             with torch.autocast(device_type=autocast_dev, enabled=use_amp):
                 pred = model(invar)
@@ -182,15 +187,26 @@ def validation_step(model, datapipe, p_hydro, p_scale, num_iters, epoch, out_dir
             total_c += F.mse_loss(pred_c, c1).item()
             total_h += F.mse_loss(pred_h, h1).item()
             count += 1
-            last = (c1[0, 0], pred_c[0, 0], h1[0, 0], pred_h[0, 0])
+            
+            # 智能选图: 寻找这个 batch 里推演物理时间最长的样本 (最能展示指进)
+            max_idx = torch.argmax(t0).item()
+            t1_days = t0[max_idx].item() + dt_days
+            
+            last = (c1[max_idx, 0], pred_c[max_idx, 0], h1[max_idx, 0], pred_h[max_idx, 0], t1_days)
 
     model.train()
     mean_c = total_c / max(count, 1)
     mean_h = total_h / max(count, 1)
 
     if last is not None:
-        c_true, c_pred, h_true, h_pred = (t.detach().cpu().numpy() for t in last)
+        c_true, c_pred, h_true, h_pred = (t.detach().cpu().numpy() for t in last[:4])
+        t1_days = last[4]
         fig, ax = plt.subplots(2, 3, figsize=(15, 8))
+        
+        # 添加带有 Epoch 和 物理时间的全局大标题
+        fig.suptitle(f"Elder FNO Validation - Epoch {epoch} | Physical Time: {t1_days:.1f} Days", 
+                     fontsize=18, fontweight='bold')
+                     
         titles = [
             ("True c", "Pred c", "|c error|"),
             ("True h", "Pred h", "|h error|"),
@@ -206,7 +222,9 @@ def validation_step(model, datapipe, p_hydro, p_scale, num_iters, epoch, out_dir
                 im = ax[row, col].imshow(f, origin="upper", vmin=0.0, vmax=vmax)
                 ax[row, col].set_title(titles[row][col])
                 plt.colorbar(im, ax=ax[row, col])
-        fig.tight_layout()
+        
+        # 调整布局，为大标题留出空间
+        fig.tight_layout(rect=[0, 0.03, 1, 0.95])
         fig.savefig(os.path.join(out_dir, f"val_{epoch:04d}.png"))
         plt.close(fig)
     return mean_c + mean_h
@@ -382,6 +400,52 @@ def main(cfg: DictConfig) -> None:
         save_checkpoint(**ckpt_args, epoch=epoch)
 
     log.success("Training completed *yay*")
+
+def generate_batch(self) -> Tuple[Tensor, Tensor, Tensor, Tensor, Tensor]:
+        """Collect ``batch_size`` samples by advancing trajectories in rounds.
+
+        Each round advances all ``n_trajectories`` in parallel (one batched
+        flow solve) and yields that many samples; rounds repeat until the
+        batch is full, then the concatenation is trimmed to ``batch_size``.
+        """
+        c0s, p0s, c1s, p1s, t0s = [], [], [], [], []
+        n = self.batch_size
+        have = 0
+        while have < n:
+            # 记录推进前的物理时间 (将秒转换为天)
+            t0 = self._traj_step.clone() * self.dt_macro / (24 * 3600.0)
+            c0, p0, c1, p1 = self._advance_all()
+            c0s.append(c0)
+            p0s.append(p0)
+            c1s.append(c1)
+            p1s.append(p1)
+            t0s.append(t0)
+            have += c0.shape[0]
+        return (
+            torch.cat(c0s, dim=0)[:n],
+            torch.cat(p0s, dim=0)[:n],
+            torch.cat(c1s, dim=0)[:n],
+            torch.cat(p1s, dim=0)[:n],
+            torch.cat(t0s, dim=0)[:n],
+        )
+
+def __iter__(self) -> Dict[str, Tensor]:
+        """Yield batches of ``{c0, p0, c1, p1, t0, dt}`` infinitely.
+
+        Tensor shapes are ``[batch, 1, Ny+2, Nx+2]`` (walls included); ``dt``
+        is the macro time step (Python float) used to form the time derivative
+        in the PDE residual.
+        """
+        while True:
+            c0, p0, c1, p1, t0 = self.generate_batch()
+            yield {
+                "c0": c0,
+                "p0": p0,
+                "c1": c1,
+                "p1": p1,
+                "t0": t0,
+                "dt": self.dt_macro,
+            }
 
 
 if __name__ == "__main__":
