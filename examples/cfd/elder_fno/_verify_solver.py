@@ -128,12 +128,39 @@ def test_ic_and_gauge():
     assert abs(p[0, 0, 0, 0].item()) < 1e-3, "pressure gauge not ~0 at top corner"
 
 
+def test_10_year_fingering(sinking_sign):
+    import matplotlib.pyplot as plt
+    dp = ElderProblem2D(resolution=64, batch_size=1, n_trajectories=1,
+                        rollout_steps=400, dt_macro=10.0 * 24 * 3600.0,
+                        flow_sign=sinking_sign, 
+                        device="cpu")
+    
+ 
+    steps_10_years = 365
+    c1 = None
+    for _ in range(steps_10_years):
+        _, _, c1, _ = dp._advance_all()
+    
+    c_final = c1[0, 0].detach().cpu().numpy()
+    plt.figure(figsize=(10, 4))
+    plt.imshow(c_final, origin="upper", cmap="viridis", vmin=0, vmax=1, aspect="auto")
+    plt.colorbar(label="Concentration c")
+    plt.title(f"Concentration field after ~10 years ({steps_10_years} steps), flow_sign={sinking_sign}")
+    plt.xlabel("x cells")
+    plt.ylabel("z cells")
+    plt.savefig("10_year_fingering.png", dpi=150, bbox_inches='tight')
+    plt.close()
+    print(f"[6] Saved 10-year fingering plot. Max c = {c_final.max():.3f}")
+
+
 if __name__ == "__main__":
     torch.manual_seed(0)
     np.random.seed(0)
     test_flow_residual()
     test_no_flow_walls()
-    sinking = test_buoyancy_sign()
+    sinking = test_buoyancy_sign() # 获取正确的符号
     test_cfl_stability()
     test_ic_and_gauge()
+    # 将正确的符号传递给指进测试
+    test_10_year_fingering(sinking)
     print("\nBUOYANCY_SIGN_OK" if sinking == +1.0 else "\nBUOYANCY_SIGN_FLIP_NEEDED")

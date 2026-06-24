@@ -401,52 +401,6 @@ def main(cfg: DictConfig) -> None:
 
     log.success("Training completed *yay*")
 
-def generate_batch(self) -> Tuple[Tensor, Tensor, Tensor, Tensor, Tensor]:
-        """Collect ``batch_size`` samples by advancing trajectories in rounds.
-
-        Each round advances all ``n_trajectories`` in parallel (one batched
-        flow solve) and yields that many samples; rounds repeat until the
-        batch is full, then the concatenation is trimmed to ``batch_size``.
-        """
-        c0s, p0s, c1s, p1s, t0s = [], [], [], [], []
-        n = self.batch_size
-        have = 0
-        while have < n:
-            # 记录推进前的物理时间 (将秒转换为天)
-            t0 = self._traj_step.clone() * self.dt_macro / (24 * 3600.0)
-            c0, p0, c1, p1 = self._advance_all()
-            c0s.append(c0)
-            p0s.append(p0)
-            c1s.append(c1)
-            p1s.append(p1)
-            t0s.append(t0)
-            have += c0.shape[0]
-        return (
-            torch.cat(c0s, dim=0)[:n],
-            torch.cat(p0s, dim=0)[:n],
-            torch.cat(c1s, dim=0)[:n],
-            torch.cat(p1s, dim=0)[:n],
-            torch.cat(t0s, dim=0)[:n],
-        )
-
-def __iter__(self) -> Dict[str, Tensor]:
-        """Yield batches of ``{c0, p0, c1, p1, t0, dt}`` infinitely.
-
-        Tensor shapes are ``[batch, 1, Ny+2, Nx+2]`` (walls included); ``dt``
-        is the macro time step (Python float) used to form the time derivative
-        in the PDE residual.
-        """
-        while True:
-            c0, p0, c1, p1, t0 = self.generate_batch()
-            yield {
-                "c0": c0,
-                "p0": p0,
-                "c1": c1,
-                "p1": p1,
-                "t0": t0,
-                "dt": self.dt_macro,
-            }
-
 
 if __name__ == "__main__":
     main()

@@ -198,8 +198,8 @@ class ElderProblem2D(Datapipe):
         self.Ny_tot = self.Ny + 2
 
         # source segment on the top wall (full-grid column indices).
-        src_n = max(1, int(round(self.source_frac * self.Nx_tot)))
-        self.src_x0 = (self.Nx_tot - src_n) // 2
+        src_n = max(1, int(round(self.source_frac * self.Nx)))
+        self.src_x0 = 1 + (self.Nx - src_n) // 2
         self.src_x1 = self.src_x0 + src_n
 
         # --- equivalent-freshwater-head hydrostatic reference ----------------
@@ -438,7 +438,7 @@ class ElderProblem2D(Datapipe):
             ci = self._interior(c)                            # [..., Ny, Nx]
             rho = self.rho_f + self.drho * ci
             adv = self._advective_divergence(ci, Fx, Fz)      # div(rho q c)
-            diff = self._diffusive_divergence(ci, rho)        # div(rho phi Dm grad c)
+            diff = self._diffusive_divergence(c, rho)        # div(rho phi Dm grad c)
             # Conservative time term: d(phi rho c)/dt = phi (rho_f + 2 drho c) dc/dt.
             denom = self.phi * (self.rho_f + 2.0 * self.drho * ci)
             dc_dt = (diff - adv) / denom
@@ -473,10 +473,11 @@ class ElderProblem2D(Datapipe):
         adv_z = (Fz_south * c_south - Fz_north * c_north) / self.dy
         return adv_x + adv_z
 
-    def _diffusive_divergence(self, ci: Tensor, rho: Tensor) -> Tensor:
+    def _diffusive_divergence(self, c_full: Tensor, rho: Tensor) -> Tensor:
         """``div(rho phi Dm grad c)`` on the interior, central, walls = 0."""
         kd = rho * self.phi * self.Dm
-        cp = F.pad(ci, (1, 1, 1, 1), mode="replicate")
+        # 修改点：直接使用包含物理边界 c=1 的全网格 c_full
+        cp = c_full 
         kdp = F.pad(kd, (1, 1, 1, 1), mode="replicate")
         cc = cp[..., 1:-1, 1:-1]
         ke = 0.5 * (kdp[..., 1:-1, 1:-1] + kdp[..., 1:-1, 2:])
@@ -547,46 +548,53 @@ class ElderProblem2D(Datapipe):
         self._traj_h[idx] = h1
         self._traj_step[idx] += 1
 
-    def generate_batch(self) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
+
+    def generate_batch(self) -> Tuple[Tensor, Tensor, Tensor, Tensor, Tensor]:
         """Collect ``batch_size`` samples by advancing trajectories in rounds.
 
         Each round advances all ``n_trajectories`` in parallel (one batched
         flow solve) and yields that many samples; rounds repeat until the
         batch is full, then the concatenation is trimmed to ``batch_size``.
         """
-        c0s, p0s, c1s, p1s = [], [], [], []
+        c0s, p0s, c1s, p1s, t0s = [], [], [], [], []
         n = self.batch_size
         have = 0
         while have < n:
+            # 记录推进前的物理时间 (将秒转换为天)
+            t0 = self._traj_step.clone() * self.dt_macro / (24 * 3600.0)
             c0, p0, c1, p1 = self._advance_all()
             c0s.append(c0)
             p0s.append(p0)
             c1s.append(c1)
             p1s.append(p1)
+            t0s.append(t0)
             have += c0.shape[0]
         return (
             torch.cat(c0s, dim=0)[:n],
             torch.cat(p0s, dim=0)[:n],
             torch.cat(c1s, dim=0)[:n],
             torch.cat(p1s, dim=0)[:n],
+            torch.cat(t0s, dim=0)[:n],
         )
 
     def __iter__(self) -> Dict[str, Tensor]:
-        """Yield batches of ``{c0, p0, c1, p1, dt}`` infinitely.
+        """Yield batches of ``{c0, p0, c1, p1, t0, dt}`` infinitely.
 
         Tensor shapes are ``[batch, 1, Ny+2, Nx+2]`` (walls included); ``dt``
         is the macro time step (Python float) used to form the time derivative
         in the PDE residual.
         """
         while True:
-            c0, p0, c1, p1 = self.generate_batch()
+            c0, p0, c1, p1, t0 = self.generate_batch()
             yield {
                 "c0": c0,
                 "p0": p0,
                 "c1": c1,
                 "p1": p1,
+                "t0": t0,
                 "dt": self.dt_macro,
             }
+
 
     def __len__(self) -> int:
         return sys.maxsize
