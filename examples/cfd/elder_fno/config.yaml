@@ -1,0 +1,80 @@
+# SPDX-FileCopyrightText: Copyright (c) 2023 - 2026 NVIDIA CORPORATION & AFFILIATES.
+# SPDX-FileCopyrightText: All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+hydra:
+  job:
+    chdir: True
+  run:
+    dir: ./outputs_elder_fno
+
+# PDE parameters (SI; variable-density, non-Boussinesq Elder in primitive
+# variables c and p, matching the UG4 Lua setup).
+physics:
+  phi: 0.1                 # porosity
+  Dm: 3.565e-6             # molecular diffusion [m^2/s]
+  permeability: 4.845e-13  # permeability k [m^2]
+  viscosity: 1.0e-3        # dynamic viscosity mu [Pa s]
+  g: 9.81                  # gravitational acceleration (downward, positive) [m/s^2]
+  rho_f: 1000.0            # fresh-water density [kg/m^3]
+  drho: 200.0              # density contrast: rho(c) = rho_f + drho*c [kg/m^3]
+  W: 600.0                 # domain width [m]
+  H: 150.0                 # domain height [m]
+  p_scale: null            # head scale for network I/O (null => drho*g*H)
+  dt_macro: 864000.0       # time span between (c_n,p_n) and (c_{n+1},p_{n+1}) [s] (10 days)
+  flow_sign: 1.0           # +1 => dense (c=1) fluid sinks; flip to -1 if fingers rise
+
+# On-the-fly data generation (non-periodic, wall-bounded domain)
+data:
+  resolution: 64           # interior cells along width (Nx); full grid is (Ny+2)x(Nx+2)
+  source_frac: 0.5         # fraction of top width occupied by the c=1 source
+  batch_size: 32
+  substeps: 4              # min transport sub-steps (auto-increased for CFL)
+  max_substeps: 4000       # cap on auto-increased sub-steps (stability vs cost)
+  n_trajectories: 16       # independent rollouts advanced one macro step at a time
+  rollout_steps: 64        # macro steps before a trajectory resets to the IC
+  steps_per_epoch: 64
+
+# FNO architecture (input: c_n, h_n  ->  output: c_{n+1}, h_{n+1})
+model:
+  in_channels: 2
+  out_channels: 2
+  decoder_layers: 1
+  decoder_layer_size: 64
+  dimension: 2
+  latent_channels: 32
+  num_fno_layers: 4
+  num_fno_modes: [8, 12]   # per-axis modes [modes_y, modes_x] for the 4:1 grid
+  padding: 8
+
+training:
+  max_epochs: 50
+  start_lr: 1.0e-3
+  gamma: 0.9995
+  physics_weight: 0.01     # PDE-residual weight; start at 0 (data-only) then increase
+  p_data_weight: 1.0       # weight of the pressure-head data loss term
+  continuity_weight: 1.0   # weight of the div(rho q) residual relative to the transport residual
+  mask_top_rows: 2         # exclude this many top interior rows from the PDE residual (stiff source layer)
+  val_every: 5
+  use_amp: false           # enable mixed precision on CUDA (autocast + GradScaler)
+  tf32: true               # allow TF32 matmul/conv on Ampere+ (no-op on CPU)
+  compile: false           # torch.compile the FNO forward (best on CUDA; first
+                           # iterations compile, so use for long runs)
+  compile_mode: default    # "default" | "reduce-overhead" | "max-autotune"
+
+seed: 0                    # 0 = no seeding; per-rank seeding when > 0 (DDP-ready)
+
+validation:
+  sample_size: 256
