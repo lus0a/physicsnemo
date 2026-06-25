@@ -68,6 +68,30 @@ def _enable_tf32() -> None:
     torch.set_float32_matmul_precision("high")
 
 
+def _resolve_fno_modes(raw, datapipe, padding):
+    """Resolve ``num_fno_modes`` to an explicit ``[modes_y, modes_x]`` list.
+
+    A float in ``(0, 1]`` (or a list of such, one per axis) is interpreted as a
+    *fraction* of the Fourier modes available to the spectral convolution,
+    which operates on the padded grid ``(Ny_tot + pad, Nx_tot + pad)``. This
+    auto-scales with resolution. Integers pass through unchanged.
+
+    The per-axis cap is ``n // 2`` (n = padded dim): the y axis keeps both low-
+    and high-frequency halves (so 2*modes_y <= n), and using ``n//2`` for x is a
+    conservative choice that avoids the rfft Nyquist edge. Fractions are floored
+    and clamped to >= 1.
+    """
+    vals = [raw, raw] if isinstance(raw, (int, float)) else list(raw)
+    pad = int(padding)
+    out = []
+    for v, n_tot in zip(vals, (datapipe.Ny_tot + pad, datapipe.Nx_tot + pad)):
+        if isinstance(v, float) and 0.0 < v <= 1.0:
+            out.append(max(1, int(v * (n_tot // 2))))
+        else:
+            out.append(int(v))
+    return out
+
+
 def _build_residual_mask(datapipe, mask_top_rows: int, device) -> torch.Tensor:
     """Mask of shape ``[Ny, Nx]`` (interior) for the PDE residual.
 
@@ -163,8 +187,14 @@ def _residuals_own_fd(pred_c, pred_p, c0, dt, dp, mask):
     return loss_c, loss_p
 
 
-def validation_step(model, datapipe, p_hydro, p_scale, num_iters, epoch, out_dir, device, use_amp):
-    """Evaluate MSE on fresh trajectory samples and save a comparison plot."""
+def validation_step(model, datapipe, p_hydro, p_scale, num_iters, epoch, out_dir, device, use_amp,
+                    val_history=None, train_history=None):
+    """Evaluate MSE on fresh trajectory samples and save a comparison plot.
+
+    ``val_history`` / ``train_history`` are mutable lists the caller passes in;
+    this call appends its result to ``val_history`` and plots both curves at
+    the bottom of the figure (log y-axis). Pass ``None`` to skip the curve.
+    """
     model.eval()
     total_c, total_h, count = 0.0, 0.0, 0
     autocast_dev = "cuda" if device.type == "cuda" else "cpu"
@@ -201,12 +231,20 @@ def validation_step(model, datapipe, p_hydro, p_scale, num_iters, epoch, out_dir
     if last is not None:
         c_true, c_pred, h_true, h_pred = (t.detach().cpu().numpy() for t in last[:4])
         t1_days = last[4]
-        fig, ax = plt.subplots(2, 3, figsize=(15, 8))
-        
-        # 添加带有 Epoch 和 物理时间的全局大标题
-        fig.suptitle(f"Elder FNO Validation - Epoch {epoch} | Physical Time: {t1_days:.1f} Days", 
-                     fontsize=18, fontweight='bold')
-                     
+        # 3 行 GridSpec: 上两行是 c/h 的 True/Pred/error 图, 第三行跨 3 列画 loss 曲线。
+        fig = plt.figure(figsize=(15, 10))
+        gs = fig.add_gridspec(3, 3, height_ratios=[1, 1, 0.55], hspace=0.45)
+        ax = [[fig.add_subplot(gs[0, c]) for c in range(3)],
+              [fig.add_subplot(gs[1, c]) for c in range(3)]]
+        ax_loss = fig.add_subplot(gs[2, :])
+
+        # 添加带有 Epoch、物理时间和验证 loss 的全局大标题
+        fig.suptitle(
+            f"Elder FNO Validation - Epoch {epoch} | Physical Time: {t1_days:.1f} Days\n"
+            f"MSE_c = {mean_c:.3e}   MSE_h = {mean_h:.3e}   Total = {mean_c + mean_h:.3e}",
+            fontsize=16, fontweight='bold',
+        )
+
         titles = [
             ("True c", "Pred c", "|c error|"),
             ("True h", "Pred h", "|h error|"),
@@ -216,15 +254,44 @@ def validation_step(model, datapipe, p_hydro, p_scale, num_iters, epoch, out_dir
             (h_true, h_pred, np.abs(h_pred - h_true)),
         ]
         for row in range(2):
+            # 每行用 True 字段的范围统一 True/Pred 的图例 (colorbar), 误差列单独缩放。
+            true_f = fields[row][0]
+            if row == 0:
+                # 浓度 c 物理范围为 [0, 1]。
+                row_vmin, row_vmax = 0.0, 1.0
+            else:
+                row_vmin, row_vmax = float(true_f.min()), float(true_f.max())
             for col in range(3):
                 f = fields[row][col]
-                vmax = 1.0 if row == 0 and col < 2 else (None)
-                im = ax[row, col].imshow(f, origin="upper", vmin=0.0, vmax=vmax)
-                ax[row, col].set_title(titles[row][col])
-                plt.colorbar(im, ax=ax[row, col])
-        
-        # 调整布局，为大标题留出空间
-        fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+                if col < 2:
+                    vmin, vmax = row_vmin, row_vmax
+                else:
+                    # 误差列: 从 0 到该列自身最大值。
+                    vmin, vmax = 0.0, float(f.max())
+                im = ax[row][col].imshow(f, origin="upper", vmin=vmin, vmax=vmax)
+                ax[row][col].set_title(titles[row][col])
+                plt.colorbar(im, ax=ax[row][col])
+
+        # --- loss 曲线 (log y) ---
+        # 记录当前验证点到历史, 供本次及后续绘图使用。
+        if val_history is not None:
+            val_history.append((epoch, mean_c + mean_h, mean_c, mean_h))
+        if val_history:
+            ve = [h[0] for h in val_history]
+            ax_loss.semilogy(ve, [h[1] for h in val_history], "o-", label="val total")
+            ax_loss.semilogy(ve, [h[2] for h in val_history], ".--", alpha=0.7, label="val MSE_c")
+            ax_loss.semilogy(ve, [h[3] for h in val_history], ".--", alpha=0.7, label="val MSE_h")
+        if train_history:
+            te = [h[0] for h in train_history]
+            ax_loss.semilogy(te, [h[1] for h in train_history], "-", alpha=0.8, label="train loss_data")
+        ax_loss.set_xlabel("epoch")
+        ax_loss.set_ylabel("loss (log)")
+        ax_loss.set_title("Loss curves")
+        ax_loss.legend(loc="best", fontsize=8)
+        ax_loss.grid(True, which="both", alpha=0.3)
+
+        # 调整布局, 为两行大标题留出空间
+        fig.tight_layout(rect=[0, 0.03, 1, 0.93])
         fig.savefig(os.path.join(out_dir, f"val_{epoch:04d}.png"))
         plt.close(fig)
     return mean_c + mean_h
@@ -290,7 +357,10 @@ def main(cfg: DictConfig) -> None:
         dimension=cfg.model.dimension,
         latent_channels=cfg.model.latent_channels,
         num_fno_layers=cfg.model.num_fno_layers,
-        num_fno_modes=OmegaConf.to_container(cfg.model.num_fno_modes, resolve=True),
+        num_fno_modes=_resolve_fno_modes(
+            OmegaConf.to_container(cfg.model, resolve=True)["num_fno_modes"],
+            datapipe, cfg.model.padding,
+        ),
         padding=cfg.model.padding,
     ).to(device)
 
@@ -330,6 +400,10 @@ def main(cfg: DictConfig) -> None:
     p_data_weight = float(cfg.training.get("p_data_weight", 1.0))
     continuity_weight = float(cfg.training.get("continuity_weight", 1.0))
 
+    # 跨 epoch 的 loss 历史, 供验证图绘制 loss 曲线 (log y)。
+    train_history = []   # [(epoch, mean loss_data)]
+    val_history = []     # [(epoch, total, mean_c, mean_h)]
+
     if start_epoch == 0:
         log.success("Training started...")
     else:
@@ -337,6 +411,8 @@ def main(cfg: DictConfig) -> None:
 
     for epoch in range(max(1, start_epoch + 1), cfg.training.max_epochs + 1):
         model.train()
+        epoch_loss_sum = 0.0
+        epoch_loss_n = 0
         with LaunchLogger(
             "train", epoch=epoch, num_mini_batch=steps_per_epoch, epoch_alert_freq=5
         ) as logger:
@@ -387,13 +463,17 @@ def main(cfg: DictConfig) -> None:
                         "loss_pde_p": loss_pde_p.detach(),
                     }
                 )
+                epoch_loss_sum += float(loss_data.detach())
+                epoch_loss_n += 1
             logger.log_epoch({"Learning Rate": optimizer.param_groups[0]["lr"]})
+            train_history.append((epoch, epoch_loss_sum / max(epoch_loss_n, 1)))
 
         if epoch % cfg.training.val_every == 0:
             with LaunchLogger("valid", epoch=epoch) as logger:
                 val_loss = validation_step(
                     forward_model, val_datapipe, p_hydro, p_scale,
                     val_iters, epoch, out_dir, device, use_amp,
+                    val_history=val_history, train_history=train_history,
                 )
                 logger.log_epoch({"Validation error": val_loss})
 

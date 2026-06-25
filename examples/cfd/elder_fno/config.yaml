@@ -33,7 +33,7 @@ physics:
   W: 600.0                 # domain width [m]
   H: 150.0                 # domain height [m]
   p_scale: null            # head scale for network I/O (null => drho*g*H)
-  dt_macro: 864000.0       # time span between (c_n,p_n) and (c_{n+1},p_{n+1}) [s] (10 days)
+  dt_macro: 2592000.0      # time span between (c_n,p_n) and (c_{n+1},p_{n+1}) [s] (30 days)
   flow_sign: 1.0           # +1 => dense (c=1) fluid sinks; flip to -1 if fingers rise
 
 # On-the-fly data generation (non-periodic, wall-bounded domain)
@@ -44,7 +44,7 @@ data:
   substeps: 4              # min transport sub-steps (auto-increased for CFL)
   max_substeps: 4000       # cap on auto-increased sub-steps (stability vs cost)
   n_trajectories: 16       # independent rollouts advanced one macro step at a time
-  rollout_steps: 64        # macro steps before a trajectory resets to the IC
+  rollout_steps: 120        # macro steps before a trajectory resets to the IC (~10 yr at dt=30 d)
   steps_per_epoch: 64
 
 # FNO architecture (input: c_n, h_n  ->  output: c_{n+1}, h_{n+1})
@@ -54,16 +54,19 @@ model:
   decoder_layers: 1
   decoder_layer_size: 64
   dimension: 2
-  latent_channels: 32
+  latent_channels: 64
   num_fno_layers: 4
-  num_fno_modes: [8, 12]   # per-axis modes [modes_y, modes_x] for the 4:1 grid
+  num_fno_modes: 0.8       # fraction of available Fourier modes per axis (auto-scales with
+                           # resolution and padding). float in (0,1] => fraction; list of
+                           # ints => explicit [modes_y, modes_x]. 0.8 on the 4:1 grid
+                           # (padded 26x74) resolves to [10, 29]
   padding: 8
 
 training:
   max_epochs: 50
   start_lr: 1.0e-3
   gamma: 0.9995
-  physics_weight: 0.01     # PDE-residual weight; start at 0 (data-only) then increase
+  physics_weight: 0.0      # PDE-residual weight; 0 = data-only (re-enable once data fits)
   p_data_weight: 1.0       # weight of the pressure-head data loss term
   continuity_weight: 1.0   # weight of the div(rho q) residual relative to the transport residual
   mask_top_rows: 2         # exclude this many top interior rows from the PDE residual (stiff source layer)

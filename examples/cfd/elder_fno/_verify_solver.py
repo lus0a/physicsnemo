@@ -130,28 +130,45 @@ def test_ic_and_gauge():
 
 def test_10_year_fingering(sinking_sign):
     import matplotlib.pyplot as plt
+    
+    dt_days = 10.0
+    interval_days = 365  # 修改此变量以调整输出间隔（单位：天）
+    total_years = 10
+    
     dp = ElderProblem2D(resolution=64, batch_size=1, n_trajectories=1,
-                        rollout_steps=400, dt_macro=10.0 * 24 * 3600.0,
+                        rollout_steps=400, dt_macro=dt_days * 24 * 3600.0,
                         flow_sign=sinking_sign, 
                         device="cpu")
     
- 
-    steps_10_years = 365
-    c1 = None
-    for _ in range(steps_10_years):
-        _, _, c1, _ = dp._advance_all()
+    total_days = total_years * 365
+    max_step = int(round(total_days / dt_days))
     
-    c_final = c1[0, 0].detach().cpu().numpy()
-    plt.figure(figsize=(10, 4))
-    plt.imshow(c_final, origin="upper", cmap="viridis", vmin=0, vmax=1, aspect="auto")
-    plt.colorbar(label="Concentration c")
-    plt.title(f"Concentration field after ~10 years ({steps_10_years} steps), flow_sign={sinking_sign}")
-    plt.xlabel("x cells")
-    plt.ylabel("z cells")
-    plt.savefig("10_year_fingering.png", dpi=150, bbox_inches='tight')
-    plt.close()
-    print(f"[6] Saved 10-year fingering plot. Max c = {c_final.max():.3f}")
-
+    # 计算需要截图保存的目标步数（由于 365 不能被 10 整除，采用四舍五入取最接近的整数步）
+    target_steps = set()
+    current_day = interval_days
+    while current_day <= total_days:
+        step = int(round(current_day / dt_days))
+        target_steps.add(step)
+        current_day += interval_days
+    
+    c1 = None
+    for step in range(1, max_step + 1):
+        _, _, c1, _ = dp._advance_all()
+        
+        # 如果当前步数在目标集合中，则保存图像
+        if step in target_steps:
+            current_days = step * dt_days
+            c_save = c1[0, 0].detach().cpu().numpy()
+            plt.figure(figsize=(10, 4))
+            plt.imshow(c_save, origin="upper", cmap="viridis", vmin=0, vmax=1, aspect="auto")
+            plt.colorbar(label="Concentration c")
+            plt.title(f"Concentration field at ~{int(current_days)} days ({step} steps), flow_sign={sinking_sign}")
+            plt.xlabel("x cells")
+            plt.ylabel("z cells")
+            plt.savefig(f"fingering_{int(current_days)}_days.png", dpi=150, bbox_inches='tight')
+            plt.close()
+            print(f"[6] Saved fingering plot at ~{int(current_days)} days. Max c = {c_save.max():.3f}")
+            
 
 if __name__ == "__main__":
     torch.manual_seed(0)

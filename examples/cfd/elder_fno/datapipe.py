@@ -117,7 +117,11 @@ class ElderProblem2D(Datapipe):
         Fraction of the top width occupied by the ``c = 1`` source segment.
     p_scale : float
         Characteristic pressure-head scale used to normalize ``h`` for the FNO
-        input/output (default: the buoyancy head ``drho * g * H``).
+        input/output. ``None`` (default) => empirical: set to the observed
+        ``max|h|`` over the pre-rolled trajectories, so ``h`` is O(1) and its
+        MSE balances c's (the physical maximum ``drho * g * H`` is ~20x too
+        large and starves the h loss). Set explicitly for exact resume
+        reproducibility.
     dt_macro : float
         Time span between ``(c_n, p_n)`` and ``(c_{n+1}, p_{n+1})`` [s].
     flow_sign : float
@@ -208,8 +212,10 @@ class ElderProblem2D(Datapipe):
         self.p_hydro = (self.rho_f * self.g * z).view(-1, 1).expand(
             self.Ny_tot, self.Nx_tot
         ).contiguous()
-        # Pressure-head scale for network normalization.
-        self.p_scale = float(p_scale) if p_scale is not None else (self.drho * self.g * self.H)
+        # Pressure-head scale for network normalization. If not given
+        # explicitly it is set *after* the trajectory pre-roll from the observed
+        # head amplitude (see the block below the pre-roll loop).
+        self.p_scale = float(p_scale) if p_scale is not None else None
         self.p_hydro = self.p_hydro.to(self.device)
 
         # --- trajectory buffers (staggered phases) --------------------------
@@ -236,6 +242,28 @@ class ElderProblem2D(Datapipe):
             )
             if idx.numel():
                 self._advance_subset(idx)
+
+        # --- empirical head scale for network normalization ------------------
+        # The naive scale ``drho*g*H`` is the *maximum possible* head (a fully
+        # dense column, c=1 everywhere). The real Elder head perturbation
+        # ``h = p - p_hydro`` is only ~5% of that, because the domain is mostly
+        # fresh (mean c ~ 0.04): normalizing by ``drho*g*H`` crushes h to about
+        # [-0.05, 0], making its MSE ~200x smaller than c's, so the joint data
+        # loss ignores h and Pred h ends up inaccurate. Scaling by the observed
+        # max|h| brings h to O(1) and balances the two channels.
+        #
+        # The reference solver is deterministic (no RNG), so max|h| over a
+        # rollout is a reproducible function of the physics+grid -- this makes
+        # p_scale consistent across instances (train, eval, resume). When the
+        # staggered pre-roll ran (n_trajectories >= 2) we reuse _traj_h; when it
+        # did not (e.g. n_trajectories == 1, used by rollout eval) we run a
+        # deterministic calibration rollout so p_scale still matches training.
+        if self.p_scale is None:
+            h_amp = float(self._traj_h.abs().amax().item())
+            if h_amp < 1.0:  # pre-roll did not advance _traj_h (still at IC)
+                h_amp = self._calibrate_head_scale()
+            floor = 0.01 * (self.drho * self.g * self.H)  # never below 1% of max
+            self.p_scale = max(h_amp, floor)
 
     # ------------------------------------------------------------------
     # grid helpers
@@ -277,8 +305,15 @@ class ElderProblem2D(Datapipe):
         below = torch.cat([torch.zeros_like(face[..., :1, :]), face], dim=-2)
         f = -self.gz * (above - below) / self.dy
         # Fluid-mass storage term  d(phi rho)/dt = phi*drho*dc/dt  (moved to RHS).
+        # The c source/sink BCs change total mass, so this term has a nonzero spatial
+        # mean; with no-flow walls + a single pressure gauge that excites the Poisson
+        # null space and produces a spurious global head gradient. Project out the
+        # uniform (null-space) mode by subtracting the per-sample spatial mean: the
+        # removed constant is the gauge-absorbed global pressure, which has no effect on
+        # the velocity (only gradients drive flow). Local mass conservation is preserved.
         if dc_dt is not None:
-            f = f - self.phi * self.drho * dc_dt
+            dc_dev = dc_dt - dc_dt.mean(dim=(-2, -1), keepdim=True)
+            f = f - self.phi * self.drho * dc_dev
         f[..., 0, 0] = 0.0                                   # gauge RHS
         return f, alpha
 
@@ -493,20 +528,17 @@ class ElderProblem2D(Datapipe):
     # Trajectory management (strategy B: sample along rollouts)
     # ------------------------------------------------------------------
     def _advance_all(self) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
-        """Advance every trajectory by one macro step in parallel and return
-        the ``(c0, p0, c1, p1)`` samples produced by this round (full grid)."""
         c0 = self._traj_c.clone()
         h0 = self._traj_h.clone()
-        # Frozen Darcy face fluxes from (c_n, h_n), batched over trajectories.
         Fx, Fz = self._face_fluxes(self._interior(c0), self._interior(h0))
         c1 = self._integrate(c0, Fx, Fz)
-        # Re-solve the consistent head for c_{n+1}, including the fluid-mass
-        # storage term d(phi rho)/dt = phi*drho*(c1 - c0)/dt (forward diff).
         dc_dt = self._interior(c1 - c0) / self.dt_macro
         h1 = self._embed_interior(self._flow_solve(self._interior(c1), dc_dt))
-        # Commit state, then reset aged trajectories to the initial condition.
-        self._traj_c = c1
-        self._traj_h = h1
+        
+        # 【修改点】：使用 clone() 避免后续 reset 污染返回的 c1, h1
+        self._traj_c = c1.clone()
+        self._traj_h = h1.clone()
+        
         self._traj_step += 1
         reset = self._traj_step >= self.rollout_steps
         if bool(reset.any().item()):
@@ -536,18 +568,41 @@ class ElderProblem2D(Datapipe):
             self._advance_all()
 
     def _advance_subset(self, idx: Tensor) -> None:
-        """Advance the trajectories selected by index ``idx`` by one macro step
-        (batched over the subset), without reset handling (used for pre-roll)."""
         c0 = self._traj_c[idx].clone()
         h0 = self._traj_h[idx].clone()
         Fx, Fz = self._face_fluxes(self._interior(c0), self._interior(h0))
         c1 = self._integrate(c0, Fx, Fz)
         dc_dt = self._interior(c1 - c0) / self.dt_macro
         h1 = self._embed_interior(self._flow_solve(self._interior(c1), dc_dt))
-        self._traj_c[idx] = c1
-        self._traj_h[idx] = h1
+        
+        # 【修改点】：同样使用 clone()
+        self._traj_c[idx] = c1.clone()
+        self._traj_h[idx] = h1.clone()
+        
         self._traj_step[idx] += 1
 
+    def _calibrate_head_scale(self) -> float:
+        """Deterministic estimate of ``max|h|`` over a full rollout from the IC.
+
+        Used when the staggered pre-roll did not run (e.g. ``n_trajectories ==
+        1``), so that ``p_scale`` matches the value training computed. The
+        reference solver has no randomness, so this is reproducible across
+        instances (train / eval / resume). Returns the running max of ``|h|``
+        over ``rollout_steps`` macro steps from the initial condition.
+        """
+        c = torch.zeros(1, 1, self.Ny_tot, self.Nx_tot, device=self.device)
+        h = torch.zeros_like(c)
+        self._apply_bc_c(c)
+        h = self._embed_interior(self._flow_solve(self._interior(c)))
+        h_amp = float(h.abs().amax().item())
+        for _ in range(max(1, self.rollout_steps)):
+            c_prev = c
+            Fx, Fz = self._face_fluxes(self._interior(c), self._interior(h))
+            c = self._integrate(c, Fx, Fz)
+            dc_dt = self._interior(c - c_prev) / self.dt_macro
+            h = self._embed_interior(self._flow_solve(self._interior(c), dc_dt))
+            h_amp = max(h_amp, float(h.abs().amax().item()))
+        return h_amp
 
     def generate_batch(self) -> Tuple[Tensor, Tensor, Tensor, Tensor, Tensor]:
         """Collect ``batch_size`` samples by advancing trajectories in rounds.
