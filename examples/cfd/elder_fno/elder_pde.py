@@ -72,41 +72,40 @@ class ElderFlowTransport(PDE):
         rho_f: float = 1000.0,
         drho: float = 200.0,
     ):
-        self.dim = 2
-        x, z = Symbol("x"), Symbol("z")
-        c_var = Function(c)(x, z)
-        p_var = Function(p)(x, z)
+        self.dim = 2                               # 2D 问题
+        x, z = Symbol("x"), Symbol("z")            # 空间坐标 (z 向下为正)
+        c_var = Function(c)(x, z)                  # 浓度场 c(x,z)
+        p_var = Function(p)(x, z)                  # 压力场 p(x,z)
 
-        phi_n = Number(phi)
-        Dm_n = Number(Dm)
-        kom = Number(permeability / viscosity)
-        g_n = Number(g)
-        rho_f_n = Number(rho_f)
-        drho_n = Number(drho)
+        phi_n = Number(phi)                        # 孔隙度 (常数)
+        Dm_n = Number(Dm)                          # 分子扩散系数
+        kom = Number(permeability / viscosity)     # k/mu
+        g_n = Number(g)                            # 重力加速度
+        rho_f_n = Number(rho_f)                    # 淡水密度
+        drho_n = Number(drho)                      # 密度差
 
-        # Variable density rho(c) = rho_f + drho * c.
+        # 变密度 rho(c) = rho_f + drho * c。
         rho = rho_f_n + drho_n * c_var
-        # Darcy velocity (z downward, gravity +z): q = -(k/mu)(grad p - rho g).
-        qx = -kom * p_var.diff(x)
-        qz = -kom * (p_var.diff(z) - rho * g_n)
+        # Darcy 速度 (z 向下, 重力 +z): q = -(k/mu)(grad p - rho g)。
+        qx = -kom * p_var.diff(x)                  # x 分量: -(k/mu) dp/dx
+        qz = -kom * (p_var.diff(z) - rho * g_n)    # z 分量: -(k/mu)(dp/dz - rho*g)
 
-        # Conservative accumulation coefficient: d(phi rho c)/dt
-        # = phi (rho_f + 2 drho c) c_t  (the time derivative c_t is added in
-        # the training script to form the full transport residual).
+        # 守恒累积系数: d(phi rho c)/dt = phi (rho_f + 2 drho c) c_t
+        # (时间导数 c_t 在训练脚本里加上以构成完整输运残差)。
         accum = phi_n * (rho_f_n + 2.0 * drho_n * c_var)
 
         self.equations = {
-            # Spatial part of the transport residual (advection - diffusion).
+            # 输运残差的空间部分 (对流 - 扩散)。
             "transport_spatial": (
-                (rho * qx * c_var).diff(x)
-                + (rho * qz * c_var).diff(z)
-                - ((rho * phi_n * Dm_n * c_var.diff(x)).diff(x)
-                   + (rho * phi_n * Dm_n * c_var.diff(z)).diff(z))
+                (rho * qx * c_var).diff(x)         # 对流通量散度 div(rho q c) 的 x 部分
+                + (rho * qz * c_var).diff(z)       # z 部分
+                - ((rho * phi_n * Dm_n * c_var.diff(x)).diff(x)   # 扩散散度 div(rho phi Dm grad c) x 部分
+                   + (rho * phi_n * Dm_n * c_var.diff(z)).diff(z))   # z 部分
             ),
-            # Accumulation coefficient multiplying c_t.
+            # 累积系数 (乘到 c_t 上)。
             "transport_accum": accum,
-            # Flow / continuity residual: d(phi rho)/dt + div(rho q), with
-            # d(phi rho)/dt = phi*drho*c_t (rho = rho_f + drho*c, phi const).
-            "flow_storage": phi_n * drho_n,
-            "continuity_spatial": (rho * qx).diff(x) + (rho * qz).diff(z),
+            # 流/连续性残差: d(phi rho)/dt + div(rho q), 其中
+            # d(phi rho)/dt = phi*drho*c_t (rho = rho_f + drho*c, phi 常数)。
+            "flow_storage": phi_n * drho_n,        # 时间项系数 (乘 c_t)
+            "continuity_spatial": (rho * qx).diff(x) + (rho * qz).diff(z),   # div(rho q) 空间部分
         }

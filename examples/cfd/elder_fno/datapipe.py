@@ -193,55 +193,51 @@ class ElderProblem2D(Datapipe):
         # Signed downward gravity (flow_sign flips buoyancy coherently).
         self.gz = self.flow_sign * self.g
 
-        # --- grid (square cells, wall nodes included) -----------------------
-        self.Nx = int(self.resolution)            # interior x cells
-        self.Ny = max(1, int(round(self.Nx * self.H / self.W)))  # interior y cells
-        self.dx = self.W / self.Nx
-        self.dy = self.H / self.Ny
-        self.Nx_tot = self.Nx + 2
-        self.Ny_tot = self.Ny + 2
+        # --- grid (方形网格, 含壁面节点) -------------------------------------
+        self.Nx = int(self.resolution)            # 宽度方向内部 cell 数
+        self.Ny = max(1, int(round(self.Nx * self.H / self.W)))  # 高度方向内部 cell 数 (保 dx=dy)
+        self.dx = self.W / self.Nx                # x 方向网格间距 [m]
+        self.dy = self.H / self.Ny                # z 方向网格间距 [m] (= dx, 方形)
+        self.Nx_tot = self.Nx + 2                 # 全网格宽度 (含左右壁)
+        self.Ny_tot = self.Ny + 2                 # 全网格高度 (含上下壁)
 
-        # source segment on the top wall (full-grid column indices).
-        src_n = max(1, int(round(self.source_frac * self.Nx)))
-        self.src_x0 = 1 + (self.Nx - src_n) // 2
-        self.src_x1 = self.src_x0 + src_n
+        # 顶部壁面的源段 (全网格列下标, 居中)。
+        src_n = max(1, int(round(self.source_frac * self.Nx)))   # 源段占的列数
+        self.src_x0 = 1 + (self.Nx - src_n) // 2   # 源段左端 (全网格列, 1 = 第一个内部列)
+        self.src_x1 = self.src_x0 + src_n          # 源段右端 (开区间)
 
-        # --- equivalent-freshwater-head hydrostatic reference ----------------
-        # p_hydro(z) = rho_f * g * z, with z = row_index * dy (row 0 = top).
-        z = torch.arange(self.Ny_tot, dtype=torch.float32) * self.dy
+        # --- 等淡水头静水压参考 ----------------------------------------------
+        # p_hydro(z) = rho_f * g * z, 其中 z = 行号 * dy (第 0 行 = 顶部)。
+        z = torch.arange(self.Ny_tot, dtype=torch.float32) * self.dy   # 每行的深度 z [m]
         self.p_hydro = (self.rho_f * self.g * z).view(-1, 1).expand(
             self.Ny_tot, self.Nx_tot
-        ).contiguous()
-        # Pressure-head scale for network normalization. If not given
-        # explicitly it is set *after* the trajectory pre-roll from the observed
-        # head amplitude (see the block below the pre-roll loop).
+        ).contiguous()                            # 静水压场 [Ny_tot, Nx_tot] (Pa)
+        # 网络归一化用的水头尺度。若未显式给出, 在预滚之后由实测 max|h| 确定 (见下)。
         self.p_scale = float(p_scale) if p_scale is not None else None
         self.p_hydro = self.p_hydro.to(self.device)
 
-        # --- trajectory buffers (staggered phases) --------------------------
-        # State is batched over trajectories so the (batched) CG flow solve and
-        # the transport integrator advance all trajectories in parallel.
+        # --- 轨迹缓冲 (错相相位, 保证 batch 多样性) --------------------------
+        # 状态在轨迹维上批处理, 使 (批处理) 流场直接解 + 输运积分器并行推进所有轨迹。
         self._traj_c = torch.zeros(
             self.n_trajectories, 1, self.Ny_tot, self.Nx_tot, device=self.device
-        )
-        self._traj_h = torch.zeros_like(self._traj_c)
-        self._traj_step = torch.zeros(self.n_trajectories, dtype=torch.long, device=self.device)
-        # Apply c-BC and solve the consistent initial head for all trajectories.
+        )                                         # 各轨迹当前浓度 [n_traj,1,Ny_tot,Nx_tot]
+        self._traj_h = torch.zeros_like(self._traj_c)   # 各轨迹当前水头 h (内部+壁)
+        self._traj_step = torch.zeros(self.n_trajectories, dtype=torch.long, device=self.device)  # 各轨迹已推进步数
+        # 施加 c 边界条件, 并解出所有轨迹一致的初始水头。
         self._apply_bc_c(self._traj_c)
         self._traj_h = self._embed_interior(self._flow_solve(self._interior(self._traj_c)))
-        # Pre-roll trajectories to staggered phases for batch diversity. Round
-        # r advances the subset of trajectories whose target phase exceeds r,
-        # so the total work is max_target batched solves (not the sum).
+        # 把轨迹预滚到错相相位以增加 batch 多样性。第 r 轮推进所有目标相位 > r 的轨迹,
+        # 故总工作量为 max_target 次批处理解 (而非求和)。
         targets = [(t * self.rollout_steps) // max(1, self.n_trajectories)
-                   for t in range(self.n_trajectories)]
-        max_target = max(targets) if targets else 0
+                   for t in range(self.n_trajectories)]   # 每条轨迹的目标相位 (错相)
+        max_target = max(targets) if targets else 0       # 最大目标相位 = 预滚轮数
         for r in range(max_target):
             idx = torch.tensor(
                 [t for t in range(self.n_trajectories) if targets[t] > r],
                 dtype=torch.long, device=self.device,
-            )
+            )                                     # 本轮需推进的轨迹下标
             if idx.numel():
-                self._advance_subset(idx)
+                self._advance_subset(idx)         # 批处理推进这批轨迹一步
 
         # --- empirical head scale for network normalization ------------------
         # The naive scale ``drho*g*H`` is the *maximum possible* head (a fully
@@ -321,12 +317,12 @@ class ElderProblem2D(Datapipe):
         """Precompute the 5-point stencil face coefficients (``ae, aw, an, as_``)
         and the diagonal of M = -div(alpha grad .) for the no-flow (replicate)
         wall discretization. All outputs share the interior shape."""
-        ap = F.pad(alpha, (1, 1, 1, 1), mode="replicate")
-        ae = 0.5 * (ap[..., 1:-1, 1:-1] + ap[..., 1:-1, 2:])
-        aw = 0.5 * (ap[..., 1:-1, 1:-1] + ap[..., 1:-1, :-2])
-        an = 0.5 * (ap[..., 1:-1, 1:-1] + ap[..., 2:, 1:-1])
-        as_ = 0.5 * (ap[..., 1:-1, 1:-1] + ap[..., :-2, 1:-1])
-        diag = (ae + aw) / self.dx**2 + (an + as_) / self.dy**2
+        ap = F.pad(alpha, (1, 1, 1, 1), mode="replicate")   # 镜像填充 (no-flow 壁: 内部值复制到壁)
+        ae = 0.5 * (ap[..., 1:-1, 1:-1] + ap[..., 1:-1, 2:])   # 东界面系数 (cell i 与 i+1 的均值)
+        aw = 0.5 * (ap[..., 1:-1, 1:-1] + ap[..., 1:-1, :-2])  # 西界面系数
+        an = 0.5 * (ap[..., 1:-1, 1:-1] + ap[..., 2:, 1:-1])   # 北界面系数 (+z, j+1 下侧)
+        as_ = 0.5 * (ap[..., 1:-1, 1:-1] + ap[..., :-2, 1:-1]) # 南界面系数 (-z, j-1 上侧)
+        diag = (ae + aw) / self.dx**2 + (an + as_) / self.dy**2   # 对角线: 各方向面系数之和 (散度)
         return ae, aw, an, as_, diag
 
     def _flow_solve(self, c_int: Tensor, dc_dt: Tensor | None = None) -> Tensor:
@@ -348,32 +344,32 @@ class ElderProblem2D(Datapipe):
         a float32 solve returns an inaccurate head. The result is cast back to
         the input dtype.
         """
-        out_dtype = c_int.dtype
-        c64 = c_int.double()
+        out_dtype = c_int.dtype                  # 记录输入 dtype (最后要转回)
+        c64 = c_int.double()                     # 转 float64 (系数 ~1e-9, float32 不够精度)
         d64 = dc_dt.double() if dc_dt is not None else None
-        f, alpha = self._flow_rhs(c64, d64)
-        ae, aw, an, as_, _ = self._flow_stencil(alpha)
-        B = c64.shape[0]
-        Ny, Nx = self.Ny, self.Nx
-        N = Ny * Nx
+        f, alpha = self._flow_rhs(c64, d64)      # 右端项 f 与系数场 alpha = rho*k/mu
+        ae, aw, an, as_, _ = self._flow_stencil(alpha)   # 5 点模板面系数
+        B = c64.shape[0]                         # batch 维 (轨迹数)
+        Ny, Nx = self.Ny, self.Nx                # 内部网格尺寸
+        N = Ny * Nx                              # 内部 cell 总数 = 矩阵维数
         dev = c64.device
 
-        # Face conductances; zero the wall-face entries (no-flux).
-        cE = ae / self.dx**2
-        cW = aw / self.dx**2
-        cN = an / self.dy**2
-        cS = as_ / self.dy**2
-        cE[..., -1] = 0.0
-        cW[..., 0] = 0.0
-        cN[..., -1, :] = 0.0
-        cS[..., 0, :] = 0.0
-        diag = (cE + cW + cN + cS).reshape(B, N)
+        # 面传导率 = 面系数 / 间距^2; 把壁面处置零 (no-flux)。
+        cE = ae / self.dx**2                     # 东面传导率
+        cW = aw / self.dx**2                     # 西面
+        cN = an / self.dy**2                     # 北面 (+z)
+        cS = as_ / self.dy**2                    # 南面 (-z)
+        cE[..., -1] = 0.0                        # 最右列无东面 (右壁)
+        cW[..., 0] = 0.0                         # 最左列无西面 (左壁)
+        cN[..., -1, :] = 0.0                     # 最底行无北面 (底壁)
+        cS[..., 0, :] = 0.0                      # 最顶行无南面 (顶壁)
+        diag = (cE + cW + cN + cS).reshape(B, N)   # 对角线 (各 cell 周围面传导率之和)
 
-        A = torch.diag_embed(diag)
-        idx = torch.arange(N, device=dev)
-        i_grid = torch.arange(Nx, device=dev).repeat(Ny)     # column index per flat cell
-        j_grid = torch.arange(Ny, device=dev).repeat_interleave(Nx)
-        cEf = cE.reshape(B, N)
+        A = torch.diag_embed(diag)               # 批处理稠密矩阵 [B,N,N], 先放对角
+        idx = torch.arange(N, device=dev)        # 0..N-1 索引
+        i_grid = torch.arange(Nx, device=dev).repeat(Ny)     # 每个 flat cell 的列号 (x)
+        j_grid = torch.arange(Ny, device=dev).repeat_interleave(Nx)   # 每个 flat cell 的行号 (z)
+        cEf = cE.reshape(B, N)                   # 面传导率展平成 [B,N]
         cWf = cW.reshape(B, N)
         cNf = cN.reshape(B, N)
         cSf = cS.reshape(B, N)
@@ -392,14 +388,14 @@ class ElderProblem2D(Datapipe):
         A[:, idx[mS], idx[mS] + Nx] = -cNf[:, mS]
         A[:, idx[mN], idx[mN] - Nx] = -cSf[:, mN]
 
-        # Dirichlet gauge at the top-left cell (flat index 0).
-        A[:, 0, :] = 0.0
-        A[:, 0, 0] = 1.0
-        b = f.reshape(B, N).clone()
-        b[:, 0] = 0.0
+        # Dirichlet gauge at the top-left cell (flat index 0).  # 顶左 cell 处钉 h=0, 消除纯 Neumann 的常数不确定性
+        A[:, 0, :] = 0.0                          # 清掉第 0 行 (gauge 行)
+        A[:, 0, 0] = 1.0                          # 对角置 1
+        b = f.reshape(B, N).clone()               # 右端项 b = f
+        b[:, 0] = 0.0                             # gauge 行右端 = 0 (即 h[0]=0)
 
-        h = torch.linalg.solve(A, b.unsqueeze(-1)).squeeze(-1)
-        return h.reshape(B, 1, Ny, Nx).to(out_dtype)
+        h = torch.linalg.solve(A, b.unsqueeze(-1)).squeeze(-1)   # 批处理直接解 A h = b
+        return h.reshape(B, 1, Ny, Nx).to(out_dtype)   # reshape 回空间网格, 转回输入 dtype
 
     # ------------------------------------------------------------------
     # Darcy face fluxes (frozen over one macro step):  rho q at cell faces
@@ -413,18 +409,17 @@ class ElderProblem2D(Datapipe):
         (shape ``[..., Ny, Nx-1]``); ``Fz`` through the z-face between rows
         ``(j, j+1)`` (shape ``[..., Ny-1, Nx]``).
         """
-        rho = self.rho_f + self.drho * c_int
-        alpha = rho * self.k_over_mu
-        # x-faces (between i and i+1).
-        ax = 0.5 * (alpha[..., :, :-1] + alpha[..., :, 1:])
-        Fx = -ax * (h_int[..., :, 1:] - h_int[..., :, :-1]) / self.dx
-        # z-faces (between j and j+1): rho qz = -alpha h_z + (alpha drho c) gz.
-        # Use the cell-product-then-average for the buoyancy face value so the
-        # face-flux divergence is exactly consistent with the flow RHS ``f``.
-        az = 0.5 * (alpha[..., :-1, :] + alpha[..., 1:, :])
-        ac = alpha * self.drho * c_int
-        acz = 0.5 * (ac[..., :-1, :] + ac[..., 1:, :])
-        Fz = -az * (h_int[..., 1:, :] - h_int[..., :-1, :]) / self.dy + acz * self.gz
+        rho = self.rho_f + self.drho * c_int      # 变密度
+        alpha = rho * self.k_over_mu              # 系数场 alpha = rho*k/mu
+        # x 界面 (cell i 与 i+1 之间)。
+        ax = 0.5 * (alpha[..., :, :-1] + alpha[..., :, 1:])   # x 界面系数 (左右 cell 均值)
+        Fx = -ax * (h_int[..., :, 1:] - h_int[..., :, :-1]) / self.dx   # rho qx = -alpha dh/dx
+        # z 界面 (行 j 与 j+1 之间): rho qz = -alpha dh/dz + (alpha*drho*c)*gz。
+        # 浮力面值用 "先乘 cell 再平均" 以使通量散度与流场右端项 f 严格一致。
+        az = 0.5 * (alpha[..., :-1, :] + alpha[..., 1:, :])   # z 界面系数
+        ac = alpha * self.drho * c_int            # 浮力面值的原始量 alpha*drho*c
+        acz = 0.5 * (ac[..., :-1, :] + ac[..., 1:, :])   # 浮力面值 (z 界面均值)
+        Fz = -az * (h_int[..., 1:, :] - h_int[..., :-1, :]) / self.dy + acz * self.gz   # 压力梯度 + 浮力
         return Fx, Fz
 
     # ------------------------------------------------------------------
@@ -464,21 +459,21 @@ class ElderProblem2D(Datapipe):
     def _integrate(self, c0_full: Tensor, Fx: Tensor, Fz: Tensor) -> Tensor:
         """Advance the conservative transport equation over ``dt_macro`` with
         frozen face fluxes, CFL-auto-increased explicit-Euler sub-steps."""
-        n_sub = max(self.substeps, int(np.ceil(self.dt_macro / self._cfl_dt_max(Fx, Fz))))
-        n_sub = min(n_sub, self.max_substeps)
-        dt = self.dt_macro / n_sub
+        n_sub = max(self.substeps, int(np.ceil(self.dt_macro / self._cfl_dt_max(Fx, Fz))))   # 子步数 = max(下限, CFL 需要)
+        n_sub = min(n_sub, self.max_substeps)     # 触顶则截断 (代价/稳定性权衡)
+        dt = self.dt_macro / n_sub                # 每个子步的时长
 
-        c = c0_full.clone()
-        for _ in range(n_sub):
-            ci = self._interior(c)                            # [..., Ny, Nx]
-            rho = self.rho_f + self.drho * ci
-            adv = self._advective_divergence(ci, Fx, Fz)      # div(rho q c)
-            diff = self._diffusive_divergence(c, rho)        # div(rho phi Dm grad c)
-            # Conservative time term: d(phi rho c)/dt = phi (rho_f + 2 drho c) dc/dt.
-            denom = self.phi * (self.rho_f + 2.0 * self.drho * ci)
-            dc_dt = (diff - adv) / denom
-            c[..., 1:-1, 1:-1] = ci + dt * dc_dt
-            self._apply_bc_c(c)
+        c = c0_full.clone()                       # 工作副本 (不污染输入)
+        for _ in range(n_sub):                    # 显式 Euler 子步循环
+            ci = self._interior(c)                            # 内部切片 [..., Ny, Nx]
+            rho = self.rho_f + self.drho * ci                 # 变密度
+            adv = self._advective_divergence(ci, Fx, Fz)      # 对流通量散度 div(rho q c)
+            diff = self._diffusive_divergence(c, rho)        # 扩散通量散度 div(rho phi Dm grad c)
+            # 守恒时间项: d(phi rho c)/dt = phi (rho_f + 2 drho c) dc/dt。
+            denom = self.phi * (self.rho_f + 2.0 * self.drho * ci)   # 时间项系数 (phi*(rho_f+2*drho*c))
+            dc_dt = (diff - adv) / denom            # 浓度变化率 dc/dt = (扩散 - 对流) / 系数
+            c[..., 1:-1, 1:-1] = ci + dt * dc_dt   # 显式 Euler 更新内部 cell
+            self._apply_bc_c(c)                    # 每步重新施加 c 边界条件
         return c
 
     def _advective_divergence(self, ci: Tensor, Fx: Tensor, Fz: Tensor) -> Tensor:
@@ -528,39 +523,39 @@ class ElderProblem2D(Datapipe):
     # Trajectory management (strategy B: sample along rollouts)
     # ------------------------------------------------------------------
     def _advance_all(self) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
-        c0 = self._traj_c.clone()
-        h0 = self._traj_h.clone()
-        Fx, Fz = self._face_fluxes(self._interior(c0), self._interior(h0))
-        c1 = self._integrate(c0, Fx, Fz)
-        dc_dt = self._interior(c1 - c0) / self.dt_macro
-        h1 = self._embed_interior(self._flow_solve(self._interior(c1), dc_dt))
-        
+        c0 = self._traj_c.clone()                 # 当前 (上一步) 浓度, 克隆避免改到缓冲
+        h0 = self._traj_h.clone()                 # 当前水头
+        Fx, Fz = self._face_fluxes(self._interior(c0), self._interior(h0))   # 由 (c0,h0) 算冻结的面通量
+        c1 = self._integrate(c0, Fx, Fz)          # 显式积分输运方程得 c1
+        dc_dt = self._interior(c1 - c0) / self.dt_macro   # 浓度变化率 (供流场 storage 项)
+        h1 = self._embed_interior(self._flow_solve(self._interior(c1), dc_dt))   # 由 c1 + storage 解 h1
+
         # 【修改点】：使用 clone() 避免后续 reset 污染返回的 c1, h1
-        self._traj_c = c1.clone()
-        self._traj_h = h1.clone()
-        
-        self._traj_step += 1
-        reset = self._traj_step >= self.rollout_steps
+        self._traj_c = c1.clone()                 # 更新轨迹缓冲 (下一步的 c0)
+        self._traj_h = h1.clone()                 # 更新轨迹缓冲 (下一步的 h0)
+
+        self._traj_step += 1                      # 步数 +1
+        reset = self._traj_step >= self.rollout_steps   # 到达 rollout 长度的轨迹需 reset
         if bool(reset.any().item()):
-            self._reset_masked(reset)
-        p0 = h0 + self.p_hydro
+            self._reset_masked(reset)             # 把到期的轨迹重置回初值
+        p0 = h0 + self.p_hydro                    # 还原真实压力 p = h + p_hydro
         p1 = h1 + self.p_hydro
-        return c0, p0, c1, p1
+        return c0, p0, c1, p1                     # 返回单步对 (供训练)
 
     def _reset_masked(self, mask: Tensor) -> None:
         """Reset the trajectories selected by the boolean ``mask`` to the
         initial condition (c = 0 + source, h = flow solve)."""
-        n = int(mask.sum().item())
+        n = int(mask.sum().item())                # 到期的轨迹数
         if n == 0:
             return
-        idx = torch.nonzero(mask, as_tuple=False).flatten()
-        self._traj_c[idx] = 0.0
-        self._traj_h[idx] = 0.0
-        self._apply_bc_c(self._traj_c[idx])
-        self._traj_h[idx] = self._embed_interior(
+        idx = torch.nonzero(mask, as_tuple=False).flatten()   # 到期轨迹的下标
+        self._traj_c[idx] = 0.0                   # 清零浓度
+        self._traj_h[idx] = 0.0                   # 清零水头
+        self._apply_bc_c(self._traj_c[idx])       # 重新施加 c 边界条件 (源段 c=1 等)
+        self._traj_h[idx] = self._embed_interior(   # 重新解初始一致水头 (准静态)
             self._flow_solve(self._interior(self._traj_c[idx]))
         )
-        self._traj_step[idx] = 0
+        self._traj_step[idx] = 0                  # 步数归零
 
     def _advance_round(self, n_steps: int) -> None:
         """Advance all trajectories by ``n_steps`` macro steps (pre-roll)."""
@@ -568,18 +563,18 @@ class ElderProblem2D(Datapipe):
             self._advance_all()
 
     def _advance_subset(self, idx: Tensor) -> None:
-        c0 = self._traj_c[idx].clone()
+        c0 = self._traj_c[idx].clone()            # 取出这批轨迹的当前状态
         h0 = self._traj_h[idx].clone()
-        Fx, Fz = self._face_fluxes(self._interior(c0), self._interior(h0))
-        c1 = self._integrate(c0, Fx, Fz)
-        dc_dt = self._interior(c1 - c0) / self.dt_macro
-        h1 = self._embed_interior(self._flow_solve(self._interior(c1), dc_dt))
-        
+        Fx, Fz = self._face_fluxes(self._interior(c0), self._interior(h0))   # 面通量
+        c1 = self._integrate(c0, Fx, Fz)          # 推进浓度
+        dc_dt = self._interior(c1 - c0) / self.dt_macro   # storage 用
+        h1 = self._embed_interior(self._flow_solve(self._interior(c1), dc_dt))   # 推进水头
+
         # 【修改点】：同样使用 clone()
-        self._traj_c[idx] = c1.clone()
+        self._traj_c[idx] = c1.clone()            # 写回这批轨迹的缓冲
         self._traj_h[idx] = h1.clone()
-        
-        self._traj_step[idx] += 1
+
+        self._traj_step[idx] += 1                 # 步数 +1
 
     def _calibrate_head_scale(self) -> float:
         """Deterministic estimate of ``max|h|`` over a full rollout from the IC.
@@ -590,18 +585,18 @@ class ElderProblem2D(Datapipe):
         instances (train / eval / resume). Returns the running max of ``|h|``
         over ``rollout_steps`` macro steps from the initial condition.
         """
-        c = torch.zeros(1, 1, self.Ny_tot, self.Nx_tot, device=self.device)
-        h = torch.zeros_like(c)
-        self._apply_bc_c(c)
-        h = self._embed_interior(self._flow_solve(self._interior(c)))
-        h_amp = float(h.abs().amax().item())
-        for _ in range(max(1, self.rollout_steps)):
-            c_prev = c
+        c = torch.zeros(1, 1, self.Ny_tot, self.Nx_tot, device=self.device)   # 全新单条轨迹的 c
+        h = torch.zeros_like(c)                   # 水头
+        self._apply_bc_c(c)                       # 施加 IC 的 c 边界条件
+        h = self._embed_interior(self._flow_solve(self._interior(c)))   # IC 一致水头
+        h_amp = float(h.abs().amax().item())      # 当前 max|h|
+        for _ in range(max(1, self.rollout_steps)):   # 推 rollout_steps 步
+            c_prev = c                            # 记录前一步 (算 dc/dt)
             Fx, Fz = self._face_fluxes(self._interior(c), self._interior(h))
             c = self._integrate(c, Fx, Fz)
             dc_dt = self._interior(c - c_prev) / self.dt_macro
             h = self._embed_interior(self._flow_solve(self._interior(c), dc_dt))
-            h_amp = max(h_amp, float(h.abs().amax().item()))
+            h_amp = max(h_amp, float(h.abs().amax().item()))   # 更新全局 max|h|
         return h_amp
 
     def generate_batch(self) -> Tuple[Tensor, Tensor, Tensor, Tensor, Tensor]:
@@ -611,20 +606,20 @@ class ElderProblem2D(Datapipe):
         flow solve) and yields that many samples; rounds repeat until the
         batch is full, then the concatenation is trimmed to ``batch_size``.
         """
-        c0s, p0s, c1s, p1s, t0s = [], [], [], [], []
-        n = self.batch_size
-        have = 0
-        while have < n:
+        c0s, p0s, c1s, p1s, t0s = [], [], [], [], []   # 累积单步对的列表
+        n = self.batch_size                       # 目标 batch 大小
+        have = 0                                  # 已收集的样本数
+        while have < n:                           # 不足一个 batch 就继续推进
             # 记录推进前的物理时间 (将秒转换为天)
-            t0 = self._traj_step.clone() * self.dt_macro / (24 * 3600.0)
-            c0, p0, c1, p1 = self._advance_all()
+            t0 = self._traj_step.clone() * self.dt_macro / (24 * 3600.0)   # 各轨迹当前时间 (天)
+            c0, p0, c1, p1 = self._advance_all()  # 所有轨迹推进一步, 得一批单步对
             c0s.append(c0)
             p0s.append(p0)
             c1s.append(c1)
             p1s.append(p1)
             t0s.append(t0)
-            have += c0.shape[0]
-        return (
+            have += c0.shape[0]                   # 累加样本数 (= n_trajectories)
+        return (                                  # 拼接并裁到 batch_size
             torch.cat(c0s, dim=0)[:n],
             torch.cat(p0s, dim=0)[:n],
             torch.cat(c1s, dim=0)[:n],

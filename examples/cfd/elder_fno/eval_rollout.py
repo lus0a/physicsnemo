@@ -35,28 +35,28 @@ from train_elder_fno import _resolve_fno_modes
 
 def _plot_fields(c_true, c_pred, h_true, h_pred, title, out_path):
     """2x3 True/Pred/|error| comparison for c (row 0) and h (row 1)."""
-    c_true, c_pred, h_true, h_pred = (np.asarray(x) for x in (c_true, c_pred, h_true, h_pred))
+    c_true, c_pred, h_true, h_pred = (np.asarray(x) for x in (c_true, c_pred, h_true, h_pred))  # 统一转 numpy
     fig = plt.figure(figsize=(15, 8))
-    gs = fig.add_gridspec(2, 3, hspace=0.4)
+    gs = fig.add_gridspec(2, 3, hspace=0.4)        # 2 行 3 列; 行=c/h, 列=True/Pred/error
     ax = [[fig.add_subplot(gs[0, c]), fig.add_subplot(gs[1, c])] for c in range(3)]
-    ax = [[ax[c][0] for c in range(3)], [ax[c][1] for c in range(3)]]  # ax[row][col]
+    ax = [[ax[c][0] for c in range(3)], [ax[c][1] for c in range(3)]]  # 重排成 ax[row][col]
     fig.suptitle(title, fontsize=15, fontweight="bold")
 
     titles = [("True c", "Pred c", "|c error|"), ("True h", "Pred h", "|h error|")]
-    fields = [(c_true, c_pred, np.abs(c_pred - c_true)),
-              (h_true, h_pred, np.abs(h_pred - h_true))]
+    fields = [(c_true, c_pred, np.abs(c_pred - c_true)),   # c 行: 真值/预测/绝对误差
+              (h_true, h_pred, np.abs(h_pred - h_true))]   # h 行
     for row in range(2):
         true_f = fields[row][0]
         if row == 0:
-            row_vmin, row_vmax = 0.0, 1.0
+            row_vmin, row_vmax = 0.0, 1.0          # c 用物理范围 [0,1]
         else:
-            row_vmin, row_vmax = float(true_f.min()), float(true_f.max())
+            row_vmin, row_vmax = float(true_f.min()), float(true_f.max())   # h 用真值范围统一 True/Pred
         for col in range(3):
             f = fields[row][col]
             if col < 2:
-                vmin, vmax = row_vmin, row_vmax
+                vmin, vmax = row_vmin, row_vmax    # True/Pred 共享范围便于对比
             else:
-                vmin, vmax = 0.0, float(f.max())
+                vmin, vmax = 0.0, float(f.max())   # 误差列单独缩放
             im = ax[row][col].imshow(f, origin="upper", vmin=vmin, vmax=vmax)
             ax[row][col].set_title(titles[row][col])
             plt.colorbar(im, ax=ax[row][col])
@@ -75,82 +75,82 @@ def main():
     p.add_argument("--device", default=None)
     args = p.parse_args()
 
-    cfg = OmegaConf.load(args.config)
+    cfg = OmegaConf.load(args.config)              # 读训练用的 config (保证模型/物理参数一致)
     device = torch.device(args.device or ("cuda" if torch.cuda.is_available() else "cpu"))
-    os.makedirs(args.out_dir, exist_ok=True)
-    DistributedManager.initialize()
+    os.makedirs(args.out_dir, exist_ok=True)       # 输出目录 (rollout_error.png 等)
+    DistributedManager.initialize()                # physicsnemo 分布式初始化 (单进程也无妨)
 
-    # --- datapipe: a single fresh trajectory, no reset during the rollout ---
-    N = int(args.steps)
+    # --- datapipe: 单条全新轨迹, rollout 期间不 reset ---
+    N = int(args.steps)                             # 要推演的 macro 步数
     phy = cfg.physics
     dat = cfg.data
     dp = ElderProblem2D(
         resolution=dat.resolution,
-        batch_size=1,
+        batch_size=1,                               # rollout 只需 1 条轨迹
         phi=phy.phi, Dm=phy.Dm, permeability=phy.permeability, viscosity=phy.viscosity,
         g=phy.g, rho_f=phy.rho_f, drho=phy.drho, W=phy.W, H=phy.H,
         source_frac=dat.source_frac, p_scale=phy.get("p_scale", None),
         dt_macro=phy.dt_macro, flow_sign=phy.get("flow_sign", 1.0),
         substeps=dat.substeps, max_substeps=dat.max_substeps,
-        n_trajectories=1, rollout_steps=N + 10,   # avoid reset mid-rollout
+        n_trajectories=1, rollout_steps=N + 10,     # 设大于 N 以免中途 reset 打断 rollout
         device=device,
     )
-    p_hydro, p_scale = dp.p_hydro, dp.p_scale
-    dt_days = dp.dt_macro / (24 * 3600.0)
+    p_hydro, p_scale = dp.p_hydro, dp.p_scale       # 必须与训练一致 (p_scale 由 datapipe 经验确定)
+    dt_days = dp.dt_macro / (24 * 3600.0)           # 每个 macro 步折合多少天 (画图用)
 
-    # --- model (architecture must match training) ---
+    # --- 模型 (结构必须与训练一致, 否则权重加载不上) ---
     mdl = cfg.model
     model = FNO(
         in_channels=mdl.in_channels, out_channels=mdl.out_channels,
         decoder_layers=mdl.decoder_layers, decoder_layer_size=mdl.decoder_layer_size,
         dimension=mdl.dimension, latent_channels=mdl.latent_channels,
         num_fno_layers=mdl.num_fno_layers,
-        num_fno_modes=_resolve_fno_modes(
+        num_fno_modes=_resolve_fno_modes(           # 同训练: 支持 float 分数自动解析
             OmegaConf.to_container(mdl, resolve=True)["num_fno_modes"], dp, mdl.padding),
         padding=mdl.padding,
     ).to(device)
-    load_checkpoint(path=args.checkpoint, models=model, device=device)
-    model.eval()
+    load_checkpoint(path=args.checkpoint, models=model, device=device)   # 加载训练好的权重
+    model.eval()                                    # 推理模式
     print(f"loaded checkpoint from {args.checkpoint}")
 
-    # --- ground-truth trajectory: advance the reference solver N steps ---
+    # --- 真值轨迹: 参考解推 N 步, 收集状态 0..N ---
     true_c = [None] * (N + 1)
     true_p = [None] * (N + 1)
     for t in range(N):
-        c0, p0, c1, p1 = dp._advance_all()
+        c0, p0, c1, p1 = dp._advance_all()         # 推进一步, 返回 (上一步, 当前步)
         if t == 0:
-            true_c[0], true_p[0] = c0.detach(), p0.detach()
-        true_c[t + 1], true_p[t + 1] = c1.detach(), p1.detach()
+            true_c[0], true_p[0] = c0.detach(), p0.detach()   # 记录初值 (第 0 步)
+        true_c[t + 1], true_p[t + 1] = c1.detach(), p1.detach()   # 记录第 t+1 步
 
-    # --- model rollout: feed own prediction back in (normalized h space) ---
-    cur_c = true_c[0]
-    cur_h = (true_p[0] - p_hydro) / p_scale
+    # --- 模型 rollout: 把自身预测喂回当输入 (在归一化 h 空间里循环) ---
+    cur_c = true_c[0]                               # 从真值初值出发
+    cur_h = (true_p[0] - p_hydro) / p_scale         # 归一化初值水头
     pred_c, pred_h = [], []
-    with torch.no_grad():
+    with torch.no_grad():                           # 纯推理
         for t in range(N):
-            invar = torch.cat([cur_c, cur_h], dim=1)
-            out = model(invar)
-            cur_c, cur_h = out[:, 0:1], out[:, 1:2]
-            pred_c.append(cur_c.detach())
+            invar = torch.cat([cur_c, cur_h], dim=1)   # (c_t, h_t) 拼输入
+            out = model(invar)                          # 单步预测 (c_{t+1}, h_{t+1})
+            cur_c, cur_h = out[:, 0:1], out[:, 1:2]     # 拆 c / h
+            pred_c.append(cur_c.detach())               # 记录预测 (喂回下一步)
             pred_h.append(cur_h.detach())
 
-    # --- per-step errors ---
+    # --- 逐步误差 (预测第 t 步 vs 真值第 t+1 步) ---
     rmse_c, rmse_h = [], []
-    c_min, c_max = 1e9, -1e9
+    c_min, c_max = 1e9, -1e9                        # 跟踪预测 c 的范围 (看是否越界 [0,1])
     for t in range(N):
-        tc = true_c[t + 1]
-        th = (true_p[t + 1] - p_hydro) / p_scale
-        rmse_c.append(float(torch.sqrt(((pred_c[t] - tc) ** 2).mean())))
-        rmse_h.append(float(torch.sqrt(((pred_h[t] - th) ** 2).mean())))
-        c_min = min(c_min, float(pred_c[t].min()))
+        tc = true_c[t + 1]                          # 对应的真值
+        th = (true_p[t + 1] - p_hydro) / p_scale    # 归一化真值水头
+        rmse_c.append(float(torch.sqrt(((pred_c[t] - tc) ** 2).mean())))   # c 的 RMSE
+        rmse_h.append(float(torch.sqrt(((pred_h[t] - th) ** 2).mean())))   # h 的 RMSE
+        c_min = min(c_min, float(pred_c[t].min()))   # 更新预测 c 的最小/最大值
         c_max = max(c_max, float(pred_c[t].max()))
 
-    # --- error curve ---
-    steps = np.arange(1, N + 1)
+    # --- 误差曲线 (log y) ---
+    steps = np.arange(1, N + 1)                     # x 轴: 步数 1..N
     fig, ax = plt.subplots(figsize=(10, 5))
-    ax.semilogy(steps, rmse_c, "o-", ms=4, label="RMSE c")
-    ax.semilogy(steps, rmse_h, "s-", ms=4, label="RMSE h")
-    ax.axhline(0.05, color="r", ls="--", alpha=0.6, label="0.05 divergence threshold")
+    ax.semilogy(steps, rmse_c, "o-", ms=4, label="RMSE c")     # c 误差 (对数 y)
+    ax.semilogy(steps, rmse_h, "s-", ms=4, label="RMSE h")     # h 误差
+    ax.axhline(0.05, color="r", ls="--", alpha=0.6, label="0.05 divergence threshold")   # 发散阈值
     ax.set_xlabel(f"rollout step (1 step = {dt_days:.1f} days)")
     ax.set_ylabel("RMSE (log)")
     ax.set_title(f"Autoregressive rollout error vs step ({N} steps)")
@@ -160,26 +160,26 @@ def main():
     fig.savefig(os.path.join(args.out_dir, "rollout_error.png"), dpi=120)
     plt.close(fig)
 
-    # --- field comparisons at a few steps ---
+    # --- 选几个步数画场图对比 (早 / 中 / 晚) ---
     for t in [1, N // 2, N]:
         if t < 1 or t > N:
             continue
-        tc = true_c[t][0, 0].cpu().numpy()
-        pc = pred_c[t - 1][0, 0].cpu().numpy()
-        th = ((true_p[t] - p_hydro) / p_scale)[0, 0].cpu().numpy()
-        ph = pred_h[t - 1][0, 0].cpu().numpy()
-        days = t * dt_days
+        tc = true_c[t][0, 0].cpu().numpy()          # 真值 c (去 batch/channel 维, 转 numpy)
+        pc = pred_c[t - 1][0, 0].cpu().numpy()      # 预测 c (pred[t-1] 对应第 t 步)
+        th = ((true_p[t] - p_hydro) / p_scale)[0, 0].cpu().numpy()   # 真值归一化 h
+        ph = pred_h[t - 1][0, 0].cpu().numpy()      # 预测 h
+        days = t * dt_days                          # 该步对应的物理天数
         _plot_fields(tc, pc, th, ph,
                      f"Rollout step {t} (~{days:.0f} days)",
                      os.path.join(args.out_dir, f"rollout_field_step{t:03d}.png"))
 
-    # --- summary ---
-    div_c = next((t + 1 for t, r in enumerate(rmse_c) if r > 0.05), None)
+    # --- 摘要 ---
+    div_c = next((t + 1 for t, r in enumerate(rmse_c) if r > 0.05), None)   # 首个 c RMSE 超 0.05 的步
     print("\n=== rollout summary ===")
     print(f"steps              : {N}  ({N*dt_days:.0f} days)")
-    print(f"RMSE c  step1/last : {rmse_c[0]:.3e} / {rmse_c[-1]:.3e}")
+    print(f"RMSE c  step1/last : {rmse_c[0]:.3e} / {rmse_c[-1]:.3e}")   # 首步/末步误差
     print(f"RMSE h  step1/last : {rmse_h[0]:.3e} / {rmse_h[-1]:.3e}")
-    print(f"pred c range       : [{c_min:.3f}, {c_max:.3f}]  (truth in [0,1])")
+    print(f"pred c range       : [{c_min:.3f}, {c_max:.3f}]  (truth in [0,1])")   # 越界检查
     print(f"c diverges (>0.05) : {'step ' + str(div_c) if div_c else 'never within rollout'}")
     print(f"plots written to   : {args.out_dir}/")
 

@@ -40,6 +40,8 @@ GPU readiness knobs (in ``config.yaml``):
 
 from __future__ import annotations
 
+import glob
+import json
 import os
 
 import hydra
@@ -57,6 +59,7 @@ from physicsnemo.utils import load_checkpoint, save_checkpoint
 from physicsnemo.utils.logging import LaunchLogger, PythonLogger
 
 from datapipe import ElderProblem2D
+from vts_dataset import VtsElderDataset
 
 
 def _enable_tf32() -> None:
@@ -90,6 +93,23 @@ def _resolve_fno_modes(raw, datapipe, padding):
         else:
             out.append(int(v))
     return out
+
+
+def _load_loss_history(out_dir):
+    """Load persisted train/val loss history so the loss curve continues across resume."""
+    path = os.path.join(out_dir, "loss_history.json")
+    if not os.path.exists(path):
+        return [], []
+    with open(path) as f:
+        d = json.load(f)
+    return d.get("train", []), d.get("val", [])
+
+
+def _save_loss_history(out_dir, train_history, val_history):
+    """Persist train/val loss history (called every epoch)."""
+    path = os.path.join(out_dir, "loss_history.json")
+    with open(path, "w") as f:
+        json.dump({"train": list(train_history), "val": list(val_history)}, f)
 
 
 def _build_residual_mask(datapipe, mask_top_rows: int, device) -> torch.Tensor:
@@ -131,59 +151,57 @@ def _residuals_own_fd(pred_c, pred_p, c0, dt, dp, mask):
     ``c0`` is the reference initial concentration. ``dp`` is the datapipe
     (providing physical parameters and grid spacing).
     """
-    rho_f, drho = dp.rho_f, dp.drho
-    phi, Dm = dp.phi, dp.Dm
-    kom, gz = dp.k_over_mu, dp.gz
-    dx, dy = dp.dx, dp.dy
+    rho_f, drho = dp.rho_f, dp.drho       # 淡水密度, 密度差
+    phi, Dm = dp.phi, dp.Dm               # 孔隙度, 分子扩散系数
+    kom, gz = dp.k_over_mu, dp.gz         # k/mu, 带符号重力 (flow_sign*g)
+    dx, dy = dp.dx, dp.dy                 # 网格间距 (方形网格 dx=dy)
 
-    # Physical scales so the (SI) residuals are O(1): the transport residual
-    # is scaled by the accumulation rate phi*rho_f/dt, the continuity residual
-    # by the buoyancy-driven mass-flux rate rho_f*q_ref/H (q_ref = k*drho*g/mu).
-    scale_c = phi * rho_f / dt
-    q_ref = kom * drho * abs(gz)
-    scale_p = rho_f * q_ref / dp.H
+    # 物理尺度, 使 SI 单位的残差归一化到 O(1): 输运残差按累积率 phi*rho_f/dt 缩放,
+    # 连续性残差按浮力驱动质量通量率 rho_f*q_ref/H 缩放 (q_ref = k*drho*g/mu)。
+    scale_c = phi * rho_f / dt            # 输运残差的归一化尺度
+    q_ref = kom * drho * abs(gz)          # 浮力驱动的特征 Darcy 速度
+    scale_p = rho_f * q_ref / dp.H        # 连续性残差的归一化尺度
 
-    # Density and Darcy velocity from predicted (c, p) on the full grid.
-    rho = rho_f + drho * pred_c
-    p_x, p_z = _grads(pred_p, dx, dy)
-    qx = -kom * p_x
-    qz = -kom * (p_z - rho[..., 1:-1, 1:-1] * gz)
-    # Lift velocities to the full grid (replicate walls) for the divergence.
+    # 由预测的 (c, p) 在全网格上构造密度与 Darcy 速度。
+    rho = rho_f + drho * pred_c           # 变密度 rho(c)
+    p_x, p_z = _grads(pred_p, dx, dy)     # 压力的 x/z 一阶导 (内部 cell)
+    qx = -kom * p_x                       # Darcy 速度 x 分量 q = -(k/mu) dp/dx
+    qz = -kom * (p_z - rho[..., 1:-1, 1:-1] * gz)   # z 分量含浮力: q_z = -(k/mu)(dp/dz - rho*g)
+    # 把速度提升回全网格 (壁面镜像) 以便求散度。
     qx_full = F.pad(qx, (1, 1, 1, 1), mode="replicate")
     qz_full = F.pad(qz, (1, 1, 1, 1), mode="replicate")
-    rhoq_x = rho * qx_full
-    rhoq_z = rho * qz_full
+    rhoq_x = rho * qx_full                # 质量通量 rho*q 的 x 分量
+    rhoq_z = rho * qz_full                # 质量通量 rho*q 的 z 分量
 
-    # Continuity residual:  d(phi rho)/dt + div(rho q)
-    #   with  d(phi rho)/dt = phi*drho*dc/dt  (rho = rho_f + drho*c, phi const).
-    pc = pred_c[..., 1:-1, 1:-1]
-    c0i = c0[..., 1:-1, 1:-1]
-    storage = phi * drho * (pc - c0i) / dt
-    R_p = storage + _div(rhoq_x, rhoq_z, dx, dy)
+    # 连续性残差: d(phi rho)/dt + div(rho q)
+    #   其中 d(phi rho)/dt = phi*drho*dc/dt (rho = rho_f + drho*c, phi 常数)。
+    pc = pred_c[..., 1:-1, 1:-1]          # 预测浓度的内部切片
+    c0i = c0[..., 1:-1, 1:-1]             # 初始 (上一步) 浓度的内部切片
+    storage = phi * drho * (pc - c0i) / dt   # 流体质量存储项 d(phi rho)/dt
+    R_p = storage + _div(rhoq_x, rhoq_z, dx, dy)   # 连续性残差
 
-    # Transport residual:
-    #   d(phi rho c)/dt + div(rho q c) - div(rho phi Dm grad c)
-    # with  d(phi rho c)/dt = phi (rho_f + 2 drho c) (c_pred - c0)/dt.
-    time_term = phi * (rho_f + 2.0 * drho * pc) * (pc - c0i) / dt
-    adv = _div(rhoq_x * pred_c, rhoq_z * pred_c, dx, dy)
-    # Diffusion: div(rho phi Dm grad c) via face coefficients, walls = 0.
-    kd = rho * phi * Dm
-    cp = pred_c
-    cc = cp[..., 1:-1, 1:-1]
-    ke = 0.5 * (kd[..., 1:-1, 1:-1] + kd[..., 1:-1, 2:])
-    kw = 0.5 * (kd[..., 1:-1, 1:-1] + kd[..., 1:-1, :-2])
-    kn = 0.5 * (kd[..., 1:-1, 1:-1] + kd[..., 2:, 1:-1])
-    ks = 0.5 * (kd[..., 1:-1, 1:-1] + kd[..., :-2, 1:-1])
+    # 输运残差: d(phi rho c)/dt + div(rho q c) - div(rho phi Dm grad c)
+    # 其中 d(phi rho c)/dt = phi (rho_f + 2 drho c) (c_pred - c0)/dt。
+    time_term = phi * (rho_f + 2.0 * drho * pc) * (pc - c0i) / dt   # 守恒时间项
+    adv = _div(rhoq_x * pred_c, rhoq_z * pred_c, dx, dy)           # 对流通量散度 div(rho q c)
+    # 扩散: div(rho phi Dm grad c), 用面系数中心差分, 壁面=0。
+    kd = rho * phi * Dm                   # 扩散系数场 rho*phi*Dm
+    cp = pred_c                           # 浓度全网格
+    cc = cp[..., 1:-1, 1:-1]              # 当前 cell 浓度
+    ke = 0.5 * (kd[..., 1:-1, 1:-1] + kd[..., 1:-1, 2:])    # 东界面扩散系数
+    kw = 0.5 * (kd[..., 1:-1, 1:-1] + kd[..., 1:-1, :-2])   # 西界面
+    kn = 0.5 * (kd[..., 1:-1, 1:-1] + kd[..., 2:, 1:-1])    # 北界面 (+z 下侧)
+    ks = 0.5 * (kd[..., 1:-1, 1:-1] + kd[..., :-2, 1:-1])   # 南界面 (-z 上侧)
     diff = (
-        (ke * (cp[..., 1:-1, 2:] - cc) - kw * (cc - cp[..., 1:-1, :-2])) / dx**2
-        + (kn * (cp[..., 2:, 1:-1] - cc) - ks * (cc - cp[..., :-2, 1:-1])) / dy**2
+        (ke * (cp[..., 1:-1, 2:] - cc) - kw * (cc - cp[..., 1:-1, :-2])) / dx**2     # x 方向扩散散度
+        + (kn * (cp[..., 2:, 1:-1] - cc) - ks * (cc - cp[..., :-2, 1:-1])) / dy**2   # z 方向扩散散度
     )
-    R_c = time_term + adv - diff
+    R_c = time_term + adv - diff          # 输运残差
 
-    m = mask.view(1, 1, *mask.shape)
-    n = m.sum().clamp(min=1.0)
-    loss_c = (R_c.abs() * m).sum() / (n * scale_c)
-    loss_p = (R_p.abs() * m).sum() / (n * scale_p)
+    m = mask.view(1, 1, *mask.shape)      # 残差掩码 reshape 成 [1,1,Ny,Nx] 便于广播
+    n = m.sum().clamp(min=1.0)            # 掩码内 cell 数 (至少 1, 防除零)
+    loss_c = (R_c.abs() * m).sum() / (n * scale_c)   # 输运残差: 掩码内平均 |R_c|, 按尺度归一化
+    loss_p = (R_p.abs() * m).sum() / (n * scale_p)   # 连续性残差: 同理
     return loss_c, loss_p
 
 
@@ -196,101 +214,97 @@ def validation_step(model, datapipe, p_hydro, p_scale, num_iters, epoch, out_dir
     the bottom of the figure (log y-axis). Pass ``None`` to skip the curve.
     """
     model.eval()
-    total_c, total_h, count = 0.0, 0.0, 0
+    total_c, total_h, count = 0.0, 0.0, 0       # AI 预测的 MSE 累计 (|AI_pred - new|)
+    total_old_c, total_old_h = 0.0, 0.0          # old 基线 MSE 累计 (|old - new|, 即 |c0-c1|)
     autocast_dev = "cuda" if device.type == "cuda" else "cpu"
     last = None
-    with torch.no_grad():
+    best_t0 = -1.0                          # 跟踪物理时间最长 (指进最发育) 的样本用于展示
+    dt_days = datapipe.dt_macro / (24 * 3600.0)
+    with torch.no_grad():                          # 验证不需要梯度
         for batch, _ in zip(datapipe, range(num_iters)):
-            c0 = batch["c0"]
-            h0 = (batch["p0"] - p_hydro) / p_scale
-            c1 = batch["c1"]
-            h1 = (batch["p1"] - p_hydro) / p_scale
-            
-            # 提取物理时间信息
-            t0 = batch.get("t0", torch.zeros(c0.shape[0])) 
-            dt_days = batch.get("dt", 0) / (24 * 3600.0)
-            
-            invar = torch.cat([c0, h0], dim=1)
+            c0 = batch["c0"]                       # 初始 (上一步) 浓度 [B,1,Ny+2,Nx+2]
+            h0 = (batch["p0"] - p_hydro) / p_scale  # 归一化水头 h = (p - p_hydro)/p_scale
+            c1 = batch["c1"]                       # 目标浓度 (真值)
+            h1 = (batch["p1"] - p_hydro) / p_scale  # 目标归一化水头 (真值)
+            invar = torch.cat([c0, h0], dim=1)     # 拼成 2 通道输入
             with torch.autocast(device_type=autocast_dev, enabled=use_amp):
-                pred = model(invar)
-            pred_c, pred_h = pred[:, 0:1], pred[:, 1:2]
-            total_c += F.mse_loss(pred_c, c1).item()
-            total_h += F.mse_loss(pred_h, h1).item()
+                pred = model(invar)                # 单步前向: (c0,h0) -> (pred_c, pred_h)
+            pred_c, pred_h = pred[:, 0:1], pred[:, 1:2]   # 拆出 c / h 两个输出通道
+            total_c += F.mse_loss(pred_c, c1).item()      # 累加 AI 的 c MSE (|AI_pred - c1|)
+            total_h += F.mse_loss(pred_h, h1).item()      # 累加 AI 的 h MSE
+            total_old_c += F.mse_loss(c0, c1).item()      # 累加 old 基线 c MSE (|c0 - c1|)
+            total_old_h += F.mse_loss(h0, h1).item()      # 累加 old 基线 h MSE (|h0 - h1|)
             count += 1
-            
-            # 智能选图: 寻找这个 batch 里推演物理时间最长的样本 (最能展示指进)
-            max_idx = torch.argmax(t0).item()
-            t1_days = t0[max_idx].item() + dt_days
-            
-            last = (c1[max_idx, 0], pred_c[max_idx, 0], h1[max_idx, 0], pred_h[max_idx, 0], t1_days)
+            t0 = batch.get("t0")                   # 每个样本的物理时间 (天), 可能为 None
+            mi = int(torch.argmax(t0).item()) if t0 is not None else 0   # batch 内时间最长的样本下标
+            t_max = float(t0[mi].item()) if t0 is not None else 0.0      # 该样本的时间
+            if t_max > best_t0:                    # 跨 batch 保留时间最长 (指进最发育) 的样本用于画图
+                best_t0 = t_max
+                # 单步 preconditioner 视角: old=c0(输入), AI_pred=pred, new=c1(真值)。
+                last = (c1[mi, 0], c0[mi, 0], pred_c[mi, 0], h1[mi, 0], h0[mi, 0], pred_h[mi, 0])
 
-    model.train()
-    mean_c = total_c / max(count, 1)
-    mean_h = total_h / max(count, 1)
+    model.train()                                  # 恢复训练模式 (验证时切到了 eval)
+    mean_c = total_c / max(count, 1)               # 平均 AI c MSE
+    mean_h = total_h / max(count, 1)               # 平均 AI h MSE
+    mean_old_c = total_old_c / max(count, 1)       # 平均 old 基线 c MSE
+    mean_old_h = total_old_h / max(count, 1)       # 平均 old 基线 h MSE
 
     if last is not None:
-        c_true, c_pred, h_true, h_pred = (t.detach().cpu().numpy() for t in last[:4])
-        t1_days = last[4]
-        # 3 行 GridSpec: 上两行是 c/h 的 True/Pred/error 图, 第三行跨 3 列画 loss 曲线。
-        fig = plt.figure(figsize=(15, 10))
-        gs = fig.add_gridspec(3, 3, height_ratios=[1, 1, 0.55], hspace=0.45)
-        ax = [[fig.add_subplot(gs[0, c]) for c in range(3)],
-              [fig.add_subplot(gs[1, c]) for c in range(3)]]
+        # last = (c_new, c_old, c_pred, h_new, h_old, h_pred), 转 numpy 画图。
+        c_true, c_old, c_pred, h_true, h_old, h_pred = (t.detach().cpu().numpy() for t in last)
+        # 3 行 GridSpec: 上两行 c/h 各 5 列 (True|True old|Pred|AI误差|old误差), 第三行跨 5 列画 loss 曲线。
+        fig = plt.figure(figsize=(20, 10))
+        gs = fig.add_gridspec(3, 5, height_ratios=[1, 1, 0.5], hspace=0.5, wspace=0.35)
+        ax = [[fig.add_subplot(gs[0, c]) for c in range(5)],
+              [fig.add_subplot(gs[1, c]) for c in range(5)]]
         ax_loss = fig.add_subplot(gs[2, :])
 
-        # 添加带有 Epoch、物理时间和验证 loss 的全局大标题
+        t1_days = best_t0 + dt_days
+        # 单步 preconditioner 指标: AI MSE < old MSE 即 AI 比输入(old)更靠近真值(new)。
         fig.suptitle(
-            f"Elder FNO Validation - Epoch {epoch} | Physical Time: {t1_days:.1f} Days\n"
-            f"MSE_c = {mean_c:.3e}   MSE_h = {mean_h:.3e}   Total = {mean_c + mean_h:.3e}",
-            fontsize=16, fontweight='bold',
+            f"Elder FNO Validation - Epoch {epoch} | Physical Time: {t1_days:.0f} days\n"
+            f"AI  MSE_c = {mean_c:.3e}   old MSE_c = {mean_old_c:.3e}   |   "
+            f"AI MSE_h = {mean_h:.3e}   old MSE_h = {mean_old_h:.3e}",
+            fontsize=15, fontweight="bold",
         )
-
-        titles = [
-            ("True c", "Pred c", "|c error|"),
-            ("True h", "Pred h", "|h error|"),
-        ]
-        fields = [
-            (c_true, c_pred, np.abs(c_pred - c_true)),
-            (h_true, h_pred, np.abs(h_pred - h_true)),
-        ]
+        col_titles = ["True (new)", "True old (input)", "Pred (AI)", "|Pred-True|", "|Old-True|"]
         for row in range(2):
-            # 每行用 True 字段的范围统一 True/Pred 的图例 (colorbar), 误差列单独缩放。
-            true_f = fields[row][0]
-            if row == 0:
-                # 浓度 c 物理范围为 [0, 1]。
-                row_vmin, row_vmax = 0.0, 1.0
-            else:
-                row_vmin, row_vmax = float(true_f.min()), float(true_f.max())
-            for col in range(3):
-                f = fields[row][col]
-                if col < 2:
-                    vmin, vmax = row_vmin, row_vmax
-                else:
-                    # 误差列: 从 0 到该列自身最大值。
-                    vmin, vmax = 0.0, float(f.max())
+            if row == 0:                                  # c 行
+                true_f, old_f, pred_f = c_true, c_old, c_pred
+                field_vmin, field_vmax = 0.0, 1.0         # c 用物理范围 [0,1]
+            else:                                         # h 行
+                true_f, old_f, pred_f = h_true, h_old, h_pred
+                field_vmin, field_vmax = float(true_f.min()), float(true_f.max())   # h 用真值范围
+            err_pred = np.abs(pred_f - true_f)            # AI 误差
+            err_old = np.abs(old_f - true_f)              # old 基线误差
+            err_vmax = max(float(err_pred.max()), float(err_old.max()))   # 两误差列共用上界, 可直接对比
+            fields = [true_f, old_f, pred_f, err_pred, err_old]
+            for col in range(5):
+                f = fields[col]
+                vmin, vmax = (field_vmin, field_vmax) if col < 3 else (0.0, err_vmax)
                 im = ax[row][col].imshow(f, origin="upper", vmin=vmin, vmax=vmax)
-                ax[row][col].set_title(titles[row][col])
-                plt.colorbar(im, ax=ax[row][col])
+                ax[row][col].set_title(("c: " if row == 0 else "h: ") + col_titles[col], fontsize=10)
+                plt.colorbar(im, ax=ax[row][col], fraction=0.046)
 
-        # --- loss 曲线 (log y) ---
-        # 记录当前验证点到历史, 供本次及后续绘图使用。
+        # --- loss 曲线 (log y): AI vs old 基线 ---
         if val_history is not None:
-            val_history.append((epoch, mean_c + mean_h, mean_c, mean_h))
+            val_history.append((epoch, mean_c + mean_h, mean_c, mean_h, mean_old_c + mean_old_h))
         if val_history:
             ve = [h[0] for h in val_history]
-            ax_loss.semilogy(ve, [h[1] for h in val_history], "o-", label="val total")
-            ax_loss.semilogy(ve, [h[2] for h in val_history], ".--", alpha=0.7, label="val MSE_c")
-            ax_loss.semilogy(ve, [h[3] for h in val_history], ".--", alpha=0.7, label="val MSE_h")
+            ax_loss.semilogy(ve, [h[1] for h in val_history], "o-", label="val AI total")
+            ax_loss.semilogy(ve, [h[2] for h in val_history], ".--", alpha=0.7, label="val AI MSE_c")
+            ax_loss.semilogy(ve, [h[3] for h in val_history], ".--", alpha=0.7, label="val AI MSE_h")
+            if len(val_history[0]) > 4:                   # 有 old 基线时画出
+                ax_loss.semilogy(ve, [h[4] for h in val_history], "x--", alpha=0.7, label="val old total (baseline)")
         if train_history:
             te = [h[0] for h in train_history]
             ax_loss.semilogy(te, [h[1] for h in train_history], "-", alpha=0.8, label="train loss_data")
         ax_loss.set_xlabel("epoch")
         ax_loss.set_ylabel("loss (log)")
-        ax_loss.set_title("Loss curves")
+        ax_loss.set_title("Loss curves (AI vs old baseline)")
         ax_loss.legend(loc="best", fontsize=8)
         ax_loss.grid(True, which="both", alpha=0.3)
 
-        # 调整布局, 为两行大标题留出空间
         fig.tight_layout(rect=[0, 0.03, 1, 0.93])
         fig.savefig(os.path.join(out_dir, f"val_{epoch:04d}.png"))
         plt.close(fig)
@@ -311,13 +325,13 @@ def main(cfg: DictConfig) -> None:
     if cfg.training.get("tf32", True):
         _enable_tf32()
 
-    log = PythonLogger(name="elder_fno")
-    log.file_logging()
-    LaunchLogger.initialize()
+    log = PythonLogger(name="elder_fno")           # 控制台 + 文件日志
+    log.file_logging()                             # 同时写 train_elder_fno.log
+    LaunchLogger.initialize()                      # physicsnemo 的训练日志器
 
-    use_amp = bool(cfg.training.get("use_amp", False)) and device.type == "cuda"
-    autocast_dev = "cuda" if device.type == "cuda" else "cpu"
-    scaler = torch.cuda.amp.GradScaler(enabled=use_amp)
+    use_amp = bool(cfg.training.get("use_amp", False)) and device.type == "cuda"   # 仅 CUDA 启用混合精度
+    autocast_dev = "cuda" if device.type == "cuda" else "cpu"   # autocast 设备类型
+    scaler = torch.amp.GradScaler(device=autocast_dev, enabled=use_amp)   # AMP 梯度缩放器
 
     # --- data ----------------------------------------------------------------
     dp_kwargs = dict(
@@ -342,11 +356,30 @@ def main(cfg: DictConfig) -> None:
         rollout_steps=cfg.data.rollout_steps,
         device=device,
     )
-    datapipe = ElderProblem2D(**dp_kwargs)
-    val_datapipe = ElderProblem2D(**dp_kwargs)
+    # --- 数据源: train_set/ 有 .vts 则用真实 VTS 数据, 否则回退在线 datapipe ---
+    train_dir = cfg.data.get("train_dir", "train_set")
+    vts_files = sorted(glob.glob(os.path.join(train_dir, "*.vts"))) if os.path.isdir(train_dir) else []
+    if len(vts_files) >= 2:
+        log.info(f"using VTS dataset from {train_dir} ({len(vts_files)} files)")
+        vts_kwargs = dict(
+            batch_size=cfg.data.batch_size, device=device,
+            phi=cfg.physics.phi, Dm=cfg.physics.Dm, permeability=cfg.physics.permeability,
+            viscosity=cfg.physics.viscosity, g=cfg.physics.g, rho_f=cfg.physics.rho_f,
+            drho=cfg.physics.drho, W=cfg.physics.W, H=cfg.physics.H,
+            dt_macro=cfg.physics.dt_macro, flow_sign=cfg.physics.get("flow_sign", 1.0),
+        )
+        datapipe = VtsElderDataset(train_dir, **vts_kwargs)    # 真实求解器数据
+        val_datapipe = VtsElderDataset(train_dir, **vts_kwargs)
+    else:
+        if os.path.isdir(train_dir):
+            log.info(f"{train_dir}/ 中 .vts 不足 2 个, 回退在线 datapipe")
+        else:
+            log.info(f"无 {train_dir}/, 回退在线 datapipe")
+        datapipe = ElderProblem2D(**dp_kwargs)      # 在线参考解生成器
+        val_datapipe = ElderProblem2D(**dp_kwargs)  # 验证数据生成器 (独立轨迹)
 
-    p_hydro = datapipe.p_hydro
-    p_scale = datapipe.p_scale
+    p_hydro = datapipe.p_hydro                      # 淡水静水压参考场 rho_f*g*z (Pa)
+    p_scale = datapipe.p_scale                      # 水头归一化尺度 (经验 max|h| 或显式值)
 
     # --- model ---------------------------------------------------------------
     model = FNO(
@@ -365,97 +398,99 @@ def main(cfg: DictConfig) -> None:
     ).to(device)
 
     if cfg.training.get("compile", False):
-        forward_model = torch.compile(
+        forward_model = torch.compile(            # 编译前向以加速 (CUDA, 长训练值得)
             model, mode=cfg.training.get("compile_mode", "default")
         )
         log.info(f"torch.compile enabled (mode={cfg.training.compile_mode})")
     else:
-        forward_model = model
+        forward_model = model                      # 不编译, 直接用原模型
 
     # --- physics residual evaluator ------------------------------------------
-    use_physics = cfg.training.physics_weight > 0
+    use_physics = cfg.training.physics_weight > 0  # 是否启用 PDE 残差损失
     residual_mask = None
     if use_physics:
-        residual_mask = _build_residual_mask(
+        residual_mask = _build_residual_mask(      # 残差掩码: 剔除顶部源段附近不满足 PDE 的行
             datapipe,
             mask_top_rows=cfg.training.get("mask_top_rows", 2),
             device=device,
         )
 
-    optimizer = Adam(model.parameters(), lr=cfg.training.start_lr)
-    scheduler = ExponentialLR(optimizer, gamma=cfg.training.gamma)
+    optimizer = Adam(model.parameters(), lr=cfg.training.start_lr)   # Adam 优化器
+    scheduler = ExponentialLR(optimizer, gamma=cfg.training.gamma)   # 每 epoch 衰减 lr
 
     ckpt_args = {
-        "path": "./checkpoints",
+        "path": "./checkpoints",                   # checkpoint 目录 (相对 hydra run dir)
         "models": model,
         "optimizer": optimizer,
         "scheduler": scheduler,
     }
-    start_epoch = load_checkpoint(device=device, **ckpt_args)
-    out_dir = os.getcwd()  # hydra changes cwd to the run dir
+    start_epoch = load_checkpoint(device=device, **ckpt_args)   # 恢复 (返回已训练到的 epoch; 无则 0)
+    out_dir = os.getcwd()                          # hydra 已把 cwd 切到 run dir (输出根目录)
 
-    steps_per_epoch = cfg.data.steps_per_epoch
-    val_iters = max(1, cfg.validation.sample_size // cfg.data.batch_size)
-    physics_weight = cfg.training.physics_weight
-    p_data_weight = float(cfg.training.get("p_data_weight", 1.0))
-    continuity_weight = float(cfg.training.get("continuity_weight", 1.0))
+    steps_per_epoch = cfg.data.steps_per_epoch     # 每 epoch 的 batch 数
+    val_iters = max(1, cfg.validation.sample_size // cfg.data.batch_size)   # 验证迭代数
+    physics_weight = cfg.training.physics_weight   # PDE 项权重 (0 = 关闭)
+    p_data_weight = float(cfg.training.get("p_data_weight", 1.0))   # h 数据项权重
+    continuity_weight = float(cfg.training.get("continuity_weight", 1.0))   # 连续性残差权重
 
-    # 跨 epoch 的 loss 历史, 供验证图绘制 loss 曲线 (log y)。
-    train_history = []   # [(epoch, mean loss_data)]
-    val_history = []     # [(epoch, total, mean_c, mean_h)]
+    # 跨 epoch 的 loss 历史, 供验证图绘制 loss 曲线 (log y)。仅续训时从磁盘加载 (全新 run 清空)。
+    # 截断到 start_epoch, 避免 checkpoint (每 save_every 存) 与每 epoch 存的 loss 历史错位导致重复点。
+    train_history, val_history = (_load_loss_history(out_dir) if start_epoch > 0 else ([], []))
+    train_history = [h for h in train_history if h[0] <= start_epoch]
+    val_history = [h for h in val_history if h[0] <= start_epoch]
 
     if start_epoch == 0:
         log.success("Training started...")
     else:
         log.warning(f"Resuming from epoch {start_epoch + 1}.")
 
-    for epoch in range(max(1, start_epoch + 1), cfg.training.max_epochs + 1):
-        model.train()
-        epoch_loss_sum = 0.0
+    for epoch in range(max(1, start_epoch + 1), cfg.training.max_epochs + 1):   # 续训则从 start_epoch+1 开始
+        model.train()                              # 训练模式 (dropout/BN 等)
+        epoch_loss_sum = 0.0                       # 累加本 epoch 的 loss_data (用于 loss 曲线)
         epoch_loss_n = 0
         with LaunchLogger(
             "train", epoch=epoch, num_mini_batch=steps_per_epoch, epoch_alert_freq=5
         ) as logger:
             for batch, _ in zip(datapipe, range(steps_per_epoch)):
-                c0 = batch["c0"]
-                p0 = batch["p0"]
-                c1 = batch["c1"]
-                p1 = batch["p1"]
-                dt = batch["dt"]
+                c0 = batch["c0"]                   # 上一步浓度
+                p0 = batch["p0"]                   # 上一步压力 (Pa)
+                c1 = batch["c1"]                   # 目标浓度
+                p1 = batch["p1"]                   # 目标压力 (Pa)
+                dt = batch["dt"]                   # macro 步长 (s), 用于 PDE 残差
 
-                h0 = (p0 - p_hydro) / p_scale
-                h1 = (p1 - p_hydro) / p_scale
+                h0 = (p0 - p_hydro) / p_scale      # 归一化输入水头
+                h1 = (p1 - p_hydro) / p_scale      # 归一化目标水头
                 invar = torch.cat([c0, h0], dim=1)            # [B, 2, Ny+2, Nx+2]
 
                 with torch.autocast(device_type=autocast_dev, enabled=use_amp):
-                    pred = forward_model(invar)                # [B, 2, Ny+2, Nx+2]
-                    pred_c, pred_h = pred[:, 0:1], pred[:, 1:2]
-                    loss_data = F.mse_loss(pred_c, c1) + p_data_weight * F.mse_loss(pred_h, h1)
+                    pred = forward_model(invar)                # [B, 2, Ny+2, Nx+2] 单步预测
+                    pred_c, pred_h = pred[:, 0:1], pred[:, 1:2]   # 拆 c / h 输出
+                    loss_data = F.mse_loss(pred_c, c1) + p_data_weight * F.mse_loss(pred_h, h1)   # 数据 loss
 
-                    loss_pde_c = torch.zeros((), device=device)
+                    loss_pde_c = torch.zeros((), device=device)   # PDE 残差默认 0
                     loss_pde_p = torch.zeros((), device=device)
                     if use_physics:
-                        # PDE residual in fp32 (autocast disabled) for FD precision.
+                        # PDE 残差在 fp32 下算 (关掉 autocast) 以保证有限差分精度。
                         with torch.autocast(device_type=autocast_dev, enabled=False):
-                            pred_c32 = pred_c.float()
-                            pred_p32 = pred_h.float() * p_scale + p_hydro
+                            pred_c32 = pred_c.float()           # 浓度转 fp32
+                            pred_p32 = pred_h.float() * p_scale + p_hydro   # 还原成真实压力 p = h*p_scale + p_hydro
                             loss_pde_c, loss_pde_p = _residuals_own_fd(
                                 pred_c32, pred_p32, c0.float(), dt,
                                 datapipe, residual_mask,
                             )
-                        loss_pde = loss_pde_c + continuity_weight * loss_pde_p
+                        loss_pde = loss_pde_c + continuity_weight * loss_pde_p   # 输运 + 连续性
                     else:
                         loss_pde = torch.zeros((), device=device)
 
-                    loss = loss_data + physics_weight * loss_pde
+                    loss = loss_data + physics_weight * loss_pde   # 总损失
 
-                optimizer.zero_grad(set_to_none=True)
-                scaler.scale(loss).backward()
-                scaler.step(optimizer)
-                scaler.update()
-                scheduler.step()
+                optimizer.zero_grad(set_to_none=True)   # 清梯度 (set_to_none 省显存)
+                scaler.scale(loss).backward()           # AMP 缩放后反传
+                scaler.step(optimizer)                  # 更新参数 (含梯度反缩放)
+                scaler.update()                         # 更新缩放因子
+                scheduler.step()                        # 每 step 衰减 lr (ExponentialLR)
 
-                logger.log_minibatch(
+                logger.log_minibatch(                   # 记录各 loss 到日志
                     {
                         "loss_data": loss_data.detach(),
                         "loss_pde": (loss_pde_c + loss_pde_p).detach(),
@@ -463,21 +498,24 @@ def main(cfg: DictConfig) -> None:
                         "loss_pde_p": loss_pde_p.detach(),
                     }
                 )
-                epoch_loss_sum += float(loss_data.detach())
+                epoch_loss_sum += float(loss_data.detach())   # 累加用于 epoch 平均
                 epoch_loss_n += 1
             logger.log_epoch({"Learning Rate": optimizer.param_groups[0]["lr"]})
-            train_history.append((epoch, epoch_loss_sum / max(epoch_loss_n, 1)))
+            train_history.append((epoch, epoch_loss_sum / max(epoch_loss_n, 1)))   # 记录本 epoch 平均 loss_data
 
-        if epoch % cfg.training.val_every == 0:
+        if epoch % cfg.training.val_every == 0:     # 每 val_every epoch 验证一次
             with LaunchLogger("valid", epoch=epoch) as logger:
-                val_loss = validation_step(
+                val_loss = validation_step(         # 验证 + 出 val 图 + 更新 val_history
                     forward_model, val_datapipe, p_hydro, p_scale,
                     val_iters, epoch, out_dir, device, use_amp,
                     val_history=val_history, train_history=train_history,
                 )
                 logger.log_epoch({"Validation error": val_loss})
 
-        save_checkpoint(**ckpt_args, epoch=epoch)
+        # 大文件 checkpoint 每 save_every epoch 存一次 (+ 最后一 epoch); loss 历史每 epoch 都存。
+        if epoch % int(cfg.training.get("save_every", 10)) == 0 or epoch == cfg.training.max_epochs:
+            save_checkpoint(**ckpt_args, epoch=epoch)
+        _save_loss_history(out_dir, train_history, val_history)   # loss 历史每 epoch 存 (KB 级)
 
     log.success("Training completed *yay*")
 
