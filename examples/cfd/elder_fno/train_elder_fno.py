@@ -60,6 +60,7 @@ from physicsnemo.utils.logging import LaunchLogger, PythonLogger
 
 from datapipe import ElderProblem2D
 from vts_dataset import VtsElderDataset
+from vtu_dataset import VtuElderDataset
 
 
 def _enable_tf32() -> None:
@@ -69,6 +70,22 @@ def _enable_tf32() -> None:
         torch.backends.cudnn.allow_tf32 = True
         torch.backends.cudnn.benchmark = True
     torch.set_float32_matmul_precision("high")
+
+
+def _zero_init_last_linear(module: torch.nn.Module) -> None:
+    """把模块里最后一个 Linear 层的权重和偏置置零 (残差预测用)。
+
+    残差模式下 FNO 输出应解释为增量 Δ; 零初始化 decoder 末层 => 初始 Δ=0 =>
+    c_{n+1}=c_n, h_{n+1}=h_n (即"不变"基线), 训练从此起步只会更好。
+    """
+    last_lin = None
+    for m in module.modules():
+        if isinstance(m, torch.nn.Linear):
+            last_lin = m
+    if last_lin is not None:
+        torch.nn.init.zeros_(last_lin.weight)
+        if last_lin.bias is not None:
+            torch.nn.init.zeros_(last_lin.bias)
 
 
 def _resolve_fno_modes(raw, datapipe, padding):
@@ -206,7 +223,7 @@ def _residuals_own_fd(pred_c, pred_p, c0, dt, dp, mask):
 
 
 def validation_step(model, datapipe, p_hydro, p_scale, num_iters, epoch, out_dir, device, use_amp,
-                    val_history=None, train_history=None):
+                    val_history=None, train_history=None, residual=False):
     """Evaluate MSE on fresh trajectory samples and save a comparison plot.
 
     ``val_history`` / ``train_history`` are mutable lists the caller passes in;
@@ -228,8 +245,12 @@ def validation_step(model, datapipe, p_hydro, p_scale, num_iters, epoch, out_dir
             h1 = (batch["p1"] - p_hydro) / p_scale  # 目标归一化水头 (真值)
             invar = torch.cat([c0, h0], dim=1)     # 拼成 2 通道输入
             with torch.autocast(device_type=autocast_dev, enabled=use_amp):
-                pred = model(invar)                # 单步前向: (c0,h0) -> (pred_c, pred_h)
-            pred_c, pred_h = pred[:, 0:1], pred[:, 1:2]   # 拆出 c / h 两个输出通道
+                raw = model(invar)               # 单步前向: 直接预测值 (或残差模式下的增量 Δ)
+            if residual:                         # 残差预测: c_{n+1}=c_n+Δc, h_{n+1}=h_n+Δh
+                pred_c = c0 + raw[:, 0:1]
+                pred_h = h0 + raw[:, 1:2]
+            else:                                # 直接预测全场
+                pred_c, pred_h = raw[:, 0:1], raw[:, 1:2]
             total_c += F.mse_loss(pred_c, c1).item()      # 累加 AI 的 c MSE (|AI_pred - c1|)
             total_h += F.mse_loss(pred_h, h1).item()      # 累加 AI 的 h MSE
             total_old_c += F.mse_loss(c0, c1).item()      # 累加 old 基线 c MSE (|c0 - c1|)
@@ -356,23 +377,46 @@ def main(cfg: DictConfig) -> None:
         rollout_steps=cfg.data.rollout_steps,
         device=device,
     )
-    # --- 数据源: train_set/ 有 .vts 则用真实 VTS 数据, 否则回退在线 datapipe ---
+    # --- 数据源: 优先真实数据 (.vtu 高精度 unisolver / .vts), 否则回退在线 datapipe ---
+    # hydra.job.chdir=True 会把 cwd 切到 run.dir, 故相对 train_dir 须相对原始 cwd 解析,
+    # 否则去 run.dir/train_dir 找 (不存在) 而误回退在线 datapipe。
     train_dir = cfg.data.get("train_dir", "train_set")
-    vts_files = sorted(glob.glob(os.path.join(train_dir, "*.vts"))) if os.path.isdir(train_dir) else []
-    if len(vts_files) >= 2:
+    if not os.path.isabs(train_dir):
+        train_dir = os.path.join(hydra.utils.get_original_cwd(), train_dir)
+    vtu_files = glob.glob(os.path.join(train_dir, "*.vtu")) if os.path.isdir(train_dir) else []
+    vts_files = glob.glob(os.path.join(train_dir, "*.vts")) if os.path.isdir(train_dir) else []
+    # vtu 与 vts 真实数据集共用同一组物理/网格参数 (接口一致, 见各自 __init__)
+    real_kwargs = dict(
+        batch_size=cfg.data.batch_size, device=device,
+        phi=cfg.physics.phi, Dm=cfg.physics.Dm, permeability=cfg.physics.permeability,
+        viscosity=cfg.physics.viscosity, g=cfg.physics.g, rho_f=cfg.physics.rho_f,
+        drho=cfg.physics.drho, W=cfg.physics.W, H=cfg.physics.H,
+        dt_macro=cfg.physics.dt_macro, flow_sign=cfg.physics.get("flow_sign", 1.0),
+    )
+    if len(vtu_files) >= 2:
+        val_frac = float(cfg.data.get("val_frac", 0.2))
+        n_val_blocks = int(cfg.data.get("n_val_blocks", 8))
+        val_gap = int(cfg.data.get("val_gap", 2))
+        file_stride = int(cfg.data.get("file_stride", 1))
+        log.info(f"using VTU dataset from {train_dir} ({len(vtu_files)} files, file_stride={file_stride}), "
+                 f"val_frac={val_frac}, n_val_blocks={n_val_blocks}, val_gap={val_gap}")
+        datapipe = VtuElderDataset(train_dir, split="train", val_frac=val_frac,
+                                   n_val_blocks=n_val_blocks, val_gap=val_gap,
+                                   file_stride=file_stride, **real_kwargs)
+        # val 拆成 n_val_blocks 个小块均匀散布 (覆盖早/中/晚多时段), _share 复用已加载数据;
+        # 每块两侧 val_gap 个快照 + 跨集合配对一律丢弃 (零泄漏, 每个 snapshot 只属一个集合)。
+        val_datapipe = VtuElderDataset(train_dir, split="val", val_frac=val_frac,
+                                       n_val_blocks=n_val_blocks, val_gap=val_gap,
+                                       file_stride=file_stride, _share=datapipe, **real_kwargs)
+        log.info(f"  train pairs={datapipe.n_pairs}, val pairs={val_datapipe.n_pairs} "
+                 f"@ {datapipe.dt_macro / 86400:.0f}-day/step")
+    elif len(vts_files) >= 2:
         log.info(f"using VTS dataset from {train_dir} ({len(vts_files)} files)")
-        vts_kwargs = dict(
-            batch_size=cfg.data.batch_size, device=device,
-            phi=cfg.physics.phi, Dm=cfg.physics.Dm, permeability=cfg.physics.permeability,
-            viscosity=cfg.physics.viscosity, g=cfg.physics.g, rho_f=cfg.physics.rho_f,
-            drho=cfg.physics.drho, W=cfg.physics.W, H=cfg.physics.H,
-            dt_macro=cfg.physics.dt_macro, flow_sign=cfg.physics.get("flow_sign", 1.0),
-        )
-        datapipe = VtsElderDataset(train_dir, **vts_kwargs)    # 真实求解器数据
-        val_datapipe = VtsElderDataset(train_dir, **vts_kwargs)
+        datapipe = VtsElderDataset(train_dir, **real_kwargs)   # 真实求解器 point 数据
+        val_datapipe = datapipe                                 # 同上: __iter__ 每次起独立生成器, 只读不改
     else:
         if os.path.isdir(train_dir):
-            log.info(f"{train_dir}/ 中 .vts 不足 2 个, 回退在线 datapipe")
+            log.info(f"{train_dir}/ 中 .vtu/.vts 不足 2 个, 回退在线 datapipe")
         else:
             log.info(f"无 {train_dir}/, 回退在线 datapipe")
         datapipe = ElderProblem2D(**dp_kwargs)      # 在线参考解生成器
@@ -396,6 +440,16 @@ def main(cfg: DictConfig) -> None:
         ),
         padding=cfg.model.padding,
     ).to(device)
+
+    # 残差预测: 网络输出解释为增量 Δ, 重建 c_{n+1}=c_n+Δc / h_{n+1}=h_n+Δh。
+    use_residual = bool(cfg.training.get("residual", False))
+    if use_residual:
+        zero_init = bool(cfg.training.get("zero_init", False))
+        if zero_init:
+            _zero_init_last_linear(model.decoder_net)   # 起步=不变基线 (但可能因梯度弱而卡住)
+            log.info("residual prediction ON + decoder 零初始化 (起步=不变基线)")
+        else:
+            log.info("residual prediction ON (无零初始化, 标准残差结构)")
 
     if cfg.training.get("compile", False):
         forward_model = torch.compile(            # 编译前向以加速 (CUDA, 长训练值得)
@@ -463,8 +517,12 @@ def main(cfg: DictConfig) -> None:
                 invar = torch.cat([c0, h0], dim=1)            # [B, 2, Ny+2, Nx+2]
 
                 with torch.autocast(device_type=autocast_dev, enabled=use_amp):
-                    pred = forward_model(invar)                # [B, 2, Ny+2, Nx+2] 单步预测
-                    pred_c, pred_h = pred[:, 0:1], pred[:, 1:2]   # 拆 c / h 输出
+                    raw = forward_model(invar)                # [B,2,...] 直接预测值 (或残差模式下的增量 Δ)
+                    if use_residual:                          # 残差预测: c_{n+1}=c_n+Δc, h_{n+1}=h_n+Δh
+                        pred_c = c0 + raw[:, 0:1]
+                        pred_h = h0 + raw[:, 1:2]
+                    else:                                     # 直接预测全场
+                        pred_c, pred_h = raw[:, 0:1], raw[:, 1:2]
                     loss_data = F.mse_loss(pred_c, c1) + p_data_weight * F.mse_loss(pred_h, h1)   # 数据 loss
 
                     loss_pde_c = torch.zeros((), device=device)   # PDE 残差默认 0
@@ -509,6 +567,7 @@ def main(cfg: DictConfig) -> None:
                     forward_model, val_datapipe, p_hydro, p_scale,
                     val_iters, epoch, out_dir, device, use_amp,
                     val_history=val_history, train_history=train_history,
+                    residual=use_residual,
                 )
                 logger.log_epoch({"Validation error": val_loss})
 

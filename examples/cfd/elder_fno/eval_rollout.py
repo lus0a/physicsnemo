@@ -29,7 +29,7 @@ from physicsnemo.distributed import DistributedManager
 from physicsnemo.models.fno import FNO
 from physicsnemo.utils import load_checkpoint
 
-from datapipe import ElderProblem2D
+from vtu_dataset import VtuElderDataset
 from train_elder_fno import _resolve_fno_modes
 
 
@@ -71,6 +71,8 @@ def main():
     p.add_argument("--checkpoint", default="outputs_elder_fno/checkpoints",
                    help="checkpoint dir (loads latest) or a .pt file")
     p.add_argument("--steps", type=int, default=50, help="number of macro steps to roll out")
+    p.add_argument("--train_dir", default=None,
+                   help="VTU data dir for ground-truth trajectory (default: cfg.data.train_dir)")
     p.add_argument("--out_dir", default="rollout_eval")
     p.add_argument("--device", default=None)
     args = p.parse_args()
@@ -80,22 +82,21 @@ def main():
     os.makedirs(args.out_dir, exist_ok=True)       # 输出目录 (rollout_error.png 等)
     DistributedManager.initialize()                # physicsnemo 分布式初始化 (单进程也无妨)
 
-    # --- datapipe: 单条全新轨迹, rollout 期间不 reset ---
+    # --- 真值轨迹: 直接读 unisolver VTU 快照 (高精度, 训练用的同一批数据) ---
     N = int(args.steps)                             # 要推演的 macro 步数
     phy = cfg.physics
-    dat = cfg.data
-    dp = ElderProblem2D(
-        resolution=dat.resolution,
-        batch_size=1,                               # rollout 只需 1 条轨迹
+    train_dir = args.train_dir or cfg.data.get("train_dir", "DataSet")
+    dp = VtuElderDataset(
+        train_dir=train_dir, batch_size=1, device=device,
         phi=phy.phi, Dm=phy.Dm, permeability=phy.permeability, viscosity=phy.viscosity,
         g=phy.g, rho_f=phy.rho_f, drho=phy.drho, W=phy.W, H=phy.H,
-        source_frac=dat.source_frac, p_scale=phy.get("p_scale", None),
         dt_macro=phy.dt_macro, flow_sign=phy.get("flow_sign", 1.0),
-        substeps=dat.substeps, max_substeps=dat.max_substeps,
-        n_trajectories=1, rollout_steps=N + 10,     # 设大于 N 以免中途 reset 打断 rollout
-        device=device,
+        file_stride=int(cfg.data.get("file_stride", 1)),
     )
-    p_hydro, p_scale = dp.p_hydro, dp.p_scale       # 必须与训练一致 (p_scale 由 datapipe 经验确定)
+    if N + 1 > dp.n_files:                          # VTU 只有 n_files 个快照, rollout 不能超出
+        print(f"WARNING: steps {N} 超过 VTU 快照数 {dp.n_files}-1, 截断到 {dp.n_files - 1}")
+        N = dp.n_files - 1
+    p_hydro, p_scale = dp.p_hydro, dp.p_scale       # 必须与训练一致 (p_scale 由数据自动算)
     dt_days = dp.dt_macro / (24 * 3600.0)           # 每个 macro 步折合多少天 (画图用)
 
     # --- 模型 (结构必须与训练一致, 否则权重加载不上) ---
@@ -113,24 +114,24 @@ def main():
     model.eval()                                    # 推理模式
     print(f"loaded checkpoint from {args.checkpoint}")
 
-    # --- 真值轨迹: 参考解推 N 步, 收集状态 0..N ---
-    true_c = [None] * (N + 1)
-    true_p = [None] * (N + 1)
-    for t in range(N):
-        c0, p0, c1, p1 = dp._advance_all()         # 推进一步, 返回 (上一步, 当前步)
-        if t == 0:
-            true_c[0], true_p[0] = c0.detach(), p0.detach()   # 记录初值 (第 0 步)
-        true_c[t + 1], true_p[t + 1] = c1.detach(), p1.detach()   # 记录第 t+1 步
+    # --- 真值轨迹: VTU 快照 0..N (通道 0=c, 1=P), 每个 [1,1,Ny_tot,Nx_tot] ---
+    true_c = [dp.data[t:t + 1, 0:1] for t in range(N + 1)]
+    true_p = [dp.data[t:t + 1, 1:2] for t in range(N + 1)]
 
     # --- 模型 rollout: 把自身预测喂回当输入 (在归一化 h 空间里循环) ---
     cur_c = true_c[0]                               # 从真值初值出发
     cur_h = (true_p[0] - p_hydro) / p_scale         # 归一化初值水头
     pred_c, pred_h = [], []
+    use_residual = bool(cfg.training.get("residual", False))   # 与训练一致的残差预测
     with torch.no_grad():                           # 纯推理
         for t in range(N):
             invar = torch.cat([cur_c, cur_h], dim=1)   # (c_t, h_t) 拼输入
-            out = model(invar)                          # 单步预测 (c_{t+1}, h_{t+1})
-            cur_c, cur_h = out[:, 0:1], out[:, 1:2]     # 拆 c / h
+            out = model(invar)                          # 单步输出 (直接值 或 残差模式下的增量)
+            if use_residual:                            # c_{t+1}=c_t+Δc, h_{t+1}=h_t+Δh
+                cur_c = cur_c + out[:, 0:1]
+                cur_h = cur_h + out[:, 1:2]
+            else:
+                cur_c, cur_h = out[:, 0:1], out[:, 1:2]
             pred_c.append(cur_c.detach())               # 记录预测 (喂回下一步)
             pred_h.append(cur_h.detach())
 

@@ -1,0 +1,568 @@
+nohup: ignoring input
+/home/lushuai/.conda/envs/physicsnemo/lib/python3.11/site-packages/physicsnemo/distributed/manager.py:415: UserWarning: Could not initialize using ENV, SLURM or OPENMPI methods. Assuming this is a single process job
+  warn(
+[2026-06-17 18:23:02,534][checkpoint][INFO] - Loaded model state dictionary /home/lushuai/physicsnemo/examples/cfd/darcy_fno/checkpoints/FNO.0.56.mdlus to device cuda:0
+[2026-06-17 18:23:02,554][checkpoint][INFO] - Loaded checkpoint file /home/lushuai/physicsnemo/examples/cfd/darcy_fno/checkpoints/checkpoint.0.56.pt to device cuda:0
+[2026-06-17 18:23:02,555][checkpoint][INFO] - Loaded optimizer state dictionary
+[2026-06-17 18:23:02,555][checkpoint][INFO] - Loaded scheduler state dictionary
+[2026-06-17 18:23:02,555][checkpoint][INFO] - Loaded static capture state dictionary
+[2026-06-17 18:23:02,555][darcy_fno][WARNING] - Model FNO does not support AMP on GPUs, turning off
+/home/lushuai/.conda/envs/physicsnemo/lib/python3.11/site-packages/physicsnemo/utils/capture.py:274: FutureWarning: `torch.cuda.amp.GradScaler(args...)` is deprecated. Please use `torch.amp.GradScaler('cuda', args...)` instead.
+  scaler = torch.cuda.amp.GradScaler(enabled=scaler_enabled)
+[2026-06-17 18:23:02,556][darcy_fno][INFO] - Loaded grad scaler state dictionary scaler_0.
+[2026-06-17 18:23:02,558][darcy_fno][WARNING] - Model FNO does not support AMP on GPUs, turning off
+[2026-06-17 18:23:02,558][darcy_fno][INFO] - Loaded grad scaler state dictionary scaler_1.
+[2026-06-17 18:23:02,558][darcy_fno][WARNING] - Resuming training from pseudo epoch 57.
+[2026-06-17 18:24:51,866][train][INFO] - Epoch 57 Metrics: Learning Rate =  3.771e-04, loss =  2.604e-04
+[2026-06-17 18:24:51,868][train][INFO] - Epoch Execution Time:  1.093e+02s, Time/Iter:  3.416e+03ms
+[2026-06-17 18:26:36,189][train][INFO] - Epoch 58 Metrics: Learning Rate =  3.771e-04, loss =  2.931e-04
+[2026-06-17 18:26:36,190][train][INFO] - Epoch Execution Time:  1.043e+02s, Time/Iter:  3.260e+03ms
+[2026-06-17 18:28:31,877][train][INFO] - Epoch 59 Metrics: Learning Rate =  3.771e-04, loss =  2.985e-04
+[2026-06-17 18:28:31,879][train][INFO] - Epoch Execution Time:  1.157e+02s, Time/Iter:  3.615e+03ms
+[2026-06-17 18:30:25,998][train][INFO] - Epoch 60 Metrics: Learning Rate =  3.771e-04, loss =  2.716e-04
+[2026-06-17 18:30:26,000][train][INFO] - Epoch Execution Time:  1.141e+02s, Time/Iter:  3.566e+03ms
+[2026-06-17 18:30:42,254][valid][INFO] - Epoch 60 Metrics: Validation error =  3.025e-04
+[2026-06-17 18:30:42,255][valid][INFO] - Epoch Execution Time:  1.625e+01s, Time/Iter:  1.625e+04ms
+[2026-06-17 18:32:38,668][train][INFO] - Epoch 61 Metrics: Learning Rate =  3.771e-04, loss =  3.429e-04
+[2026-06-17 18:32:38,669][train][INFO] - Epoch Execution Time:  1.164e+02s, Time/Iter:  3.638e+03ms
+[2026-06-17 18:34:33,061][train][INFO] - Epoch 62 Metrics: Learning Rate =  3.771e-04, loss =  3.223e-04
+[2026-06-17 18:34:33,063][train][INFO] - Epoch Execution Time:  1.144e+02s, Time/Iter:  3.575e+03ms
+[2026-06-17 18:36:28,077][train][INFO] - Epoch 63 Metrics: Learning Rate =  3.771e-04, loss =  3.746e-04
+[2026-06-17 18:36:28,079][train][INFO] - Epoch Execution Time:  1.150e+02s, Time/Iter:  3.594e+03ms
+[2026-06-17 18:38:21,962][train][INFO] - Epoch 64 Metrics: Learning Rate =  3.771e-04, loss =  2.654e-04
+[2026-06-17 18:38:21,963][train][INFO] - Epoch Execution Time:  1.139e+02s, Time/Iter:  3.559e+03ms
+[2026-06-17 18:38:22,142][checkpoint][INFO] - Saved model state dictionary: /home/lushuai/physicsnemo/examples/cfd/darcy_fno/checkpoints/FNO.0.64.mdlus
+[2026-06-17 18:38:22,200][checkpoint][INFO] - Saved training checkpoint: /home/lushuai/physicsnemo/examples/cfd/darcy_fno/checkpoints/checkpoint.0.64.pt
+[2026-06-17 18:38:42,096][valid][INFO] - Epoch 64 Metrics: Validation error =  2.567e-04
+[2026-06-17 18:38:42,097][valid][INFO] - Epoch Execution Time:  1.990e+01s, Time/Iter:  1.990e+04ms
+[2026-06-17 18:40:38,779][train][INFO] - Epoch 65 Metrics: Learning Rate =  3.206e-04, loss =  2.736e-04
+[2026-06-17 18:40:38,780][train][INFO] - Epoch Execution Time:  1.167e+02s, Time/Iter:  3.646e+03ms
+[2026-06-17 18:42:37,639][train][INFO] - Epoch 66 Metrics: Learning Rate =  3.206e-04, loss =  3.173e-04
+[2026-06-17 18:42:37,640][train][INFO] - Epoch Execution Time:  1.189e+02s, Time/Iter:  3.714e+03ms
+[2026-06-17 18:44:31,822][train][INFO] - Epoch 67 Metrics: Learning Rate =  3.206e-04, loss =  2.967e-04
+[2026-06-17 18:44:31,823][train][INFO] - Epoch Execution Time:  1.142e+02s, Time/Iter:  3.568e+03ms
+[2026-06-17 18:46:28,928][train][INFO] - Epoch 68 Metrics: Learning Rate =  3.206e-04, loss =  3.541e-04
+[2026-06-17 18:46:28,929][train][INFO] - Epoch Execution Time:  1.171e+02s, Time/Iter:  3.659e+03ms
+[2026-06-17 18:46:48,542][valid][INFO] - Epoch 68 Metrics: Validation error =  2.401e-04
+[2026-06-17 18:46:48,543][valid][INFO] - Epoch Execution Time:  1.961e+01s, Time/Iter:  1.961e+04ms
+[2026-06-17 18:48:42,853][train][INFO] - Epoch 69 Metrics: Learning Rate =  3.206e-04, loss =  4.312e-04
+[2026-06-17 18:48:42,854][train][INFO] - Epoch Execution Time:  1.143e+02s, Time/Iter:  3.572e+03ms
+[2026-06-17 18:50:39,629][train][INFO] - Epoch 70 Metrics: Learning Rate =  3.206e-04, loss =  4.161e-04
+[2026-06-17 18:50:39,630][train][INFO] - Epoch Execution Time:  1.168e+02s, Time/Iter:  3.649e+03ms
+[2026-06-17 18:52:38,838][train][INFO] - Epoch 71 Metrics: Learning Rate =  3.206e-04, loss =  3.031e-04
+[2026-06-17 18:52:38,839][train][INFO] - Epoch Execution Time:  1.192e+02s, Time/Iter:  3.725e+03ms
+[2026-06-17 18:54:37,222][train][INFO] - Epoch 72 Metrics: Learning Rate =  3.206e-04, loss =  2.271e-04
+[2026-06-17 18:54:37,223][train][INFO] - Epoch Execution Time:  1.184e+02s, Time/Iter:  3.699e+03ms
+[2026-06-17 18:54:37,347][checkpoint][INFO] - Saved model state dictionary: /home/lushuai/physicsnemo/examples/cfd/darcy_fno/checkpoints/FNO.0.72.mdlus
+[2026-06-17 18:54:37,403][checkpoint][INFO] - Saved training checkpoint: /home/lushuai/physicsnemo/examples/cfd/darcy_fno/checkpoints/checkpoint.0.72.pt
+[2026-06-17 18:54:56,214][valid][INFO] - Epoch 72 Metrics: Validation error =  2.348e-04
+[2026-06-17 18:54:56,215][valid][INFO] - Epoch Execution Time:  1.881e+01s, Time/Iter:  1.881e+04ms
+[2026-06-17 18:56:52,641][train][INFO] - Epoch 73 Metrics: Learning Rate =  2.725e-04, loss =  2.240e-04
+[2026-06-17 18:56:52,642][train][INFO] - Epoch Execution Time:  1.164e+02s, Time/Iter:  3.638e+03ms
+[2026-06-17 18:58:34,091][train][INFO] - Epoch 74 Metrics: Learning Rate =  2.725e-04, loss =  2.931e-04
+[2026-06-17 18:58:34,092][train][INFO] - Epoch Execution Time:  1.014e+02s, Time/Iter:  3.170e+03ms
+[2026-06-17 19:00:01,341][train][INFO] - Epoch 75 Metrics: Learning Rate =  2.725e-04, loss =  2.506e-04
+[2026-06-17 19:00:01,342][train][INFO] - Epoch Execution Time:  8.725e+01s, Time/Iter:  2.726e+03ms
+[2026-06-17 19:01:26,477][train][INFO] - Epoch 76 Metrics: Learning Rate =  2.725e-04, loss =  3.125e-04
+[2026-06-17 19:01:26,478][train][INFO] - Epoch Execution Time:  8.513e+01s, Time/Iter:  2.660e+03ms
+[2026-06-17 19:01:39,311][valid][INFO] - Epoch 76 Metrics: Validation error =  2.351e-04
+[2026-06-17 19:01:39,312][valid][INFO] - Epoch Execution Time:  1.283e+01s, Time/Iter:  1.283e+04ms
+[2026-06-17 19:03:14,398][train][INFO] - Epoch 77 Metrics: Learning Rate =  2.725e-04, loss =  2.550e-04
+[2026-06-17 19:03:14,399][train][INFO] - Epoch Execution Time:  9.509e+01s, Time/Iter:  2.971e+03ms
+[2026-06-17 19:04:55,273][train][INFO] - Epoch 78 Metrics: Learning Rate =  2.725e-04, loss =  2.204e-04
+[2026-06-17 19:04:55,274][train][INFO] - Epoch Execution Time:  1.009e+02s, Time/Iter:  3.152e+03ms
+[2026-06-17 19:06:19,987][train][INFO] - Epoch 79 Metrics: Learning Rate =  2.725e-04, loss =  2.885e-04
+[2026-06-17 19:06:19,988][train][INFO] - Epoch Execution Time:  8.471e+01s, Time/Iter:  2.647e+03ms
+[2026-06-17 19:07:49,885][train][INFO] - Epoch 80 Metrics: Learning Rate =  2.725e-04, loss =  2.293e-04
+[2026-06-17 19:07:49,886][train][INFO] - Epoch Execution Time:  8.990e+01s, Time/Iter:  2.809e+03ms
+[2026-06-17 19:07:49,938][checkpoint][INFO] - Saved model state dictionary: /home/lushuai/physicsnemo/examples/cfd/darcy_fno/checkpoints/FNO.0.80.mdlus
+[2026-06-17 19:07:49,978][checkpoint][INFO] - Saved training checkpoint: /home/lushuai/physicsnemo/examples/cfd/darcy_fno/checkpoints/checkpoint.0.80.pt
+[2026-06-17 19:08:05,009][valid][INFO] - Epoch 80 Metrics: Validation error =  2.926e-04
+[2026-06-17 19:08:05,010][valid][INFO] - Epoch Execution Time:  1.503e+01s, Time/Iter:  1.503e+04ms
+[2026-06-17 19:09:43,107][train][INFO] - Epoch 81 Metrics: Learning Rate =  2.316e-04, loss =  2.298e-04
+[2026-06-17 19:09:43,108][train][INFO] - Epoch Execution Time:  9.810e+01s, Time/Iter:  3.066e+03ms
+[2026-06-17 19:11:20,403][train][INFO] - Epoch 82 Metrics: Learning Rate =  2.316e-04, loss =  2.709e-04
+[2026-06-17 19:11:20,404][train][INFO] - Epoch Execution Time:  9.729e+01s, Time/Iter:  3.040e+03ms
+[2026-06-17 19:12:51,621][train][INFO] - Epoch 83 Metrics: Learning Rate =  2.316e-04, loss =  2.266e-04
+[2026-06-17 19:12:51,622][train][INFO] - Epoch Execution Time:  9.122e+01s, Time/Iter:  2.851e+03ms
+[2026-06-17 19:14:24,461][train][INFO] - Epoch 84 Metrics: Learning Rate =  2.316e-04, loss =  2.702e-04
+[2026-06-17 19:14:24,462][train][INFO] - Epoch Execution Time:  9.284e+01s, Time/Iter:  2.901e+03ms
+[2026-06-17 19:14:37,341][valid][INFO] - Epoch 84 Metrics: Validation error =  3.049e-04
+[2026-06-17 19:14:37,342][valid][INFO] - Epoch Execution Time:  1.288e+01s, Time/Iter:  1.288e+04ms
+[2026-06-17 19:16:11,231][train][INFO] - Epoch 85 Metrics: Learning Rate =  2.316e-04, loss =  3.253e-04
+[2026-06-17 19:16:11,232][train][INFO] - Epoch Execution Time:  9.389e+01s, Time/Iter:  2.934e+03ms
+[2026-06-17 19:17:44,192][train][INFO] - Epoch 86 Metrics: Learning Rate =  2.316e-04, loss =  2.135e-04
+[2026-06-17 19:17:44,193][train][INFO] - Epoch Execution Time:  9.296e+01s, Time/Iter:  2.905e+03ms
+[2026-06-17 19:19:13,154][train][INFO] - Epoch 87 Metrics: Learning Rate =  2.316e-04, loss =  2.564e-04
+[2026-06-17 19:19:13,155][train][INFO] - Epoch Execution Time:  8.896e+01s, Time/Iter:  2.780e+03ms
+[2026-06-17 19:20:45,036][train][INFO] - Epoch 88 Metrics: Learning Rate =  2.316e-04, loss =  2.508e-04
+[2026-06-17 19:20:45,037][train][INFO] - Epoch Execution Time:  9.188e+01s, Time/Iter:  2.871e+03ms
+[2026-06-17 19:20:45,093][checkpoint][INFO] - Saved model state dictionary: /home/lushuai/physicsnemo/examples/cfd/darcy_fno/checkpoints/FNO.0.88.mdlus
+[2026-06-17 19:20:45,134][checkpoint][INFO] - Saved training checkpoint: /home/lushuai/physicsnemo/examples/cfd/darcy_fno/checkpoints/checkpoint.0.88.pt
+[2026-06-17 19:20:59,198][valid][INFO] - Epoch 88 Metrics: Validation error =  4.579e-04
+[2026-06-17 19:20:59,199][valid][INFO] - Epoch Execution Time:  1.406e+01s, Time/Iter:  1.406e+04ms
+[2026-06-17 19:22:37,503][train][INFO] - Epoch 89 Metrics: Learning Rate =  1.969e-04, loss =  2.841e-04
+[2026-06-17 19:22:37,505][train][INFO] - Epoch Execution Time:  9.830e+01s, Time/Iter:  3.072e+03ms
+[2026-06-17 19:24:13,845][train][INFO] - Epoch 90 Metrics: Learning Rate =  1.969e-04, loss =  2.800e-04
+[2026-06-17 19:24:13,846][train][INFO] - Epoch Execution Time:  9.634e+01s, Time/Iter:  3.011e+03ms
+[2026-06-17 19:25:47,759][train][INFO] - Epoch 91 Metrics: Learning Rate =  1.969e-04, loss =  2.477e-04
+[2026-06-17 19:25:47,760][train][INFO] - Epoch Execution Time:  9.391e+01s, Time/Iter:  2.935e+03ms
+[2026-06-17 19:27:26,194][train][INFO] - Epoch 92 Metrics: Learning Rate =  1.969e-04, loss =  2.168e-04
+[2026-06-17 19:27:26,195][train][INFO] - Epoch Execution Time:  9.843e+01s, Time/Iter:  3.076e+03ms
+[2026-06-17 19:27:46,626][valid][INFO] - Epoch 92 Metrics: Validation error =  1.928e-04
+[2026-06-17 19:27:46,627][valid][INFO] - Epoch Execution Time:  2.043e+01s, Time/Iter:  2.043e+04ms
+[2026-06-17 19:29:16,191][train][INFO] - Epoch 93 Metrics: Learning Rate =  1.969e-04, loss =  2.239e-04
+[2026-06-17 19:29:16,192][train][INFO] - Epoch Execution Time:  8.956e+01s, Time/Iter:  2.799e+03ms
+[2026-06-17 19:30:46,758][train][INFO] - Epoch 94 Metrics: Learning Rate =  1.969e-04, loss =  2.343e-04
+[2026-06-17 19:30:46,759][train][INFO] - Epoch Execution Time:  9.056e+01s, Time/Iter:  2.830e+03ms
+[2026-06-17 19:32:14,725][train][INFO] - Epoch 95 Metrics: Learning Rate =  1.969e-04, loss =  2.415e-04
+[2026-06-17 19:32:14,725][train][INFO] - Epoch Execution Time:  8.797e+01s, Time/Iter:  2.749e+03ms
+[2026-06-17 19:33:38,687][train][INFO] - Epoch 96 Metrics: Learning Rate =  1.969e-04, loss =  2.358e-04
+[2026-06-17 19:33:38,688][train][INFO] - Epoch Execution Time:  8.396e+01s, Time/Iter:  2.624e+03ms
+[2026-06-17 19:33:38,739][checkpoint][INFO] - Saved model state dictionary: /home/lushuai/physicsnemo/examples/cfd/darcy_fno/checkpoints/FNO.0.96.mdlus
+[2026-06-17 19:33:38,776][checkpoint][INFO] - Saved training checkpoint: /home/lushuai/physicsnemo/examples/cfd/darcy_fno/checkpoints/checkpoint.0.96.pt
+[2026-06-17 19:33:51,221][valid][INFO] - Epoch 96 Metrics: Validation error =  2.372e-04
+[2026-06-17 19:33:51,221][valid][INFO] - Epoch Execution Time:  1.244e+01s, Time/Iter:  1.244e+04ms
+[2026-06-17 19:35:17,535][train][INFO] - Epoch 97 Metrics: Learning Rate =  1.673e-04, loss =  2.151e-04
+[2026-06-17 19:35:17,536][train][INFO] - Epoch Execution Time:  8.631e+01s, Time/Iter:  2.697e+03ms
+[2026-06-17 19:36:43,891][train][INFO] - Epoch 98 Metrics: Learning Rate =  1.673e-04, loss =  1.954e-04
+[2026-06-17 19:36:43,892][train][INFO] - Epoch Execution Time:  8.635e+01s, Time/Iter:  2.699e+03ms
+[2026-06-17 19:38:10,081][train][INFO] - Epoch 99 Metrics: Learning Rate =  1.673e-04, loss =  2.561e-04
+[2026-06-17 19:38:10,081][train][INFO] - Epoch Execution Time:  8.619e+01s, Time/Iter:  2.693e+03ms
+[2026-06-17 19:39:34,518][train][INFO] - Epoch 100 Metrics: Learning Rate =  1.673e-04, loss =  2.402e-04
+[2026-06-17 19:39:34,518][train][INFO] - Epoch Execution Time:  8.444e+01s, Time/Iter:  2.639e+03ms
+[2026-06-17 19:39:47,525][valid][INFO] - Epoch 100 Metrics: Validation error =  2.184e-04
+[2026-06-17 19:39:47,526][valid][INFO] - Epoch Execution Time:  1.301e+01s, Time/Iter:  1.301e+04ms
+[2026-06-17 19:41:09,804][train][INFO] - Epoch 101 Metrics: Learning Rate =  1.673e-04, loss =  2.201e-04
+[2026-06-17 19:41:09,805][train][INFO] - Epoch Execution Time:  8.228e+01s, Time/Iter:  2.571e+03ms
+[2026-06-17 19:42:32,341][train][INFO] - Epoch 102 Metrics: Learning Rate =  1.673e-04, loss =  2.018e-04
+[2026-06-17 19:42:32,342][train][INFO] - Epoch Execution Time:  8.254e+01s, Time/Iter:  2.579e+03ms
+[2026-06-17 19:43:55,381][train][INFO] - Epoch 103 Metrics: Learning Rate =  1.673e-04, loss =  2.153e-04
+[2026-06-17 19:43:55,383][train][INFO] - Epoch Execution Time:  8.304e+01s, Time/Iter:  2.595e+03ms
+[2026-06-17 19:45:18,195][train][INFO] - Epoch 104 Metrics: Learning Rate =  1.673e-04, loss =  2.049e-04
+[2026-06-17 19:45:18,196][train][INFO] - Epoch Execution Time:  8.281e+01s, Time/Iter:  2.588e+03ms
+[2026-06-17 19:45:18,255][checkpoint][INFO] - Saved model state dictionary: /home/lushuai/physicsnemo/examples/cfd/darcy_fno/checkpoints/FNO.0.104.mdlus
+[2026-06-17 19:45:18,293][checkpoint][INFO] - Saved training checkpoint: /home/lushuai/physicsnemo/examples/cfd/darcy_fno/checkpoints/checkpoint.0.104.pt
+[2026-06-17 19:45:30,565][valid][INFO] - Epoch 104 Metrics: Validation error =  2.363e-04
+[2026-06-17 19:45:30,565][valid][INFO] - Epoch Execution Time:  1.227e+01s, Time/Iter:  1.227e+04ms
+[2026-06-17 19:46:54,990][train][INFO] - Epoch 105 Metrics: Learning Rate =  1.422e-04, loss =  2.008e-04
+[2026-06-17 19:46:54,991][train][INFO] - Epoch Execution Time:  8.442e+01s, Time/Iter:  2.638e+03ms
+[2026-06-17 19:48:18,754][train][INFO] - Epoch 106 Metrics: Learning Rate =  1.422e-04, loss =  1.916e-04
+[2026-06-17 19:48:18,755][train][INFO] - Epoch Execution Time:  8.376e+01s, Time/Iter:  2.618e+03ms
+[2026-06-17 19:49:42,066][train][INFO] - Epoch 107 Metrics: Learning Rate =  1.422e-04, loss =  2.004e-04
+[2026-06-17 19:49:42,067][train][INFO] - Epoch Execution Time:  8.331e+01s, Time/Iter:  2.603e+03ms
+[2026-06-17 19:51:05,269][train][INFO] - Epoch 108 Metrics: Learning Rate =  1.422e-04, loss =  2.174e-04
+[2026-06-17 19:51:05,270][train][INFO] - Epoch Execution Time:  8.320e+01s, Time/Iter:  2.600e+03ms
+[2026-06-17 19:51:18,375][valid][INFO] - Epoch 108 Metrics: Validation error =  1.981e-04
+[2026-06-17 19:51:18,376][valid][INFO] - Epoch Execution Time:  1.310e+01s, Time/Iter:  1.310e+04ms
+[2026-06-17 19:52:42,130][train][INFO] - Epoch 109 Metrics: Learning Rate =  1.422e-04, loss =  2.006e-04
+[2026-06-17 19:52:42,131][train][INFO] - Epoch Execution Time:  8.375e+01s, Time/Iter:  2.617e+03ms
+[2026-06-17 19:54:05,226][train][INFO] - Epoch 110 Metrics: Learning Rate =  1.422e-04, loss =  2.209e-04
+[2026-06-17 19:54:05,227][train][INFO] - Epoch Execution Time:  8.309e+01s, Time/Iter:  2.597e+03ms
+[2026-06-17 19:55:28,746][train][INFO] - Epoch 111 Metrics: Learning Rate =  1.422e-04, loss =  2.129e-04
+[2026-06-17 19:55:28,747][train][INFO] - Epoch Execution Time:  8.352e+01s, Time/Iter:  2.610e+03ms
+[2026-06-17 19:56:54,553][train][INFO] - Epoch 112 Metrics: Learning Rate =  1.422e-04, loss =  1.998e-04
+[2026-06-17 19:56:54,554][train][INFO] - Epoch Execution Time:  8.580e+01s, Time/Iter:  2.681e+03ms
+[2026-06-17 19:56:54,602][checkpoint][INFO] - Saved model state dictionary: /home/lushuai/physicsnemo/examples/cfd/darcy_fno/checkpoints/FNO.0.112.mdlus
+[2026-06-17 19:56:54,640][checkpoint][INFO] - Saved training checkpoint: /home/lushuai/physicsnemo/examples/cfd/darcy_fno/checkpoints/checkpoint.0.112.pt
+[2026-06-17 19:57:07,755][valid][INFO] - Epoch 112 Metrics: Validation error =  2.083e-04
+[2026-06-17 19:57:07,756][valid][INFO] - Epoch Execution Time:  1.312e+01s, Time/Iter:  1.312e+04ms
+[2026-06-17 19:58:31,517][train][INFO] - Epoch 113 Metrics: Learning Rate =  1.209e-04, loss =  2.282e-04
+[2026-06-17 19:58:31,518][train][INFO] - Epoch Execution Time:  8.376e+01s, Time/Iter:  2.618e+03ms
+[2026-06-17 19:59:57,380][train][INFO] - Epoch 114 Metrics: Learning Rate =  1.209e-04, loss =  2.139e-04
+[2026-06-17 19:59:57,381][train][INFO] - Epoch Execution Time:  8.586e+01s, Time/Iter:  2.683e+03ms
+[2026-06-17 20:01:22,152][train][INFO] - Epoch 115 Metrics: Learning Rate =  1.209e-04, loss =  2.232e-04
+[2026-06-17 20:01:22,153][train][INFO] - Epoch Execution Time:  8.477e+01s, Time/Iter:  2.649e+03ms
+[2026-06-17 20:02:45,923][train][INFO] - Epoch 116 Metrics: Learning Rate =  1.209e-04, loss =  2.207e-04
+[2026-06-17 20:02:45,924][train][INFO] - Epoch Execution Time:  8.377e+01s, Time/Iter:  2.618e+03ms
+[2026-06-17 20:02:58,475][valid][INFO] - Epoch 116 Metrics: Validation error =  1.901e-04
+[2026-06-17 20:02:58,475][valid][INFO] - Epoch Execution Time:  1.255e+01s, Time/Iter:  1.255e+04ms
+[2026-06-17 20:04:21,204][train][INFO] - Epoch 117 Metrics: Learning Rate =  1.209e-04, loss =  2.222e-04
+[2026-06-17 20:04:21,205][train][INFO] - Epoch Execution Time:  8.273e+01s, Time/Iter:  2.585e+03ms
+[2026-06-17 20:05:44,991][train][INFO] - Epoch 118 Metrics: Learning Rate =  1.209e-04, loss =  1.980e-04
+[2026-06-17 20:05:44,992][train][INFO] - Epoch Execution Time:  8.378e+01s, Time/Iter:  2.618e+03ms
+[2026-06-17 20:07:08,816][train][INFO] - Epoch 119 Metrics: Learning Rate =  1.209e-04, loss =  2.100e-04
+[2026-06-17 20:07:08,817][train][INFO] - Epoch Execution Time:  8.382e+01s, Time/Iter:  2.619e+03ms
+[2026-06-17 20:08:37,259][train][INFO] - Epoch 120 Metrics: Learning Rate =  1.209e-04, loss =  1.929e-04
+[2026-06-17 20:08:37,260][train][INFO] - Epoch Execution Time:  8.844e+01s, Time/Iter:  2.764e+03ms
+[2026-06-17 20:08:37,311][checkpoint][INFO] - Saved model state dictionary: /home/lushuai/physicsnemo/examples/cfd/darcy_fno/checkpoints/FNO.0.120.mdlus
+[2026-06-17 20:08:37,350][checkpoint][INFO] - Saved training checkpoint: /home/lushuai/physicsnemo/examples/cfd/darcy_fno/checkpoints/checkpoint.0.120.pt
+[2026-06-17 20:08:51,070][valid][INFO] - Epoch 120 Metrics: Validation error =  3.098e-04
+[2026-06-17 20:08:51,071][valid][INFO] - Epoch Execution Time:  1.372e+01s, Time/Iter:  1.372e+04ms
+[2026-06-17 20:10:13,740][train][INFO] - Epoch 121 Metrics: Learning Rate =  1.028e-04, loss =  2.033e-04
+[2026-06-17 20:10:13,740][train][INFO] - Epoch Execution Time:  8.267e+01s, Time/Iter:  2.583e+03ms
+[2026-06-17 20:11:37,531][train][INFO] - Epoch 122 Metrics: Learning Rate =  1.028e-04, loss =  1.912e-04
+[2026-06-17 20:11:37,531][train][INFO] - Epoch Execution Time:  8.379e+01s, Time/Iter:  2.618e+03ms
+[2026-06-17 20:13:03,150][train][INFO] - Epoch 123 Metrics: Learning Rate =  1.028e-04, loss =  2.156e-04
+[2026-06-17 20:13:03,151][train][INFO] - Epoch Execution Time:  8.562e+01s, Time/Iter:  2.676e+03ms
+[2026-06-17 20:14:29,778][train][INFO] - Epoch 124 Metrics: Learning Rate =  1.028e-04, loss =  1.853e-04
+[2026-06-17 20:14:29,779][train][INFO] - Epoch Execution Time:  8.663e+01s, Time/Iter:  2.707e+03ms
+[2026-06-17 20:14:42,339][valid][INFO] - Epoch 124 Metrics: Validation error =  1.979e-04
+[2026-06-17 20:14:42,340][valid][INFO] - Epoch Execution Time:  1.256e+01s, Time/Iter:  1.256e+04ms
+[2026-06-17 20:16:08,335][train][INFO] - Epoch 125 Metrics: Learning Rate =  1.028e-04, loss =  2.070e-04
+[2026-06-17 20:16:08,336][train][INFO] - Epoch Execution Time:  8.599e+01s, Time/Iter:  2.687e+03ms
+[2026-06-17 20:17:31,879][train][INFO] - Epoch 126 Metrics: Learning Rate =  1.028e-04, loss =  1.919e-04
+[2026-06-17 20:17:31,879][train][INFO] - Epoch Execution Time:  8.354e+01s, Time/Iter:  2.611e+03ms
+[2026-06-17 20:18:55,713][train][INFO] - Epoch 127 Metrics: Learning Rate =  1.028e-04, loss =  1.858e-04
+[2026-06-17 20:18:55,714][train][INFO] - Epoch Execution Time:  8.383e+01s, Time/Iter:  2.620e+03ms
+[2026-06-17 20:20:20,510][train][INFO] - Epoch 128 Metrics: Learning Rate =  1.028e-04, loss =  1.952e-04
+[2026-06-17 20:20:20,511][train][INFO] - Epoch Execution Time:  8.480e+01s, Time/Iter:  2.650e+03ms
+[2026-06-17 20:20:20,561][checkpoint][INFO] - Saved model state dictionary: /home/lushuai/physicsnemo/examples/cfd/darcy_fno/checkpoints/FNO.0.128.mdlus
+[2026-06-17 20:20:20,600][checkpoint][INFO] - Saved training checkpoint: /home/lushuai/physicsnemo/examples/cfd/darcy_fno/checkpoints/checkpoint.0.128.pt
+[2026-06-17 20:20:33,389][valid][INFO] - Epoch 128 Metrics: Validation error =  2.371e-04
+[2026-06-17 20:20:33,390][valid][INFO] - Epoch Execution Time:  1.279e+01s, Time/Iter:  1.279e+04ms
+[2026-06-17 20:21:58,915][train][INFO] - Epoch 129 Metrics: Learning Rate =  8.735e-05, loss =  1.907e-04
+[2026-06-17 20:21:58,916][train][INFO] - Epoch Execution Time:  8.552e+01s, Time/Iter:  2.673e+03ms
+[2026-06-17 20:23:22,184][train][INFO] - Epoch 130 Metrics: Learning Rate =  8.735e-05, loss =  1.837e-04
+[2026-06-17 20:23:22,185][train][INFO] - Epoch Execution Time:  8.327e+01s, Time/Iter:  2.602e+03ms
+[2026-06-17 20:24:45,658][train][INFO] - Epoch 131 Metrics: Learning Rate =  8.735e-05, loss =  1.935e-04
+[2026-06-17 20:24:45,659][train][INFO] - Epoch Execution Time:  8.347e+01s, Time/Iter:  2.609e+03ms
+[2026-06-17 20:26:09,085][train][INFO] - Epoch 132 Metrics: Learning Rate =  8.735e-05, loss =  1.985e-04
+[2026-06-17 20:26:09,086][train][INFO] - Epoch Execution Time:  8.343e+01s, Time/Iter:  2.607e+03ms
+[2026-06-17 20:26:22,382][valid][INFO] - Epoch 132 Metrics: Validation error =  2.251e-04
+[2026-06-17 20:26:22,382][valid][INFO] - Epoch Execution Time:  1.330e+01s, Time/Iter:  1.330e+04ms
+[2026-06-17 20:27:45,453][train][INFO] - Epoch 133 Metrics: Learning Rate =  8.735e-05, loss =  2.003e-04
+[2026-06-17 20:27:45,453][train][INFO] - Epoch Execution Time:  8.307e+01s, Time/Iter:  2.596e+03ms
+[2026-06-17 20:29:08,072][train][INFO] - Epoch 134 Metrics: Learning Rate =  8.735e-05, loss =  2.152e-04
+[2026-06-17 20:29:08,073][train][INFO] - Epoch Execution Time:  8.262e+01s, Time/Iter:  2.582e+03ms
+[2026-06-17 20:30:31,578][train][INFO] - Epoch 135 Metrics: Learning Rate =  8.735e-05, loss =  2.671e-04
+[2026-06-17 20:30:31,579][train][INFO] - Epoch Execution Time:  8.351e+01s, Time/Iter:  2.610e+03ms
+[2026-06-17 20:31:54,587][train][INFO] - Epoch 136 Metrics: Learning Rate =  8.735e-05, loss =  2.308e-04
+[2026-06-17 20:31:54,588][train][INFO] - Epoch Execution Time:  8.301e+01s, Time/Iter:  2.594e+03ms
+[2026-06-17 20:31:54,664][checkpoint][INFO] - Saved model state dictionary: /home/lushuai/physicsnemo/examples/cfd/darcy_fno/checkpoints/FNO.0.136.mdlus
+[2026-06-17 20:31:54,702][checkpoint][INFO] - Saved training checkpoint: /home/lushuai/physicsnemo/examples/cfd/darcy_fno/checkpoints/checkpoint.0.136.pt
+[2026-06-17 20:32:07,096][valid][INFO] - Epoch 136 Metrics: Validation error =  1.591e-04
+[2026-06-17 20:32:07,097][valid][INFO] - Epoch Execution Time:  1.239e+01s, Time/Iter:  1.239e+04ms
+[2026-06-17 20:33:29,613][train][INFO] - Epoch 137 Metrics: Learning Rate =  7.425e-05, loss =  2.444e-04
+[2026-06-17 20:33:29,614][train][INFO] - Epoch Execution Time:  8.252e+01s, Time/Iter:  2.579e+03ms
+[2026-06-17 20:34:53,558][train][INFO] - Epoch 138 Metrics: Learning Rate =  7.425e-05, loss =  1.920e-04
+[2026-06-17 20:34:53,559][train][INFO] - Epoch Execution Time:  8.394e+01s, Time/Iter:  2.623e+03ms
+[2026-06-17 20:36:18,202][train][INFO] - Epoch 139 Metrics: Learning Rate =  7.425e-05, loss =  1.881e-04
+[2026-06-17 20:36:18,203][train][INFO] - Epoch Execution Time:  8.464e+01s, Time/Iter:  2.645e+03ms
+[2026-06-17 20:37:40,720][train][INFO] - Epoch 140 Metrics: Learning Rate =  7.425e-05, loss =  1.935e-04
+[2026-06-17 20:37:40,721][train][INFO] - Epoch Execution Time:  8.252e+01s, Time/Iter:  2.579e+03ms
+[2026-06-17 20:37:53,191][valid][INFO] - Epoch 140 Metrics: Validation error =  2.539e-04
+[2026-06-17 20:37:53,191][valid][INFO] - Epoch Execution Time:  1.247e+01s, Time/Iter:  1.247e+04ms
+[2026-06-17 20:39:15,893][train][INFO] - Epoch 141 Metrics: Learning Rate =  7.425e-05, loss =  1.941e-04
+[2026-06-17 20:39:15,893][train][INFO] - Epoch Execution Time:  8.270e+01s, Time/Iter:  2.584e+03ms
+[2026-06-17 20:40:42,323][train][INFO] - Epoch 142 Metrics: Learning Rate =  7.425e-05, loss =  1.871e-04
+[2026-06-17 20:40:42,324][train][INFO] - Epoch Execution Time:  8.643e+01s, Time/Iter:  2.701e+03ms
+[2026-06-17 20:42:06,469][train][INFO] - Epoch 143 Metrics: Learning Rate =  7.425e-05, loss =  1.967e-04
+[2026-06-17 20:42:06,470][train][INFO] - Epoch Execution Time:  8.414e+01s, Time/Iter:  2.630e+03ms
+[2026-06-17 20:43:29,390][train][INFO] - Epoch 144 Metrics: Learning Rate =  7.425e-05, loss =  2.008e-04
+[2026-06-17 20:43:29,391][train][INFO] - Epoch Execution Time:  8.292e+01s, Time/Iter:  2.591e+03ms
+[2026-06-17 20:43:29,439][checkpoint][INFO] - Saved model state dictionary: /home/lushuai/physicsnemo/examples/cfd/darcy_fno/checkpoints/FNO.0.144.mdlus
+[2026-06-17 20:43:29,481][checkpoint][INFO] - Saved training checkpoint: /home/lushuai/physicsnemo/examples/cfd/darcy_fno/checkpoints/checkpoint.0.144.pt
+[2026-06-17 20:43:42,265][valid][INFO] - Epoch 144 Metrics: Validation error =  1.703e-04
+[2026-06-17 20:43:42,265][valid][INFO] - Epoch Execution Time:  1.278e+01s, Time/Iter:  1.278e+04ms
+[2026-06-17 20:45:08,273][train][INFO] - Epoch 145 Metrics: Learning Rate =  6.311e-05, loss =  2.015e-04
+[2026-06-17 20:45:08,274][train][INFO] - Epoch Execution Time:  8.601e+01s, Time/Iter:  2.688e+03ms
+[2026-06-17 20:46:35,730][train][INFO] - Epoch 146 Metrics: Learning Rate =  6.311e-05, loss =  1.716e-04
+[2026-06-17 20:46:35,731][train][INFO] - Epoch Execution Time:  8.746e+01s, Time/Iter:  2.733e+03ms
+[2026-06-17 20:47:59,053][train][INFO] - Epoch 147 Metrics: Learning Rate =  6.311e-05, loss =  2.038e-04
+[2026-06-17 20:47:59,054][train][INFO] - Epoch Execution Time:  8.332e+01s, Time/Iter:  2.604e+03ms
+[2026-06-17 20:49:22,560][train][INFO] - Epoch 148 Metrics: Learning Rate =  6.311e-05, loss =  1.830e-04
+[2026-06-17 20:49:22,561][train][INFO] - Epoch Execution Time:  8.351e+01s, Time/Iter:  2.610e+03ms
+[2026-06-17 20:49:35,767][valid][INFO] - Epoch 148 Metrics: Validation error =  1.913e-04
+[2026-06-17 20:49:35,767][valid][INFO] - Epoch Execution Time:  1.321e+01s, Time/Iter:  1.321e+04ms
+[2026-06-17 20:50:59,003][train][INFO] - Epoch 149 Metrics: Learning Rate =  6.311e-05, loss =  1.993e-04
+[2026-06-17 20:50:59,004][train][INFO] - Epoch Execution Time:  8.324e+01s, Time/Iter:  2.601e+03ms
+[2026-06-17 20:52:23,415][train][INFO] - Epoch 150 Metrics: Learning Rate =  6.311e-05, loss =  1.864e-04
+[2026-06-17 20:52:23,416][train][INFO] - Epoch Execution Time:  8.441e+01s, Time/Iter:  2.638e+03ms
+[2026-06-17 20:53:47,871][train][INFO] - Epoch 151 Metrics: Learning Rate =  6.311e-05, loss =  1.972e-04
+[2026-06-17 20:53:47,872][train][INFO] - Epoch Execution Time:  8.445e+01s, Time/Iter:  2.639e+03ms
+[2026-06-17 20:55:11,637][train][INFO] - Epoch 152 Metrics: Learning Rate =  6.311e-05, loss =  1.869e-04
+[2026-06-17 20:55:11,638][train][INFO] - Epoch Execution Time:  8.376e+01s, Time/Iter:  2.618e+03ms
+[2026-06-17 20:55:11,698][checkpoint][INFO] - Saved model state dictionary: /home/lushuai/physicsnemo/examples/cfd/darcy_fno/checkpoints/FNO.0.152.mdlus
+[2026-06-17 20:55:11,735][checkpoint][INFO] - Saved training checkpoint: /home/lushuai/physicsnemo/examples/cfd/darcy_fno/checkpoints/checkpoint.0.152.pt
+[2026-06-17 20:55:24,036][valid][INFO] - Epoch 152 Metrics: Validation error =  1.647e-04
+[2026-06-17 20:55:24,036][valid][INFO] - Epoch Execution Time:  1.230e+01s, Time/Iter:  1.230e+04ms
+[2026-06-17 20:56:46,609][train][INFO] - Epoch 153 Metrics: Learning Rate =  5.365e-05, loss =  1.794e-04
+[2026-06-17 20:56:46,610][train][INFO] - Epoch Execution Time:  8.257e+01s, Time/Iter:  2.580e+03ms
+[2026-06-17 20:58:09,955][train][INFO] - Epoch 154 Metrics: Learning Rate =  5.365e-05, loss =  2.008e-04
+[2026-06-17 20:58:09,956][train][INFO] - Epoch Execution Time:  8.334e+01s, Time/Iter:  2.605e+03ms
+[2026-06-17 20:59:32,497][train][INFO] - Epoch 155 Metrics: Learning Rate =  5.365e-05, loss =  1.936e-04
+[2026-06-17 20:59:32,498][train][INFO] - Epoch Execution Time:  8.254e+01s, Time/Iter:  2.579e+03ms
+[2026-06-17 21:00:56,153][train][INFO] - Epoch 156 Metrics: Learning Rate =  5.365e-05, loss =  1.954e-04
+[2026-06-17 21:00:56,154][train][INFO] - Epoch Execution Time:  8.365e+01s, Time/Iter:  2.614e+03ms
+[2026-06-17 21:01:08,705][valid][INFO] - Epoch 156 Metrics: Validation error =  2.067e-04
+[2026-06-17 21:01:08,705][valid][INFO] - Epoch Execution Time:  1.255e+01s, Time/Iter:  1.255e+04ms
+[2026-06-17 21:02:32,891][train][INFO] - Epoch 157 Metrics: Learning Rate =  5.365e-05, loss =  2.036e-04
+[2026-06-17 21:02:32,891][train][INFO] - Epoch Execution Time:  8.419e+01s, Time/Iter:  2.631e+03ms
+[2026-06-17 21:03:56,144][train][INFO] - Epoch 158 Metrics: Learning Rate =  5.365e-05, loss =  1.787e-04
+[2026-06-17 21:03:56,145][train][INFO] - Epoch Execution Time:  8.325e+01s, Time/Iter:  2.602e+03ms
+[2026-06-17 21:05:19,387][train][INFO] - Epoch 159 Metrics: Learning Rate =  5.365e-05, loss =  1.771e-04
+[2026-06-17 21:05:19,388][train][INFO] - Epoch Execution Time:  8.324e+01s, Time/Iter:  2.601e+03ms
+[2026-06-17 21:06:43,651][train][INFO] - Epoch 160 Metrics: Learning Rate =  5.365e-05, loss =  1.980e-04
+[2026-06-17 21:06:43,652][train][INFO] - Epoch Execution Time:  8.426e+01s, Time/Iter:  2.633e+03ms
+[2026-06-17 21:06:43,725][checkpoint][INFO] - Saved model state dictionary: /home/lushuai/physicsnemo/examples/cfd/darcy_fno/checkpoints/FNO.0.160.mdlus
+[2026-06-17 21:06:43,763][checkpoint][INFO] - Saved training checkpoint: /home/lushuai/physicsnemo/examples/cfd/darcy_fno/checkpoints/checkpoint.0.160.pt
+[2026-06-17 21:06:57,508][valid][INFO] - Epoch 160 Metrics: Validation error =  1.883e-04
+[2026-06-17 21:06:57,508][valid][INFO] - Epoch Execution Time:  1.374e+01s, Time/Iter:  1.374e+04ms
+[2026-06-17 21:08:22,168][train][INFO] - Epoch 161 Metrics: Learning Rate =  4.560e-05, loss =  1.909e-04
+[2026-06-17 21:08:22,169][train][INFO] - Epoch Execution Time:  8.466e+01s, Time/Iter:  2.646e+03ms
+[2026-06-17 21:09:47,016][train][INFO] - Epoch 162 Metrics: Learning Rate =  4.560e-05, loss =  1.924e-04
+[2026-06-17 21:09:47,017][train][INFO] - Epoch Execution Time:  8.485e+01s, Time/Iter:  2.651e+03ms
+[2026-06-17 21:11:13,149][train][INFO] - Epoch 163 Metrics: Learning Rate =  4.560e-05, loss =  1.861e-04
+[2026-06-17 21:11:13,150][train][INFO] - Epoch Execution Time:  8.613e+01s, Time/Iter:  2.692e+03ms
+[2026-06-17 21:12:39,811][train][INFO] - Epoch 164 Metrics: Learning Rate =  4.560e-05, loss =  1.883e-04
+[2026-06-17 21:12:39,812][train][INFO] - Epoch Execution Time:  8.666e+01s, Time/Iter:  2.708e+03ms
+[2026-06-17 21:12:52,577][valid][INFO] - Epoch 164 Metrics: Validation error =  1.875e-04
+[2026-06-17 21:12:52,577][valid][INFO] - Epoch Execution Time:  1.276e+01s, Time/Iter:  1.276e+04ms
+[2026-06-17 21:14:17,413][train][INFO] - Epoch 165 Metrics: Learning Rate =  4.560e-05, loss =  1.916e-04
+[2026-06-17 21:14:17,414][train][INFO] - Epoch Execution Time:  8.484e+01s, Time/Iter:  2.651e+03ms
+[2026-06-17 21:15:43,243][train][INFO] - Epoch 166 Metrics: Learning Rate =  4.560e-05, loss =  1.904e-04
+[2026-06-17 21:15:43,244][train][INFO] - Epoch Execution Time:  8.583e+01s, Time/Iter:  2.682e+03ms
+[2026-06-17 21:17:07,824][train][INFO] - Epoch 167 Metrics: Learning Rate =  4.560e-05, loss =  1.839e-04
+[2026-06-17 21:17:07,825][train][INFO] - Epoch Execution Time:  8.458e+01s, Time/Iter:  2.643e+03ms
+[2026-06-17 21:18:35,187][train][INFO] - Epoch 168 Metrics: Learning Rate =  4.560e-05, loss =  1.917e-04
+[2026-06-17 21:18:35,188][train][INFO] - Epoch Execution Time:  8.736e+01s, Time/Iter:  2.730e+03ms
+[2026-06-17 21:18:35,236][checkpoint][INFO] - Saved model state dictionary: /home/lushuai/physicsnemo/examples/cfd/darcy_fno/checkpoints/FNO.0.168.mdlus
+[2026-06-17 21:18:35,275][checkpoint][INFO] - Saved training checkpoint: /home/lushuai/physicsnemo/examples/cfd/darcy_fno/checkpoints/checkpoint.0.168.pt
+[2026-06-17 21:18:48,177][valid][INFO] - Epoch 168 Metrics: Validation error =  1.880e-04
+[2026-06-17 21:18:48,178][valid][INFO] - Epoch Execution Time:  1.290e+01s, Time/Iter:  1.290e+04ms
+[2026-06-17 21:20:10,743][train][INFO] - Epoch 169 Metrics: Learning Rate =  3.876e-05, loss =  1.905e-04
+[2026-06-17 21:20:10,744][train][INFO] - Epoch Execution Time:  8.256e+01s, Time/Iter:  2.580e+03ms
+[2026-06-17 21:21:34,613][train][INFO] - Epoch 170 Metrics: Learning Rate =  3.876e-05, loss =  1.813e-04
+[2026-06-17 21:21:34,614][train][INFO] - Epoch Execution Time:  8.387e+01s, Time/Iter:  2.621e+03ms
+[2026-06-17 21:22:58,073][train][INFO] - Epoch 171 Metrics: Learning Rate =  3.876e-05, loss =  1.781e-04
+[2026-06-17 21:22:58,074][train][INFO] - Epoch Execution Time:  8.346e+01s, Time/Iter:  2.608e+03ms
+[2026-06-17 21:24:21,546][train][INFO] - Epoch 172 Metrics: Learning Rate =  3.876e-05, loss =  1.856e-04
+[2026-06-17 21:24:21,547][train][INFO] - Epoch Execution Time:  8.347e+01s, Time/Iter:  2.608e+03ms
+[2026-06-17 21:24:34,857][valid][INFO] - Epoch 172 Metrics: Validation error =  2.061e-04
+[2026-06-17 21:24:34,857][valid][INFO] - Epoch Execution Time:  1.331e+01s, Time/Iter:  1.331e+04ms
+[2026-06-17 21:25:59,377][train][INFO] - Epoch 173 Metrics: Learning Rate =  3.876e-05, loss =  1.747e-04
+[2026-06-17 21:25:59,378][train][INFO] - Epoch Execution Time:  8.452e+01s, Time/Iter:  2.641e+03ms
+[2026-06-17 21:27:25,879][train][INFO] - Epoch 174 Metrics: Learning Rate =  3.876e-05, loss =  1.873e-04
+[2026-06-17 21:27:25,880][train][INFO] - Epoch Execution Time:  8.650e+01s, Time/Iter:  2.703e+03ms
+[2026-06-17 21:28:51,171][train][INFO] - Epoch 175 Metrics: Learning Rate =  3.876e-05, loss =  1.905e-04
+[2026-06-17 21:28:51,172][train][INFO] - Epoch Execution Time:  8.529e+01s, Time/Iter:  2.665e+03ms
+[2026-06-17 21:30:15,076][train][INFO] - Epoch 176 Metrics: Learning Rate =  3.876e-05, loss =  1.984e-04
+[2026-06-17 21:30:15,077][train][INFO] - Epoch Execution Time:  8.390e+01s, Time/Iter:  2.622e+03ms
+[2026-06-17 21:30:15,124][checkpoint][INFO] - Saved model state dictionary: /home/lushuai/physicsnemo/examples/cfd/darcy_fno/checkpoints/FNO.0.176.mdlus
+[2026-06-17 21:30:15,166][checkpoint][INFO] - Saved training checkpoint: /home/lushuai/physicsnemo/examples/cfd/darcy_fno/checkpoints/checkpoint.0.176.pt
+[2026-06-17 21:30:28,580][valid][INFO] - Epoch 176 Metrics: Validation error =  1.720e-04
+[2026-06-17 21:30:28,580][valid][INFO] - Epoch Execution Time:  1.341e+01s, Time/Iter:  1.341e+04ms
+[2026-06-17 21:31:54,383][train][INFO] - Epoch 177 Metrics: Learning Rate =  3.295e-05, loss =  1.801e-04
+[2026-06-17 21:31:54,384][train][INFO] - Epoch Execution Time:  8.580e+01s, Time/Iter:  2.681e+03ms
+[2026-06-17 21:33:18,597][train][INFO] - Epoch 178 Metrics: Learning Rate =  3.295e-05, loss =  1.805e-04
+[2026-06-17 21:33:18,598][train][INFO] - Epoch Execution Time:  8.421e+01s, Time/Iter:  2.632e+03ms
+[2026-06-17 21:34:44,279][train][INFO] - Epoch 179 Metrics: Learning Rate =  3.295e-05, loss =  1.746e-04
+[2026-06-17 21:34:44,280][train][INFO] - Epoch Execution Time:  8.568e+01s, Time/Iter:  2.678e+03ms
+[2026-06-17 21:36:10,717][train][INFO] - Epoch 180 Metrics: Learning Rate =  3.295e-05, loss =  1.868e-04
+[2026-06-17 21:36:10,718][train][INFO] - Epoch Execution Time:  8.644e+01s, Time/Iter:  2.701e+03ms
+[2026-06-17 21:36:23,123][valid][INFO] - Epoch 180 Metrics: Validation error =  1.949e-04
+[2026-06-17 21:36:23,124][valid][INFO] - Epoch Execution Time:  1.240e+01s, Time/Iter:  1.240e+04ms
+[2026-06-17 21:37:50,133][train][INFO] - Epoch 181 Metrics: Learning Rate =  3.295e-05, loss =  1.893e-04
+[2026-06-17 21:37:50,134][train][INFO] - Epoch Execution Time:  8.701e+01s, Time/Iter:  2.719e+03ms
+[2026-06-17 21:39:14,524][train][INFO] - Epoch 182 Metrics: Learning Rate =  3.295e-05, loss =  1.810e-04
+[2026-06-17 21:39:14,525][train][INFO] - Epoch Execution Time:  8.439e+01s, Time/Iter:  2.637e+03ms
+[2026-06-17 21:40:39,229][train][INFO] - Epoch 183 Metrics: Learning Rate =  3.295e-05, loss =  1.677e-04
+[2026-06-17 21:40:39,229][train][INFO] - Epoch Execution Time:  8.470e+01s, Time/Iter:  2.647e+03ms
+[2026-06-17 21:42:05,175][train][INFO] - Epoch 184 Metrics: Learning Rate =  3.295e-05, loss =  1.869e-04
+[2026-06-17 21:42:05,176][train][INFO] - Epoch Execution Time:  8.595e+01s, Time/Iter:  2.686e+03ms
+[2026-06-17 21:42:05,244][checkpoint][INFO] - Saved model state dictionary: /home/lushuai/physicsnemo/examples/cfd/darcy_fno/checkpoints/FNO.0.184.mdlus
+[2026-06-17 21:42:05,282][checkpoint][INFO] - Saved training checkpoint: /home/lushuai/physicsnemo/examples/cfd/darcy_fno/checkpoints/checkpoint.0.184.pt
+[2026-06-17 21:42:17,794][valid][INFO] - Epoch 184 Metrics: Validation error =  1.730e-04
+[2026-06-17 21:42:17,794][valid][INFO] - Epoch Execution Time:  1.251e+01s, Time/Iter:  1.251e+04ms
+[2026-06-17 21:43:41,782][train][INFO] - Epoch 185 Metrics: Learning Rate =  2.800e-05, loss =  1.939e-04
+[2026-06-17 21:43:41,783][train][INFO] - Epoch Execution Time:  8.399e+01s, Time/Iter:  2.625e+03ms
+[2026-06-17 21:45:05,633][train][INFO] - Epoch 186 Metrics: Learning Rate =  2.800e-05, loss =  1.927e-04
+[2026-06-17 21:45:05,634][train][INFO] - Epoch Execution Time:  8.385e+01s, Time/Iter:  2.620e+03ms
+[2026-06-17 21:46:29,371][train][INFO] - Epoch 187 Metrics: Learning Rate =  2.800e-05, loss =  1.710e-04
+[2026-06-17 21:46:29,372][train][INFO] - Epoch Execution Time:  8.374e+01s, Time/Iter:  2.617e+03ms
+[2026-06-17 21:47:54,976][train][INFO] - Epoch 188 Metrics: Learning Rate =  2.800e-05, loss =  1.759e-04
+[2026-06-17 21:47:54,977][train][INFO] - Epoch Execution Time:  8.560e+01s, Time/Iter:  2.675e+03ms
+[2026-06-17 21:48:08,191][valid][INFO] - Epoch 188 Metrics: Validation error =  1.755e-04
+[2026-06-17 21:48:08,191][valid][INFO] - Epoch Execution Time:  1.321e+01s, Time/Iter:  1.321e+04ms
+[2026-06-17 21:49:31,778][train][INFO] - Epoch 189 Metrics: Learning Rate =  2.800e-05, loss =  1.903e-04
+[2026-06-17 21:49:31,779][train][INFO] - Epoch Execution Time:  8.359e+01s, Time/Iter:  2.612e+03ms
+[2026-06-17 21:50:55,114][train][INFO] - Epoch 190 Metrics: Learning Rate =  2.800e-05, loss =  1.767e-04
+[2026-06-17 21:50:55,115][train][INFO] - Epoch Execution Time:  8.333e+01s, Time/Iter:  2.604e+03ms
+[2026-06-17 21:52:18,980][train][INFO] - Epoch 191 Metrics: Learning Rate =  2.800e-05, loss =  1.769e-04
+[2026-06-17 21:52:18,981][train][INFO] - Epoch Execution Time:  8.387e+01s, Time/Iter:  2.621e+03ms
+[2026-06-17 21:53:42,210][train][INFO] - Epoch 192 Metrics: Learning Rate =  2.800e-05, loss =  1.738e-04
+[2026-06-17 21:53:42,211][train][INFO] - Epoch Execution Time:  8.323e+01s, Time/Iter:  2.601e+03ms
+[2026-06-17 21:53:42,283][checkpoint][INFO] - Saved model state dictionary: /home/lushuai/physicsnemo/examples/cfd/darcy_fno/checkpoints/FNO.0.192.mdlus
+[2026-06-17 21:53:42,322][checkpoint][INFO] - Saved training checkpoint: /home/lushuai/physicsnemo/examples/cfd/darcy_fno/checkpoints/checkpoint.0.192.pt
+[2026-06-17 21:53:54,746][valid][INFO] - Epoch 192 Metrics: Validation error =  1.641e-04
+[2026-06-17 21:53:54,747][valid][INFO] - Epoch Execution Time:  1.242e+01s, Time/Iter:  1.242e+04ms
+[2026-06-17 21:55:18,124][train][INFO] - Epoch 193 Metrics: Learning Rate =  2.380e-05, loss =  1.776e-04
+[2026-06-17 21:55:18,125][train][INFO] - Epoch Execution Time:  8.338e+01s, Time/Iter:  2.606e+03ms
+[2026-06-17 21:56:40,201][train][INFO] - Epoch 194 Metrics: Learning Rate =  2.380e-05, loss =  1.813e-04
+[2026-06-17 21:56:40,202][train][INFO] - Epoch Execution Time:  8.208e+01s, Time/Iter:  2.565e+03ms
+[2026-06-17 21:58:02,504][train][INFO] - Epoch 195 Metrics: Learning Rate =  2.380e-05, loss =  1.794e-04
+[2026-06-17 21:58:02,505][train][INFO] - Epoch Execution Time:  8.230e+01s, Time/Iter:  2.572e+03ms
+[2026-06-17 21:59:26,113][train][INFO] - Epoch 196 Metrics: Learning Rate =  2.380e-05, loss =  1.839e-04
+[2026-06-17 21:59:26,114][train][INFO] - Epoch Execution Time:  8.361e+01s, Time/Iter:  2.613e+03ms
+[2026-06-17 21:59:38,409][valid][INFO] - Epoch 196 Metrics: Validation error =  1.668e-04
+[2026-06-17 21:59:38,410][valid][INFO] - Epoch Execution Time:  1.230e+01s, Time/Iter:  1.230e+04ms
+[2026-06-17 22:01:01,433][train][INFO] - Epoch 197 Metrics: Learning Rate =  2.380e-05, loss =  1.844e-04
+[2026-06-17 22:01:01,434][train][INFO] - Epoch Execution Time:  8.302e+01s, Time/Iter:  2.594e+03ms
+[2026-06-17 22:02:27,030][train][INFO] - Epoch 198 Metrics: Learning Rate =  2.380e-05, loss =  1.921e-04
+[2026-06-17 22:02:27,031][train][INFO] - Epoch Execution Time:  8.560e+01s, Time/Iter:  2.675e+03ms
+[2026-06-17 22:03:51,646][train][INFO] - Epoch 199 Metrics: Learning Rate =  2.380e-05, loss =  1.735e-04
+[2026-06-17 22:03:51,646][train][INFO] - Epoch Execution Time:  8.461e+01s, Time/Iter:  2.644e+03ms
+[2026-06-17 22:05:14,826][train][INFO] - Epoch 200 Metrics: Learning Rate =  2.380e-05, loss =  1.695e-04
+[2026-06-17 22:05:14,827][train][INFO] - Epoch Execution Time:  8.318e+01s, Time/Iter:  2.599e+03ms
+[2026-06-17 22:05:14,873][checkpoint][INFO] - Saved model state dictionary: /home/lushuai/physicsnemo/examples/cfd/darcy_fno/checkpoints/FNO.0.200.mdlus
+[2026-06-17 22:05:14,938][checkpoint][INFO] - Saved training checkpoint: /home/lushuai/physicsnemo/examples/cfd/darcy_fno/checkpoints/checkpoint.0.200.pt
+[2026-06-17 22:05:28,011][valid][INFO] - Epoch 200 Metrics: Validation error =  1.731e-04
+[2026-06-17 22:05:28,012][valid][INFO] - Epoch Execution Time:  1.307e+01s, Time/Iter:  1.307e+04ms
+[2026-06-17 22:06:52,030][train][INFO] - Epoch 201 Metrics: Learning Rate =  2.023e-05, loss =  1.801e-04
+[2026-06-17 22:06:52,031][train][INFO] - Epoch Execution Time:  8.402e+01s, Time/Iter:  2.626e+03ms
+[2026-06-17 22:08:18,039][train][INFO] - Epoch 202 Metrics: Learning Rate =  2.023e-05, loss =  1.707e-04
+[2026-06-17 22:08:18,040][train][INFO] - Epoch Execution Time:  8.601e+01s, Time/Iter:  2.688e+03ms
+[2026-06-17 22:09:43,619][train][INFO] - Epoch 203 Metrics: Learning Rate =  2.023e-05, loss =  1.797e-04
+[2026-06-17 22:09:43,619][train][INFO] - Epoch Execution Time:  8.558e+01s, Time/Iter:  2.674e+03ms
+[2026-06-17 22:11:09,931][train][INFO] - Epoch 204 Metrics: Learning Rate =  2.023e-05, loss =  1.631e-04
+[2026-06-17 22:11:09,932][train][INFO] - Epoch Execution Time:  8.631e+01s, Time/Iter:  2.697e+03ms
+[2026-06-17 22:11:22,291][valid][INFO] - Epoch 204 Metrics: Validation error =  1.639e-04
+[2026-06-17 22:11:22,291][valid][INFO] - Epoch Execution Time:  1.236e+01s, Time/Iter:  1.236e+04ms
+[2026-06-17 22:12:46,013][train][INFO] - Epoch 205 Metrics: Learning Rate =  2.023e-05, loss =  1.752e-04
+[2026-06-17 22:12:46,014][train][INFO] - Epoch Execution Time:  8.372e+01s, Time/Iter:  2.616e+03ms
+[2026-06-17 22:14:09,498][train][INFO] - Epoch 206 Metrics: Learning Rate =  2.023e-05, loss =  1.683e-04
+[2026-06-17 22:14:09,499][train][INFO] - Epoch Execution Time:  8.348e+01s, Time/Iter:  2.609e+03ms
+[2026-06-17 22:15:32,940][train][INFO] - Epoch 207 Metrics: Learning Rate =  2.023e-05, loss =  1.819e-04
+[2026-06-17 22:15:32,941][train][INFO] - Epoch Execution Time:  8.344e+01s, Time/Iter:  2.608e+03ms
+[2026-06-17 22:16:56,216][train][INFO] - Epoch 208 Metrics: Learning Rate =  2.023e-05, loss =  1.765e-04
+[2026-06-17 22:16:56,217][train][INFO] - Epoch Execution Time:  8.327e+01s, Time/Iter:  2.602e+03ms
+[2026-06-17 22:16:56,266][checkpoint][INFO] - Saved model state dictionary: /home/lushuai/physicsnemo/examples/cfd/darcy_fno/checkpoints/FNO.0.208.mdlus
+[2026-06-17 22:16:56,305][checkpoint][INFO] - Saved training checkpoint: /home/lushuai/physicsnemo/examples/cfd/darcy_fno/checkpoints/checkpoint.0.208.pt
+[2026-06-17 22:17:09,032][valid][INFO] - Epoch 208 Metrics: Validation error =  1.494e-04
+[2026-06-17 22:17:09,033][valid][INFO] - Epoch Execution Time:  1.273e+01s, Time/Iter:  1.273e+04ms
+[2026-06-17 22:18:32,792][train][INFO] - Epoch 209 Metrics: Learning Rate =  1.720e-05, loss =  1.656e-04
+[2026-06-17 22:18:32,793][train][INFO] - Epoch Execution Time:  8.376e+01s, Time/Iter:  2.617e+03ms
+[2026-06-17 22:19:56,052][train][INFO] - Epoch 210 Metrics: Learning Rate =  1.720e-05, loss =  1.786e-04
+[2026-06-17 22:19:56,053][train][INFO] - Epoch Execution Time:  8.326e+01s, Time/Iter:  2.602e+03ms
+[2026-06-17 22:21:19,560][train][INFO] - Epoch 211 Metrics: Learning Rate =  1.720e-05, loss =  1.755e-04
+[2026-06-17 22:21:19,561][train][INFO] - Epoch Execution Time:  8.351e+01s, Time/Iter:  2.610e+03ms
+[2026-06-17 22:22:43,008][train][INFO] - Epoch 212 Metrics: Learning Rate =  1.720e-05, loss =  1.828e-04
+[2026-06-17 22:22:43,009][train][INFO] - Epoch Execution Time:  8.345e+01s, Time/Iter:  2.608e+03ms
+[2026-06-17 22:22:55,518][valid][INFO] - Epoch 212 Metrics: Validation error =  1.957e-04
+[2026-06-17 22:22:55,519][valid][INFO] - Epoch Execution Time:  1.251e+01s, Time/Iter:  1.251e+04ms
+[2026-06-17 22:24:18,498][train][INFO] - Epoch 213 Metrics: Learning Rate =  1.720e-05, loss =  1.734e-04
+[2026-06-17 22:24:18,499][train][INFO] - Epoch Execution Time:  8.298e+01s, Time/Iter:  2.593e+03ms
+[2026-06-17 22:25:41,589][train][INFO] - Epoch 214 Metrics: Learning Rate =  1.720e-05, loss =  1.643e-04
+[2026-06-17 22:25:41,590][train][INFO] - Epoch Execution Time:  8.309e+01s, Time/Iter:  2.597e+03ms
+[2026-06-17 22:27:04,162][train][INFO] - Epoch 215 Metrics: Learning Rate =  1.720e-05, loss =  1.721e-04
+[2026-06-17 22:27:04,163][train][INFO] - Epoch Execution Time:  8.257e+01s, Time/Iter:  2.580e+03ms
+[2026-06-17 22:28:27,202][train][INFO] - Epoch 216 Metrics: Learning Rate =  1.720e-05, loss =  1.800e-04
+[2026-06-17 22:28:27,202][train][INFO] - Epoch Execution Time:  8.304e+01s, Time/Iter:  2.595e+03ms
+[2026-06-17 22:28:27,252][checkpoint][INFO] - Saved model state dictionary: /home/lushuai/physicsnemo/examples/cfd/darcy_fno/checkpoints/FNO.0.216.mdlus
+[2026-06-17 22:28:27,289][checkpoint][INFO] - Saved training checkpoint: /home/lushuai/physicsnemo/examples/cfd/darcy_fno/checkpoints/checkpoint.0.216.pt
+[2026-06-17 22:28:40,295][valid][INFO] - Epoch 216 Metrics: Validation error =  1.748e-04
+[2026-06-17 22:28:40,295][valid][INFO] - Epoch Execution Time:  1.301e+01s, Time/Iter:  1.301e+04ms
+[2026-06-17 22:30:04,011][train][INFO] - Epoch 217 Metrics: Learning Rate =  1.462e-05, loss =  1.619e-04
+[2026-06-17 22:30:04,011][train][INFO] - Epoch Execution Time:  8.372e+01s, Time/Iter:  2.616e+03ms
+[2026-06-17 22:31:27,187][train][INFO] - Epoch 218 Metrics: Learning Rate =  1.462e-05, loss =  1.688e-04
+[2026-06-17 22:31:27,188][train][INFO] - Epoch Execution Time:  8.317e+01s, Time/Iter:  2.599e+03ms
+[2026-06-17 22:32:51,265][train][INFO] - Epoch 219 Metrics: Learning Rate =  1.462e-05, loss =  1.819e-04
+[2026-06-17 22:32:51,265][train][INFO] - Epoch Execution Time:  8.408e+01s, Time/Iter:  2.627e+03ms
+[2026-06-17 22:34:14,062][train][INFO] - Epoch 220 Metrics: Learning Rate =  1.462e-05, loss =  1.717e-04
+[2026-06-17 22:34:14,063][train][INFO] - Epoch Execution Time:  8.280e+01s, Time/Iter:  2.587e+03ms
+[2026-06-17 22:34:26,578][valid][INFO] - Epoch 220 Metrics: Validation error =  1.748e-04
+[2026-06-17 22:34:26,579][valid][INFO] - Epoch Execution Time:  1.252e+01s, Time/Iter:  1.252e+04ms
+[2026-06-17 22:35:51,807][train][INFO] - Epoch 221 Metrics: Learning Rate =  1.462e-05, loss =  1.715e-04
+[2026-06-17 22:35:51,808][train][INFO] - Epoch Execution Time:  8.523e+01s, Time/Iter:  2.663e+03ms
+[2026-06-17 22:37:14,732][train][INFO] - Epoch 222 Metrics: Learning Rate =  1.462e-05, loss =  1.806e-04
+[2026-06-17 22:37:14,733][train][INFO] - Epoch Execution Time:  8.292e+01s, Time/Iter:  2.591e+03ms
+[2026-06-17 22:38:38,008][train][INFO] - Epoch 223 Metrics: Learning Rate =  1.462e-05, loss =  1.792e-04
+[2026-06-17 22:38:38,009][train][INFO] - Epoch Execution Time:  8.327e+01s, Time/Iter:  2.602e+03ms
+[2026-06-17 22:40:01,346][train][INFO] - Epoch 224 Metrics: Learning Rate =  1.462e-05, loss =  1.725e-04
+[2026-06-17 22:40:01,346][train][INFO] - Epoch Execution Time:  8.334e+01s, Time/Iter:  2.604e+03ms
+[2026-06-17 22:40:01,394][checkpoint][INFO] - Saved model state dictionary: /home/lushuai/physicsnemo/examples/cfd/darcy_fno/checkpoints/FNO.0.224.mdlus
+[2026-06-17 22:40:01,432][checkpoint][INFO] - Saved training checkpoint: /home/lushuai/physicsnemo/examples/cfd/darcy_fno/checkpoints/checkpoint.0.224.pt
+[2026-06-17 22:40:13,889][valid][INFO] - Epoch 224 Metrics: Validation error =  1.770e-04
+[2026-06-17 22:40:13,890][valid][INFO] - Epoch Execution Time:  1.246e+01s, Time/Iter:  1.246e+04ms
+[2026-06-17 22:41:36,108][train][INFO] - Epoch 225 Metrics: Learning Rate =  1.243e-05, loss =  1.723e-04
+[2026-06-17 22:41:36,109][train][INFO] - Epoch Execution Time:  8.222e+01s, Time/Iter:  2.569e+03ms
+[2026-06-17 22:42:58,757][train][INFO] - Epoch 226 Metrics: Learning Rate =  1.243e-05, loss =  1.800e-04
+[2026-06-17 22:42:58,758][train][INFO] - Epoch Execution Time:  8.265e+01s, Time/Iter:  2.583e+03ms
+[2026-06-17 22:44:21,016][train][INFO] - Epoch 227 Metrics: Learning Rate =  1.243e-05, loss =  1.745e-04
+[2026-06-17 22:44:21,017][train][INFO] - Epoch Execution Time:  8.226e+01s, Time/Iter:  2.571e+03ms
+[2026-06-17 22:45:43,203][train][INFO] - Epoch 228 Metrics: Learning Rate =  1.243e-05, loss =  1.759e-04
+[2026-06-17 22:45:43,204][train][INFO] - Epoch Execution Time:  8.219e+01s, Time/Iter:  2.568e+03ms
+[2026-06-17 22:45:56,324][valid][INFO] - Epoch 228 Metrics: Validation error =  1.674e-04
+[2026-06-17 22:45:56,324][valid][INFO] - Epoch Execution Time:  1.312e+01s, Time/Iter:  1.312e+04ms
+[2026-06-17 22:47:19,778][train][INFO] - Epoch 229 Metrics: Learning Rate =  1.243e-05, loss =  1.645e-04
+[2026-06-17 22:47:19,779][train][INFO] - Epoch Execution Time:  8.345e+01s, Time/Iter:  2.608e+03ms
+[2026-06-17 22:48:42,256][train][INFO] - Epoch 230 Metrics: Learning Rate =  1.243e-05, loss =  1.900e-04
+[2026-06-17 22:48:42,257][train][INFO] - Epoch Execution Time:  8.248e+01s, Time/Iter:  2.577e+03ms
+[2026-06-17 22:50:04,793][train][INFO] - Epoch 231 Metrics: Learning Rate =  1.243e-05, loss =  1.819e-04
+[2026-06-17 22:50:04,794][train][INFO] - Epoch Execution Time:  8.254e+01s, Time/Iter:  2.579e+03ms
+[2026-06-17 22:51:28,308][train][INFO] - Epoch 232 Metrics: Learning Rate =  1.243e-05, loss =  1.762e-04
+[2026-06-17 22:51:28,309][train][INFO] - Epoch Execution Time:  8.351e+01s, Time/Iter:  2.610e+03ms
+[2026-06-17 22:51:28,358][checkpoint][INFO] - Saved model state dictionary: /home/lushuai/physicsnemo/examples/cfd/darcy_fno/checkpoints/FNO.0.232.mdlus
+[2026-06-17 22:51:28,397][checkpoint][INFO] - Saved training checkpoint: /home/lushuai/physicsnemo/examples/cfd/darcy_fno/checkpoints/checkpoint.0.232.pt
+[2026-06-17 22:51:40,795][valid][INFO] - Epoch 232 Metrics: Validation error =  1.752e-04
+[2026-06-17 22:51:40,796][valid][INFO] - Epoch Execution Time:  1.240e+01s, Time/Iter:  1.240e+04ms
+[2026-06-17 22:53:03,882][train][INFO] - Epoch 233 Metrics: Learning Rate =  1.056e-05, loss =  1.763e-04
+[2026-06-17 22:53:03,883][train][INFO] - Epoch Execution Time:  8.309e+01s, Time/Iter:  2.596e+03ms
+[2026-06-17 22:54:28,497][train][INFO] - Epoch 234 Metrics: Learning Rate =  1.056e-05, loss =  1.733e-04
+[2026-06-17 22:54:28,498][train][INFO] - Epoch Execution Time:  8.461e+01s, Time/Iter:  2.644e+03ms
+[2026-06-17 22:55:52,740][train][INFO] - Epoch 235 Metrics: Learning Rate =  1.056e-05, loss =  1.757e-04
+[2026-06-17 22:55:52,741][train][INFO] - Epoch Execution Time:  8.424e+01s, Time/Iter:  2.633e+03ms
+[2026-06-17 22:57:18,561][train][INFO] - Epoch 236 Metrics: Learning Rate =  1.056e-05, loss =  1.781e-04
+[2026-06-17 22:57:18,562][train][INFO] - Epoch Execution Time:  8.582e+01s, Time/Iter:  2.682e+03ms
+[2026-06-17 22:57:31,264][valid][INFO] - Epoch 236 Metrics: Validation error =  1.843e-04
+[2026-06-17 22:57:31,264][valid][INFO] - Epoch Execution Time:  1.270e+01s, Time/Iter:  1.270e+04ms
+[2026-06-17 22:58:57,441][train][INFO] - Epoch 237 Metrics: Learning Rate =  1.056e-05, loss =  1.778e-04
+[2026-06-17 22:58:57,442][train][INFO] - Epoch Execution Time:  8.618e+01s, Time/Iter:  2.693e+03ms
+[2026-06-17 23:00:22,897][train][INFO] - Epoch 238 Metrics: Learning Rate =  1.056e-05, loss =  1.705e-04
+[2026-06-17 23:00:22,898][train][INFO] - Epoch Execution Time:  8.545e+01s, Time/Iter:  2.670e+03ms
+[2026-06-17 23:01:48,368][train][INFO] - Epoch 239 Metrics: Learning Rate =  1.056e-05, loss =  1.812e-04
+[2026-06-17 23:01:48,368][train][INFO] - Epoch Execution Time:  8.547e+01s, Time/Iter:  2.671e+03ms
+[2026-06-17 23:03:12,164][train][INFO] - Epoch 240 Metrics: Learning Rate =  1.056e-05, loss =  1.731e-04
+[2026-06-17 23:03:12,164][train][INFO] - Epoch Execution Time:  8.379e+01s, Time/Iter:  2.619e+03ms
+[2026-06-17 23:03:12,211][checkpoint][INFO] - Saved model state dictionary: /home/lushuai/physicsnemo/examples/cfd/darcy_fno/checkpoints/FNO.0.240.mdlus
+[2026-06-17 23:03:12,249][checkpoint][INFO] - Saved training checkpoint: /home/lushuai/physicsnemo/examples/cfd/darcy_fno/checkpoints/checkpoint.0.240.pt
+[2026-06-17 23:03:24,557][valid][INFO] - Epoch 240 Metrics: Validation error =  1.612e-04
+[2026-06-17 23:03:24,558][valid][INFO] - Epoch Execution Time:  1.231e+01s, Time/Iter:  1.231e+04ms
+[2026-06-17 23:04:47,413][train][INFO] - Epoch 241 Metrics: Learning Rate =  8.977e-06, loss =  1.685e-04
+[2026-06-17 23:04:47,414][train][INFO] - Epoch Execution Time:  8.286e+01s, Time/Iter:  2.589e+03ms
+[2026-06-17 23:06:10,650][train][INFO] - Epoch 242 Metrics: Learning Rate =  8.977e-06, loss =  1.674e-04
+[2026-06-17 23:06:10,651][train][INFO] - Epoch Execution Time:  8.324e+01s, Time/Iter:  2.601e+03ms
+[2026-06-17 23:07:36,987][train][INFO] - Epoch 243 Metrics: Learning Rate =  8.977e-06, loss =  1.779e-04
+[2026-06-17 23:07:36,988][train][INFO] - Epoch Execution Time:  8.633e+01s, Time/Iter:  2.698e+03ms
+[2026-06-17 23:09:04,388][train][INFO] - Epoch 244 Metrics: Learning Rate =  8.977e-06, loss =  1.747e-04
+[2026-06-17 23:09:04,389][train][INFO] - Epoch Execution Time:  8.740e+01s, Time/Iter:  2.731e+03ms
+[2026-06-17 23:09:18,240][valid][INFO] - Epoch 244 Metrics: Validation error =  1.719e-04
+[2026-06-17 23:09:18,240][valid][INFO] - Epoch Execution Time:  1.385e+01s, Time/Iter:  1.385e+04ms
+[2026-06-17 23:10:43,117][train][INFO] - Epoch 245 Metrics: Learning Rate =  8.977e-06, loss =  1.693e-04
+[2026-06-17 23:10:43,117][train][INFO] - Epoch Execution Time:  8.488e+01s, Time/Iter:  2.652e+03ms
+[2026-06-17 23:12:07,362][train][INFO] - Epoch 246 Metrics: Learning Rate =  8.977e-06, loss =  1.684e-04
+[2026-06-17 23:12:07,363][train][INFO] - Epoch Execution Time:  8.424e+01s, Time/Iter:  2.633e+03ms
+[2026-06-17 23:13:30,765][train][INFO] - Epoch 247 Metrics: Learning Rate =  8.977e-06, loss =  1.732e-04
+[2026-06-17 23:13:30,766][train][INFO] - Epoch Execution Time:  8.340e+01s, Time/Iter:  2.606e+03ms
+[2026-06-17 23:14:54,813][train][INFO] - Epoch 248 Metrics: Learning Rate =  8.977e-06, loss =  1.640e-04
+[2026-06-17 23:14:54,814][train][INFO] - Epoch Execution Time:  8.405e+01s, Time/Iter:  2.626e+03ms
+[2026-06-17 23:14:54,861][checkpoint][INFO] - Saved model state dictionary: /home/lushuai/physicsnemo/examples/cfd/darcy_fno/checkpoints/FNO.0.248.mdlus
+[2026-06-17 23:14:54,899][checkpoint][INFO] - Saved training checkpoint: /home/lushuai/physicsnemo/examples/cfd/darcy_fno/checkpoints/checkpoint.0.248.pt
+[2026-06-17 23:15:07,427][valid][INFO] - Epoch 248 Metrics: Validation error =  1.805e-04
+[2026-06-17 23:15:07,428][valid][INFO] - Epoch Execution Time:  1.253e+01s, Time/Iter:  1.253e+04ms
+[2026-06-17 23:16:32,482][train][INFO] - Epoch 249 Metrics: Learning Rate =  7.631e-06, loss =  1.696e-04
+[2026-06-17 23:16:32,483][train][INFO] - Epoch Execution Time:  8.505e+01s, Time/Iter:  2.658e+03ms
+[2026-06-17 23:17:56,861][train][INFO] - Epoch 250 Metrics: Learning Rate =  7.631e-06, loss =  1.696e-04
+[2026-06-17 23:17:56,862][train][INFO] - Epoch Execution Time:  8.438e+01s, Time/Iter:  2.637e+03ms
+[2026-06-17 23:19:22,121][train][INFO] - Epoch 251 Metrics: Learning Rate =  7.631e-06, loss =  1.703e-04
+[2026-06-17 23:19:22,122][train][INFO] - Epoch Execution Time:  8.526e+01s, Time/Iter:  2.664e+03ms
+[2026-06-17 23:20:45,343][train][INFO] - Epoch 252 Metrics: Learning Rate =  7.631e-06, loss =  1.724e-04
+[2026-06-17 23:20:45,343][train][INFO] - Epoch Execution Time:  8.322e+01s, Time/Iter:  2.601e+03ms
+[2026-06-17 23:20:57,797][valid][INFO] - Epoch 252 Metrics: Validation error =  1.775e-04
+[2026-06-17 23:20:57,798][valid][INFO] - Epoch Execution Time:  1.245e+01s, Time/Iter:  1.245e+04ms
+[2026-06-17 23:22:21,934][train][INFO] - Epoch 253 Metrics: Learning Rate =  7.631e-06, loss =  1.703e-04
+[2026-06-17 23:22:21,935][train][INFO] - Epoch Execution Time:  8.414e+01s, Time/Iter:  2.629e+03ms
+[2026-06-17 23:23:45,125][train][INFO] - Epoch 254 Metrics: Learning Rate =  7.631e-06, loss =  1.645e-04
+[2026-06-17 23:23:45,126][train][INFO] - Epoch Execution Time:  8.319e+01s, Time/Iter:  2.600e+03ms
+[2026-06-17 23:25:08,439][train][INFO] - Epoch 255 Metrics: Learning Rate =  7.631e-06, loss =  1.716e-04
+[2026-06-17 23:25:08,440][train][INFO] - Epoch Execution Time:  8.331e+01s, Time/Iter:  2.604e+03ms
+[2026-06-17 23:26:31,569][train][INFO] - Epoch 256 Metrics: Learning Rate =  7.631e-06, loss =  1.603e-04
+[2026-06-17 23:26:31,570][train][INFO] - Epoch Execution Time:  8.313e+01s, Time/Iter:  2.598e+03ms
+[2026-06-17 23:26:31,644][checkpoint][INFO] - Saved model state dictionary: /home/lushuai/physicsnemo/examples/cfd/darcy_fno/checkpoints/FNO.0.256.mdlus
+[2026-06-17 23:26:31,683][checkpoint][INFO] - Saved training checkpoint: /home/lushuai/physicsnemo/examples/cfd/darcy_fno/checkpoints/checkpoint.0.256.pt
+[2026-06-17 23:26:45,317][valid][INFO] - Epoch 256 Metrics: Validation error =  1.718e-04
+[2026-06-17 23:26:45,317][valid][INFO] - Epoch Execution Time:  1.363e+01s, Time/Iter:  1.363e+04ms
+[2026-06-17 23:26:45,367][checkpoint][INFO] - Saved model state dictionary: /home/lushuai/physicsnemo/examples/cfd/darcy_fno/checkpoints/FNO.0.256.mdlus
+[2026-06-17 23:26:45,440][checkpoint][INFO] - Saved training checkpoint: /home/lushuai/physicsnemo/examples/cfd/darcy_fno/checkpoints/checkpoint.0.256.pt
+[2026-06-17 23:26:45,441][darcy_fno][INFO] - Training completed *yay*
