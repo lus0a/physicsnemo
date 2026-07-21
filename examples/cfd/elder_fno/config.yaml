@@ -76,7 +76,7 @@ training:
   max_epochs: 100          # 训练总 epoch 数
   start_lr: 1.0e-3         # Adam 初始学习率
   gamma: 0.9995            # ExponentialLR 每 epoch 的衰减率 (lr *= gamma)
-  physics_weight: 0.0      # PDE 残差项权重; 0 = 纯数据拟合。>0 逼网络学 h-c 耦合 (h 难学时开)
+  physics_weight: 0.0001   # PDE 残差项权重; 0 = 纯数据拟合。>0 逼网络学 h-c 耦合 (h 难学时开)
   p_data_weight: 1.0       # 数据 loss 里水头项 MSE(pred_h,h1) 的权重 (c 项权重恒为 1)
   residual: false          # 残差预测: true => 网络输出增量 Δ, 重建 c_{n+1}=c_n+Δc / h_{n+1}=h_n+Δh,
                            # 专为 h 小信号问题。false => 直接预测全场。
