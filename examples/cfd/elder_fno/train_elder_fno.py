@@ -59,6 +59,7 @@ from physicsnemo.utils import load_checkpoint, save_checkpoint
 from physicsnemo.utils.logging import LaunchLogger, PythonLogger
 
 from datapipe import ElderProblem2D
+from elder_residual_fv import ElderPhysics, form_function_elder
 from vts_dataset import VtsElderDataset
 from vtu_dataset import VtuElderDataset
 
@@ -461,13 +462,32 @@ def main(cfg: DictConfig) -> None:
 
     # --- physics residual evaluator ------------------------------------------
     use_physics = cfg.training.physics_weight > 0  # 是否启用 PDE 残差损失
+    physics_backend = str(cfg.training.get("physics_backend", "own_fd")).lower()
     residual_mask = None
+    elder_phy = None
     if use_physics:
-        residual_mask = _build_residual_mask(      # 残差掩码: 剔除顶部源段附近不满足 PDE 的行
-            datapipe,
-            mask_top_rows=cfg.training.get("mask_top_rows", 2),
-            device=device,
-        )
+        if physics_backend == "unisolver_fv":
+            # 与 Elder::FormFunction 对齐的 FV 残差 (见 elder_residual_fv.py)
+            elder_phy = ElderPhysics(
+                phi=float(cfg.physics.phi),
+                perm=float(cfg.physics.permeability),
+                visc=float(cfg.physics.viscosity),
+                Dm=float(cfg.physics.Dm),
+                rho_f=float(cfg.physics.rho_f),
+                drho=float(cfg.physics.drho),
+                g=float(cfg.physics.g),
+                W=float(cfg.physics.W),
+                H=float(cfg.physics.H),
+            )
+            log.info("physics_backend=unisolver_fv (match Elder FormFunction)")
+        else:
+            physics_backend = "own_fd"
+            residual_mask = _build_residual_mask(
+                datapipe,
+                mask_top_rows=cfg.training.get("mask_top_rows", 2),
+                device=device,
+            )
+            log.info("physics_backend=own_fd (legacy central FD + mask)")
 
     optimizer = Adam(model.parameters(), lr=cfg.training.start_lr)   # Adam 优化器
     scheduler = ExponentialLR(optimizer, gamma=cfg.training.gamma)   # 每 epoch 衰减 lr
@@ -485,7 +505,7 @@ def main(cfg: DictConfig) -> None:
     val_iters = max(1, cfg.validation.sample_size // cfg.data.batch_size)   # 验证迭代数
     physics_weight = cfg.training.physics_weight   # PDE 项权重 (0 = 关闭)
     p_data_weight = float(cfg.training.get("p_data_weight", 1.0))   # h 数据项权重
-    continuity_weight = float(cfg.training.get("continuity_weight", 1.0))   # 连续性残差权重
+    continuity_weight = float(cfg.training.get("continuity_weight", 1.0))   # 连续性/transport 权重
 
     # 跨 epoch 的 loss 历史, 供验证图绘制 loss 曲线 (log y)。仅续训时从磁盘加载 (全新 run 清空)。
     # 截断到 start_epoch, 避免 checkpoint (每 save_every 存) 与每 epoch 存的 loss 历史错位导致重复点。
@@ -530,13 +550,27 @@ def main(cfg: DictConfig) -> None:
                     if use_physics:
                         # PDE 残差在 fp32 下算 (关掉 autocast) 以保证有限差分精度。
                         with torch.autocast(device_type=autocast_dev, enabled=False):
-                            pred_c32 = pred_c.float()           # 浓度转 fp32
-                            pred_p32 = pred_h.float() * p_scale + p_hydro   # 还原成真实压力 p = h*p_scale + p_hydro
-                            loss_pde_c, loss_pde_p = _residuals_own_fd(
-                                pred_c32, pred_p32, c0.float(), dt,
-                                datapipe, residual_mask,
-                            )
-                        loss_pde = loss_pde_c + continuity_weight * loss_pde_p   # 输运 + 连续性
+                            pred_c32 = pred_c.float()
+                            pred_p32 = pred_h.float() * p_scale + p_hydro
+                            c0_32 = c0.float()
+                            p0_32 = p0.float()
+                            # dt may be 0-dim tensor or float
+                            dt_val = dt.float() if torch.is_tensor(dt) else float(dt)
+                            if physics_backend == "unisolver_fv":
+                                # L2 residual fields matching Elder::FormFunction
+                                Fp, Fc = form_function_elder(
+                                    pred_c32, pred_p32, c0_32, p0_32, dt_val, elder_phy
+                                )
+                                # mean-square loss (scale-invariant to batch); log L2 norms
+                                loss_pde_p = (Fp * Fp).mean()
+                                loss_pde_c = (Fc * Fc).mean()
+                                loss_pde = loss_pde_p + continuity_weight * loss_pde_c
+                            else:
+                                loss_pde_c, loss_pde_p = _residuals_own_fd(
+                                    pred_c32, pred_p32, c0_32, dt_val,
+                                    datapipe, residual_mask,
+                                )
+                                loss_pde = loss_pde_c + continuity_weight * loss_pde_p
                     else:
                         loss_pde = torch.zeros((), device=device)
 

@@ -83,8 +83,12 @@ training:
                            # A/B 对照时: 先 false 跑基线, 再 true 跑残差版, 其它配置完全相同。
   zero_init: false         # 残差模式下是否零初始化 decoder 末层。true => 起步=不变基线 (但梯度弱易卡住);
                            # false => 标准残差结构 (正常梯度, 推荐)。仅 residual=true 时生效。
-  continuity_weight: 1.0   # PDE 残差里连续性 div(rho q) 相对输运残差的权重
-  mask_top_rows: 2         # PDE 残差排除顶部这么多内部行 (源段及刚扩散层不满足 PDE, 剔除)
+  # PDE 残差后端:
+  #   own_fd      — 原中心差分 (masked L1 + scale, 与 unisolver F 不对齐)
+  #   unisolver_fv — 与 Elder::FormFunction 对齐的 FV 残差 (可反传, 推荐接 Newton)
+  physics_backend: unisolver_fv
+  continuity_weight: 1.0   # own_fd: 连续性权重; unisolver_fv: transport 相对 flow 的权重 (w_c)
+  mask_top_rows: 2         # 仅 own_fd: PDE 残差排除顶部这么多内部行
   val_every: 5             # 每 N epoch 做一次验证并出 val 图
   save_every: 10           # checkpoint 保存频率 (epoch); 最后一个 epoch 必存。
                            # 每次写约 228MB (.pt + .mdlus), 故建议 >= 10
