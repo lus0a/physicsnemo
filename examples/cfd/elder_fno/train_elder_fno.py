@@ -468,6 +468,7 @@ def main(cfg: DictConfig) -> None:
     if use_physics:
         if physics_backend == "unisolver_fv":
             # 与 Elder::FormFunction 对齐的 FV 残差 (见 elder_residual_fv.py)
+            pin_enable = bool(cfg.training.get("pin_enable", False))
             elder_phy = ElderPhysics(
                 phi=float(cfg.physics.phi),
                 perm=float(cfg.physics.permeability),
@@ -478,8 +479,9 @@ def main(cfg: DictConfig) -> None:
                 g=float(cfg.physics.g),
                 W=float(cfg.physics.W),
                 H=float(cfg.physics.H),
+                pin_enable=pin_enable,
             )
-            log.info("physics_backend=unisolver_fv (match Elder FormFunction)")
+            log.info(f"physics_backend=unisolver_fv (match Elder FormFunction, pin_enable={pin_enable})")
         else:
             physics_backend = "own_fd"
             residual_mask = _build_residual_mask(
