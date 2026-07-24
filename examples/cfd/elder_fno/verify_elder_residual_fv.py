@@ -63,7 +63,7 @@ def _maybe_fno(cfg, dp, checkpoint, device):
     from physicsnemo.distributed import DistributedManager
     from physicsnemo.models.fno import FNO
 
-    from train_elder_fno import _resolve_fno_modes
+    from train_elder_fno import _resolve_fno_modes, _resolve_in_channels, build_invar
 
     DistributedManager.initialize()
     mdl = cfg.model
@@ -71,7 +71,7 @@ def _maybe_fno(cfg, dp, checkpoint, device):
         OmegaConf.to_container(mdl, resolve=True)["num_fno_modes"], dp, mdl.padding
     )
     model = FNO(
-        in_channels=mdl.in_channels,
+        in_channels=_resolve_in_channels(mdl),
         out_channels=mdl.out_channels,
         decoder_layers=mdl.decoder_layers,
         decoder_layer_size=mdl.decoder_layer_size,
@@ -166,7 +166,9 @@ def main():
         if model is not None:
             with torch.no_grad():
                 h0 = (P0 - p_hydro) / p_scale
-                invar = torch.cat([c0, h0], dim=1)
+                invar = build_invar(c0, h0, dt,
+                                    bool(cfg.model.get("dt_channel", False)),
+                                    float(cfg.model.get("dt_ref_s", 2.592e6)))
                 raw = model(invar)
                 if use_res:
                     c_p = c0 + raw[:, 0:1]

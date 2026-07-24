@@ -89,6 +89,7 @@ class VtuElderDataset:
         n_val_blocks: int = 8,
         val_gap: int = 2,
         file_stride: int = 1,
+        file_strides=None,
         _share: "VtuElderDataset | None" = None,
     ):
         self.device = torch.device(device)
@@ -111,14 +112,22 @@ class VtuElderDataset:
         self.n_val_blocks = int(n_val_blocks)
         self.val_gap = int(val_gap)
         self.file_stride = max(1, int(file_stride))
+        # 配对步长: file_strides (list) => 多 stride 配对 (变 dt, batch 内混合); 否则单 [file_stride]
+        if file_strides:
+            self.strides = [max(1, int(s)) for s in file_strides]
+            self.multi_stride = len(set(self.strides)) > 1
+        else:
+            self.strides = [self.file_stride]
+            self.multi_stride = False
 
         if _share is not None:
             # 复用已加载实例的数据/网格 (避免二次读盘); 仅本实例配对选择不同。
             for _a in ("data", "p_hydro", "p_scale", "dx", "dy",
                        "Nx_tot", "Ny_tot", "Nx", "Ny", "n_files",
-                       "file_interval", "_times_days", "dt_macro"):
+                       "file_interval", "_times_days", "dt_macro",
+                       "strides", "multi_stride"):
                 setattr(self, _a, getattr(_share, _a))
-            self.pair_indices = self._select_pairs()
+            self.pair_indices, self.pair_strides = self._select_pairs()
             self.n_pairs = int(len(self.pair_indices))
             return
 
@@ -127,9 +136,10 @@ class VtuElderDataset:
             glob.glob(os.path.join(train_dir, "*.vtu")),
             key=_extract_time,
         )                                            # 全部文件; 配对用 (k -> k+stride)
-        if len(files) < self.file_stride + 1:
+        _max_stride = max(self.strides)
+        if len(files) < _max_stride + 1:
             raise ValueError(
-                f"VtuElderDataset 需要至少 file_stride+1 个 .vtu 文件, "
+                f"VtuElderDataset 需要至少 max(strides)+1={_max_stride + 1} 个 .vtu 文件, "
                 f"在 {train_dir!r} 只找到 {len(files)} 个"
             )
         self.n_files = len(files)
@@ -188,64 +198,70 @@ class VtuElderDataset:
         floor = 0.01 * (self.drho * self.g * self.H)          # 与 datapipe 一致的下限
         self.p_scale = float(max(h_amp, floor))
 
-        self.pair_indices = self._select_pairs()               # 按 split 选配对 (丢弃边界泄漏配对)
-        self.n_pairs = int(len(self.pair_indices))             # 单步对数
+        self.pair_indices, self.pair_strides = self._select_pairs()  # (k 起始, s 步长) 配对; 丢弃边界泄漏
+        self.n_pairs = int(len(self.pair_indices))             # 单步对数 (多 stride 时为合计)
 
-    def _select_pairs(self) -> np.ndarray:
-        """按 ``self.split`` 选配对下标 (pair k = 快照 k -> k+file_stride)。
+    def _select_pairs(self):
+        """按 ``self.split`` 与 ``self.strides`` 选配对, 返回 ``(pair_k, pair_s)`` 两个并行数组。
 
-        ``split="all"`` 返回全部配对; ``"train"``/``"val"`` 把 ``val_frac`` 比例的快照拆成
-        ``n_val_blocks`` 个等宽小块, **均匀散布**在时间轴上 (覆盖早/中/晚多个时段, 避免单段集中),
-        块中心等距分布于内部 (首末快照始终留 train)。每个 val 块两侧各 ``val_gap`` 个快照作缓冲
-        被丢弃 (降低边界"相邻快照相似"的残余泄漏)。配对按"两端快照同属一个集合"归入 train/val,
-        跨集合或落在 gap 的配对一律丢弃, 保证每个 snapshot 只属于一个集合。
+        对每个步长 s ∈ self.strides, 生成候选对 k = 快照k -> 快照k+s (k ∈ [0, n-s))。
+        val/gap 集合按**快照**定义 (与 stride 无关), 故多 stride 间自动一致、无泄漏。
+        ``split="all"`` 返回全部对; ``"train"/"val"`` 按"两端快照同属一个集合"归入,
+        跨集合或落 gap 的对一律丢弃。多 stride 时合计所有步长的对 (batch 内混合、per-sample dt)。
         """
         n = self.n_files
-        s = self.file_stride
-        all_pairs = np.arange(n - s, dtype=np.int64)           # pair k = (s_k -> s_{k+s})
-        if self.split == "all" or self.val_frac <= 0.0:
-            return all_pairs
-        nb = max(1, int(self.n_val_blocks))                    # val 块数
-        total = max(2 * nb, int(round(self.val_frac * n)))     # val 快照总数 (每块至少 2)
-        w = max(2, total // nb)                                # 每块宽度
-        val_set, gap_set = set(), set()
-        for i in range(nb):
-            # 块中心等距分布于内部 (i+1)/(nb+1) 处, 避开首末。
-            c = int(round((i + 1) * n / (nb + 1)))
-            lo = c - w // 2
-            hi = lo + w - 1
-            lo = max(0, lo); hi = min(n - 1, hi)
-            for s_ in range(lo, hi + 1):
-                val_set.add(s_)
-            # 块两侧各 val_gap 个快照作缓冲 (既不 train 也不 val)。
-            for g in range(1, int(self.val_gap) + 1):
-                for s_ in (lo - g, hi + g):
-                    if 0 <= s_ < n:
-                        gap_set.add(s_)
-        if self.split == "val":
-            sel = [k for k in all_pairs if k in val_set and (k + s) in val_set]
-        else:                                                   # "train"
-            sel = [k for k in all_pairs
-                   if (k not in val_set and (k + s) not in val_set
-                       and k not in gap_set and (k + s) not in gap_set)]
-        return np.asarray(sel, dtype=np.int64)
+        use_val = self.split != "all" and self.val_frac > 0.0
+        val_set, gap_set = None, None
+        if use_val:
+            nb = max(1, int(self.n_val_blocks))                # val 块数
+            total = max(2 * nb, int(round(self.val_frac * n))) # val 快照总数 (每块至少 2)
+            w = max(2, total // nb)                            # 每块宽度
+            val_set, gap_set = set(), set()
+            for i in range(nb):
+                c = int(round((i + 1) * n / (nb + 1)))         # 块中心等距分布于内部, 避开首末
+                lo = max(0, c - w // 2)
+                hi = min(n - 1, lo + w - 1)
+                for s_ in range(lo, hi + 1):
+                    val_set.add(s_)
+                for g in range(1, int(self.val_gap) + 1):      # 块两侧 val_gap 个快照作缓冲
+                    for s_ in (lo - g, hi + g):
+                        if 0 <= s_ < n:
+                            gap_set.add(s_)
+        ks, ss = [], []
+        for s in self.strides:
+            for k in range(n - s):
+                if val_set is None:
+                    ks.append(k); ss.append(s)
+                elif self.split == "val":
+                    if k in val_set and (k + s) in val_set:
+                        ks.append(k); ss.append(s)
+                else:                                          # train
+                    if (k not in val_set and (k + s) not in val_set
+                            and k not in gap_set and (k + s) not in gap_set):
+                        ks.append(k); ss.append(s)
+        return np.asarray(ks, dtype=np.int64), np.asarray(ss, dtype=np.int64)
 
     def __iter__(self) -> Dict[str, Tensor]:
-        """无限 yield batch ``{c0, p0, c1, p1, t0, dt}``; 每轮打乱配对顺序。"""
-        n = self.batch_size
-        pairs = self.pair_indices
-        s = self.file_stride
+        """无限 yield batch ``{c0, p0, c1, p1, t0, dt}``; 每轮打乱配对顺序。
+
+        多 stride 时 batch 内混合不同步长的对, ``dt`` 为 per-sample ``[B]`` 张量 (= s×file_interval 秒)。
+        """
+        bs = self.batch_size
+        ks, ss = self.pair_indices, self.pair_strides
         while True:
-            order = np.random.permutation(len(pairs))
-            for i in range(0, len(pairs), n):
-                j = torch.as_tensor(pairs[order[i:i + n]], device=self.device, dtype=torch.long)
+            order = np.random.permutation(len(ks))
+            for i in range(0, len(ks), bs):
+                idx = order[i:i + bs]
+                j = torch.as_tensor(ks[idx], device=self.device, dtype=torch.long)   # [B] 起始快照
+                s = torch.as_tensor(ss[idx], device=self.device, dtype=torch.long)   # [B] 步长
+                jps = j + s                                                          # [B] 目标快照
                 yield {
-                    "c0": self.data[j, 0:1],                   # [B,1,Ny_tot,Nx_tot] pair j = 快照 j
+                    "c0": self.data[j, 0:1],            # [B,1,Ny_tot,Nx_tot]
                     "p0": self.data[j, 1:2],
-                    "c1": self.data[j + s, 0:1],               # 快照 j+s (目标; s=1 退化为相邻)
-                    "p1": self.data[j + s, 1:2],
-                    "t0": self._times_days[j],                 # 该对起始快照的物理时间 (天) [B]
-                    "dt": self.dt_macro,
+                    "c1": self.data[jps, 0:1],
+                    "p1": self.data[jps, 1:2],
+                    "t0": self._times_days[j],          # [B] 起始物理时间 (天)
+                    "dt": s.float() * self.file_interval,  # [B] 该步时长 (秒), per-sample
                 }
 
 

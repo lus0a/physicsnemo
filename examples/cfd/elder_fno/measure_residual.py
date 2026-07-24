@@ -38,14 +38,15 @@ from physicsnemo.models.fno import FNO
 from physicsnemo.utils import load_checkpoint
 
 from vtu_dataset import VtuElderDataset
-from train_elder_fno import _resolve_fno_modes, _residuals_own_fd, _build_residual_mask
+from train_elder_fno import (_resolve_fno_modes, _resolve_in_channels, build_invar,
+                             _residuals_own_fd, _build_residual_mask)
 from elder_residual_fv import ElderPhysics, form_function_elder
 
 
 def _build_model(cfg, dp, checkpoint, device):
     mdl = cfg.model
     model = FNO(
-        in_channels=mdl.in_channels, out_channels=mdl.out_channels,
+        in_channels=_resolve_in_channels(mdl), out_channels=mdl.out_channels,
         decoder_layers=mdl.decoder_layers, decoder_layer_size=mdl.decoder_layer_size,
         dimension=mdl.dimension, latent_channels=mdl.latent_channels,
         num_fno_layers=mdl.num_fno_layers,
@@ -78,6 +79,8 @@ def main():
                    help="残差后端: own_fd | unisolver_fv (默认读 config.training.physics_backend)")
     p.add_argument("--train_dir", default=None)
     p.add_argument("--split", default="all", choices=["all", "train", "val"])
+    p.add_argument("--stride", type=int, default=None,
+                   help="单步长评估用的 file_stride (默认 config.data.file_stride)。dt-aware 模型可分别 --stride 1/3/6 看不同 dt 的残差。")
     p.add_argument("--chunk", type=int, default=64)
     p.add_argument("--device", default=None)
     p.add_argument("--no-pin", action="store_true",
@@ -100,12 +103,14 @@ def main():
         val_frac=float(cfg.data.get("val_frac", 0.2)),
         n_val_blocks=int(cfg.data.get("n_val_blocks", 8)),
         val_gap=int(cfg.data.get("val_gap", 2)),
-        file_stride=int(cfg.data.get("file_stride", 1)),
+        file_stride=(int(args.stride) if args.stride is not None else int(cfg.data.get("file_stride", 1))),
     )
     p_hydro, p_scale = dp.p_hydro, dp.p_scale
     s = dp.file_stride
     continuity_weight = float(cfg.training.get("continuity_weight", 1.0))
     dt = dp.dt_macro
+    dt_aware = bool(cfg.model.get("dt_channel", False))
+    dt_ref = float(cfg.model.get("dt_ref_s", 2.592e6))
     B_train = int(cfg.data.get("batch_size", 128))   # 训练 batch (own_fd 的 w 公式要用)
 
     backend = (args.backend or str(cfg.training.get("physics_backend", "own_fd"))).lower()
@@ -145,7 +150,7 @@ def main():
             c1 = dp.data[k + s, 0:1].float()
             p1 = dp.data[k + s, 1:2].float()
             h0 = (p0 - p_hydro) / p_scale
-            invar = torch.cat([c0, h0], dim=1)
+            invar = build_invar(c0, h0, dt, dt_aware, dt_ref)
             raw = model(invar)
             if use_residual:
                 pred_c = c0 + raw[:, 0:1]

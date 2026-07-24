@@ -51,16 +51,20 @@ data:
   steps_per_epoch: 64      # 每个 epoch 产出多少 batch (即多少 optimizer step)
   file_stride: 3           # 配对跨步数 (原始文件间隔 10 天): pair k = 快照k -> 快照k+file_stride。
                            # =1 => 10 天/步; =3 => 30 天/步。保留全部快照(不抽稀), 任意步长都不缩水。须与 dt_macro 一致。
+  file_strides: [1, 2, 4, 8]  # 变步长训练: 按 2× 几何等距 (10/20/40/80 天), 对齐 Newton 步长 2× 增长。
+                           # 仅 dt_channel=true 时数据集使用; dt_channel=false 或缺失则回退 [file_stride] 单步长。
   val_frac: 0.2            # VTU/VTS 真实数据留出验证比例 (val 快照占总数比例)。
   n_val_blocks: 8          # val 拆成多少块, 均匀散布在时间轴上 (覆盖早/中/晚多时段, 避免单段集中)。
-  val_gap: 2               # 每个 val 块两侧丢弃多少快照作缓冲 (降低边界"相邻快照相似"的残余泄漏)。
+  val_gap: 8               # 每个 val 块两侧丢弃多少快照作缓冲。须 >= max(file_strides)=8, 防大 stride 的对跨越 val 边界泄漏。
                            # 仅 train_dir 路径生效; 在线 datapipe 用独立轨迹作 val。
   train_dir: DataSet       # 真实数据目录; 优先 .vtu (unisolver 高精度), 次 .vts, 否则回退在线 datapipe
                            # 注意: resolution 仅在线 datapipe 路径用; .vtu/.vts 的网格尺寸来自文件本身
 
 # FNO 网络 (输入: c_n, h_n  ->  输出: c_{n+1}, h_{n+1}), 单网络联合预测 c 和 h
 model:
-  in_channels: 2           # 输入通道: (c_n, h_n) 拼接成 2 通道
+  dt_channel: false        # true => 输入加第 3 通道 (归一化 dt 常数场), 模型变 3 通道、变步长 aware;
+                           # false => 原 2 通道 (c_n, h_n)。in_channels 由本开关派生 = 2 + int(dt_channel)。
+  dt_ref_s: 2592000.0      # dt 归一化参考 (秒, =30 天); 第 3 通道填 d̃ = Δt/dt_ref_s。仅 dt_channel=true 生效。
   out_channels: 2          # 输出通道: (c_{n+1}, h_{n+1})
   decoder_layers: 1        # 末端 MLP 解码器的层数 (把隐空间投影回 2 通道输出)
   decoder_layer_size: 64   # 解码器隐藏宽度

@@ -29,13 +29,13 @@ from physicsnemo.models.fno import FNO
 from physicsnemo.utils import load_checkpoint
 
 from vtu_dataset import VtuElderDataset
-from train_elder_fno import _resolve_fno_modes
+from train_elder_fno import _resolve_fno_modes, _resolve_in_channels, build_invar
 
 
 def _build_model(cfg, dp, checkpoint, device):
     mdl = cfg.model
     model = FNO(
-        in_channels=mdl.in_channels, out_channels=mdl.out_channels,
+        in_channels=_resolve_in_channels(mdl), out_channels=mdl.out_channels,
         decoder_layers=mdl.decoder_layers, decoder_layer_size=mdl.decoder_layer_size,
         dimension=mdl.dimension, latent_channels=mdl.latent_channels,
         num_fno_layers=mdl.num_fno_layers,
@@ -87,6 +87,8 @@ def main():
 
     model = _build_model(cfg, dp, args.checkpoint, device)
     use_residual = bool(cfg.training.get("residual", False))
+    dt_aware = bool(cfg.model.get("dt_channel", False))
+    dt_ref = float(cfg.model.get("dt_ref_s", 2.592e6))
     print(f"loaded checkpoint from {args.checkpoint} | {step_days:.0f}-day/step | "
           f"residual={use_residual} | split={args.split} -> {len(dp.pair_indices)} pairs")
 
@@ -102,7 +104,7 @@ def main():
             p1 = dp.data[k + s, 1:2]
             h0 = (p0 - p_hydro) / p_scale                # 归一化水头
             h1 = (p1 - p_hydro) / p_scale
-            invar = torch.cat([c0, h0], dim=1)
+            invar = build_invar(c0, h0, dp.dt_macro, dt_aware, dt_ref)
             raw = model(invar)                           # 单步前向 (直接值 或 残差模式下的增量)
             if use_residual:                             # c_{n+1}=c_n+Δc, h_{n+1}=h_n+Δh
                 pred_c = c0 + raw[:, 0:1]

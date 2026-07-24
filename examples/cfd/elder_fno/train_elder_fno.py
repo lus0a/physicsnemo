@@ -113,6 +113,33 @@ def _resolve_fno_modes(raw, datapipe, padding):
     return out
 
 
+def _resolve_in_channels(mdl):
+    """输入通道数 = 2 (c, h) + 1 (dt 常数场) 当 model.dt_channel=true。"""
+    return 2 + int(mdl.get("dt_channel", False))
+
+
+def build_invar(c, h, dt, dt_aware: bool, dt_ref: float):
+    """组装 FNO 输入。
+
+    c, h : [B, 1, Ny, Nx]
+    dt   : 标量 (float) 或 per-sample [B] 张量 (秒)
+    dt_aware=False => 返回 [B, 2, Ny, Nx] = cat([c, h])  (向后兼容)
+    dt_aware=True  => 返回 [B, 3, Ny, Nx], 第 3 通道为常数场 d̃ = dt/dt_ref
+    """
+    invar = torch.cat([c, h], dim=1)
+    if not dt_aware:
+        return invar
+    B, _, Ny, Nx = c.shape
+    if torch.is_tensor(dt):
+        d = dt.float() / dt_ref
+        if d.dim() == 0:
+            d = d.expand(B)
+    else:
+        d = torch.full((B,), float(dt) / dt_ref, device=c.device)
+    d = d.to(c.device).view(B, 1, 1, 1).expand(B, 1, Ny, Nx)
+    return torch.cat([invar, d], dim=1)
+
+
 def _load_loss_history(out_dir):
     """Load persisted train/val loss history so the loss curve continues across resume."""
     path = os.path.join(out_dir, "loss_history.json")
@@ -224,7 +251,7 @@ def _residuals_own_fd(pred_c, pred_p, c0, dt, dp, mask):
 
 
 def validation_step(model, datapipe, p_hydro, p_scale, num_iters, epoch, out_dir, device, use_amp,
-                    val_history=None, train_history=None, residual=False):
+                    val_history=None, train_history=None, residual=False, dt_aware=False, dt_ref=1.0):
     """Evaluate MSE on fresh trajectory samples and save a comparison plot.
 
     ``val_history`` / ``train_history`` are mutable lists the caller passes in;
@@ -244,7 +271,7 @@ def validation_step(model, datapipe, p_hydro, p_scale, num_iters, epoch, out_dir
             h0 = (batch["p0"] - p_hydro) / p_scale  # 归一化水头 h = (p - p_hydro)/p_scale
             c1 = batch["c1"]                       # 目标浓度 (真值)
             h1 = (batch["p1"] - p_hydro) / p_scale  # 目标归一化水头 (真值)
-            invar = torch.cat([c0, h0], dim=1)     # 拼成 2 通道输入
+            invar = build_invar(c0, h0, batch["dt"], dt_aware, dt_ref)  # 2 或 3 通道 (dt_aware 时含 dt)
             with torch.autocast(device_type=autocast_dev, enabled=use_amp):
                 raw = model(invar)               # 单步前向: 直接预测值 (或残差模式下的增量 Δ)
             if residual:                         # 残差预测: c_{n+1}=c_n+Δc, h_{n+1}=h_n+Δh
@@ -394,23 +421,32 @@ def main(cfg: DictConfig) -> None:
         drho=cfg.physics.drho, W=cfg.physics.W, H=cfg.physics.H,
         dt_macro=cfg.physics.dt_macro, flow_sign=cfg.physics.get("flow_sign", 1.0),
     )
+    # dt-aware (变步长): 输入加归一化 dt 通道, 数据集按多 stride 配对
+    dt_aware = bool(cfg.model.get("dt_channel", False))
+    dt_ref = float(cfg.model.get("dt_ref_s", cfg.data.get("dt_macro", 2.592e6)))
+    file_stride = int(cfg.data.get("file_stride", 1))
+    _strides_cfg = cfg.data.get("file_strides", None)
+    file_strides = [int(s) for s in _strides_cfg] if (dt_aware and _strides_cfg) else None
     if len(vtu_files) >= 2:
         val_frac = float(cfg.data.get("val_frac", 0.2))
         n_val_blocks = int(cfg.data.get("n_val_blocks", 8))
         val_gap = int(cfg.data.get("val_gap", 2))
-        file_stride = int(cfg.data.get("file_stride", 1))
-        log.info(f"using VTU dataset from {train_dir} ({len(vtu_files)} files, file_stride={file_stride}), "
+        log.info(f"using VTU dataset from {train_dir} ({len(vtu_files)} files, "
+                 f"file_stride={file_stride}, file_strides={file_strides}), "
                  f"val_frac={val_frac}, n_val_blocks={n_val_blocks}, val_gap={val_gap}")
         datapipe = VtuElderDataset(train_dir, split="train", val_frac=val_frac,
                                    n_val_blocks=n_val_blocks, val_gap=val_gap,
-                                   file_stride=file_stride, **real_kwargs)
+                                   file_stride=file_stride, file_strides=file_strides, **real_kwargs)
         # val 拆成 n_val_blocks 个小块均匀散布 (覆盖早/中/晚多时段), _share 复用已加载数据;
         # 每块两侧 val_gap 个快照 + 跨集合配对一律丢弃 (零泄漏, 每个 snapshot 只属一个集合)。
         val_datapipe = VtuElderDataset(train_dir, split="val", val_frac=val_frac,
                                        n_val_blocks=n_val_blocks, val_gap=val_gap,
-                                       file_stride=file_stride, _share=datapipe, **real_kwargs)
-        log.info(f"  train pairs={datapipe.n_pairs}, val pairs={val_datapipe.n_pairs} "
-                 f"@ {datapipe.dt_macro / 86400:.0f}-day/step")
+                                       file_stride=file_stride, file_strides=file_strides,
+                                       _share=datapipe, **real_kwargs)
+        _step_info = (f"strides={datapipe.strides} (变 dt)"
+                      if getattr(datapipe, "multi_stride", False)
+                      else f"{datapipe.dt_macro / 86400:.0f}-day/step")
+        log.info(f"  train pairs={datapipe.n_pairs}, val pairs={val_datapipe.n_pairs} @ {_step_info}")
     elif len(vts_files) >= 2:
         log.info(f"using VTS dataset from {train_dir} ({len(vts_files)} files)")
         datapipe = VtsElderDataset(train_dir, **real_kwargs)   # 真实求解器 point 数据
@@ -428,7 +464,7 @@ def main(cfg: DictConfig) -> None:
 
     # --- model ---------------------------------------------------------------
     model = FNO(
-        in_channels=cfg.model.in_channels,
+        in_channels=_resolve_in_channels(cfg.model),
         out_channels=cfg.model.out_channels,
         decoder_layers=cfg.model.decoder_layers,
         decoder_layer_size=cfg.model.decoder_layer_size,
@@ -465,6 +501,14 @@ def main(cfg: DictConfig) -> None:
     physics_backend = str(cfg.training.get("physics_backend", "own_fd")).lower()
     residual_mask = None
     elder_phy = None
+    if dt_aware:
+        log.info(f"dt_channel ON: 输入 {_resolve_in_channels(cfg.model)} 通道 (含归一化 dt), dt_ref={dt_ref:.0f}s")
+    # 多 stride (batch 内混合 dt) 与 PDE 残差 loss 暂不兼容: 残差函数接标量 dt。
+    if use_physics and getattr(datapipe, "multi_stride", False):
+        raise NotImplementedError(
+            "多 stride (变 dt) + physics loss 暂未支持 (残差函数接标量 dt, 而多 stride 下 dt 为 per-sample)。"
+            "请用单 stride (dt_channel=false 或 file_strides 单元素) 再开 physics_weight>0。"
+        )
     if use_physics:
         if physics_backend == "unisolver_fv":
             # 与 Elder::FormFunction 对齐的 FV 残差 (见 elder_residual_fv.py)
@@ -536,7 +580,7 @@ def main(cfg: DictConfig) -> None:
 
                 h0 = (p0 - p_hydro) / p_scale      # 归一化输入水头
                 h1 = (p1 - p_hydro) / p_scale      # 归一化目标水头
-                invar = torch.cat([c0, h0], dim=1)            # [B, 2, Ny+2, Nx+2]
+                invar = build_invar(c0, h0, dt, dt_aware, dt_ref)   # [B, 2 或 3, Ny+2, Nx+2] (dt_aware 含 dt)
 
                 with torch.autocast(device_type=autocast_dev, enabled=use_amp):
                     raw = forward_model(invar)                # [B,2,...] 直接预测值 (或残差模式下的增量 Δ)
@@ -556,8 +600,9 @@ def main(cfg: DictConfig) -> None:
                             pred_p32 = pred_h.float() * p_scale + p_hydro
                             c0_32 = c0.float()
                             p0_32 = p0.float()
-                            # dt may be 0-dim tensor or float
-                            dt_val = dt.float() if torch.is_tensor(dt) else float(dt)
+                            # dt: 标量或 per-sample [B] 张量。多 stride 已被守卫拦下; 这里 [B] 仅出现在
+                            # 单 stride (均匀) 场景, 取均值转标量供残差函数使用。
+                            dt_val = float(dt.float().mean()) if torch.is_tensor(dt) else float(dt)
                             if physics_backend == "unisolver_fv":
                                 # L2 residual fields matching Elder::FormFunction
                                 Fp, Fc = form_function_elder(
@@ -603,7 +648,7 @@ def main(cfg: DictConfig) -> None:
                     forward_model, val_datapipe, p_hydro, p_scale,
                     val_iters, epoch, out_dir, device, use_amp,
                     val_history=val_history, train_history=train_history,
-                    residual=use_residual,
+                    residual=use_residual, dt_aware=dt_aware, dt_ref=dt_ref,
                 )
                 logger.log_epoch({"Validation error": val_loss})
 

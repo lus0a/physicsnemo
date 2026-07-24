@@ -7,7 +7,7 @@ from omegaconf import OmegaConf
 from physicsnemo.distributed import DistributedManager
 from physicsnemo.models.fno import FNO
 from vtu_dataset import VtuElderDataset
-from train_elder_fno import _resolve_fno_modes
+from train_elder_fno import _resolve_fno_modes, _resolve_in_channels, build_invar
 
 cfg = OmegaConf.load("config.yaml")
 phy = cfg.physics
@@ -21,7 +21,7 @@ mdl = cfg.model
 modes = _resolve_fno_modes(
     OmegaConf.to_container(mdl, resolve=True)["num_fno_modes"], dp, mdl.padding)
 model = FNO(
-    in_channels=mdl.in_channels, out_channels=mdl.out_channels,
+    in_channels=_resolve_in_channels(mdl), out_channels=mdl.out_channels,
     decoder_layers=mdl.decoder_layers, decoder_layer_size=mdl.decoder_layer_size,
     dimension=mdl.dimension, latent_channels=mdl.latent_channels,
     num_fno_layers=mdl.num_fno_layers, num_fno_modes=modes, padding=mdl.padding,
@@ -36,8 +36,10 @@ model.eval()
 c_n = dp.data[0:1, 0:1]
 P_n = dp.data[0:1, 1:2]
 h_n = (P_n - dp.p_hydro) / dp.p_scale
+_dt_aware = bool(cfg.model.get("dt_channel", False))
+_dt_ref = float(cfg.model.get("dt_ref_s", 2.592e6))
 with torch.no_grad():
-    raw = model(torch.cat([c_n, h_n], dim=1))
+    raw = model(build_invar(c_n, h_n, dp.dt_macro, _dt_aware, _dt_ref))
 c_pred = raw[0, 0].numpy()
 print("model.load c_pred range:", float(c_pred.min()), float(c_pred.max()))
 

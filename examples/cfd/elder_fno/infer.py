@@ -31,13 +31,13 @@ from physicsnemo.models.fno import FNO
 from physicsnemo.utils import load_checkpoint
 
 from vtu_dataset import VtuElderDataset
-from train_elder_fno import _resolve_fno_modes
+from train_elder_fno import _resolve_fno_modes, _resolve_in_channels, build_invar
 
 
 def _build_model(cfg, dp, checkpoint, device):
     mdl = cfg.model
     model = FNO(
-        in_channels=mdl.in_channels, out_channels=mdl.out_channels,
+        in_channels=_resolve_in_channels(mdl), out_channels=mdl.out_channels,
         decoder_layers=mdl.decoder_layers, decoder_layer_size=mdl.decoder_layer_size,
         dimension=mdl.dimension, latent_channels=mdl.latent_channels,
         num_fno_layers=mdl.num_fno_layers,
@@ -102,8 +102,10 @@ def main():
         raise SystemExit("须指定 --input <vtu> 或 --index <N>")
 
     # --- 单步前向 (与训练同: h=(P-p_hydro)/p_scale 归一化, 残差模式则重建) ---
+    dt_aware = bool(cfg.model.get("dt_channel", False))
+    dt_ref = float(cfg.model.get("dt_ref_s", 2.592e6))
     h_n = (P_n - p_hydro) / p_scale
-    invar = torch.cat([c_n, h_n], dim=1)
+    invar = build_invar(c_n, h_n, dp.dt_macro, dt_aware, dt_ref)
     with torch.no_grad():
         raw = model(invar)
     if use_residual:

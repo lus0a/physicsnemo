@@ -31,7 +31,7 @@ from physicsnemo.models.fno import FNO
 from physicsnemo.utils import load_checkpoint
 
 from vtu_dataset import VtuElderDataset
-from train_elder_fno import _resolve_fno_modes
+from train_elder_fno import _resolve_fno_modes, _resolve_in_channels, build_invar
 
 
 NORM_CACHE = "fno_norm.npz"
@@ -76,6 +76,8 @@ def main():
     ap.add_argument("--config", default="config.yaml")
     ap.add_argument("--checkpoint", default="outputs_baseline30days/checkpoints",
                     help="checkpoint 目录 (取最新) 或 .pt 文件")
+    ap.add_argument("--dt", type=float, default=None,
+                    help="本时间步 Δt (秒); dt_channel=true 时必传以匹配训练, 不传则报错。")
     args = ap.parse_args()
 
     cfg = OmegaConf.load(args.config)
@@ -87,7 +89,7 @@ def main():
 
     mdl = cfg.model
     model = FNO(
-        in_channels=mdl.in_channels, out_channels=mdl.out_channels,
+        in_channels=_resolve_in_channels(mdl), out_channels=mdl.out_channels,
         decoder_layers=mdl.decoder_layers, decoder_layer_size=mdl.decoder_layer_size,
         dimension=mdl.dimension, latent_channels=mdl.latent_channels,
         num_fno_layers=mdl.num_fno_layers,
@@ -121,8 +123,14 @@ def main():
     P_n = torch.from_numpy(raw[n:2 * n].reshape(NY, NX)[None, None]).to(device)
 
     # --- 归一化 + 单步前向 (与 infer.py 完全一致) ---
+    dt_aware = bool(cfg.model.get("dt_channel", False))
+    dt_ref = float(cfg.model.get("dt_ref_s", 2.592e6))
+    if dt_aware and args.dt is None:
+        print("fno_step: dt_channel=true 需要传 --dt <秒> (本时间步 Δt)", file=sys.stderr)
+        sys.exit(1)
+    dt_val = args.dt if args.dt is not None else 0.0
     h_n = (P_n - p_hydro) / p_scale
-    invar = torch.cat([c_n, h_n], dim=1)
+    invar = build_invar(c_n, h_n, dt_val, dt_aware, dt_ref)
     with torch.no_grad():
         raw_out = model(invar)
     if residual:

@@ -34,7 +34,7 @@ from physicsnemo.models.fno import FNO
 from physicsnemo.utils import load_checkpoint
 
 from vtu_dataset import VtuElderDataset
-from train_elder_fno import _resolve_fno_modes
+from train_elder_fno import _resolve_fno_modes, _resolve_in_channels
 
 
 class InferenceWrapper(torch.nn.Module):
@@ -73,7 +73,7 @@ def main():
     )
     mdl = cfg.model
     fno = FNO(
-        in_channels=mdl.in_channels, out_channels=mdl.out_channels,
+        in_channels=_resolve_in_channels(mdl), out_channels=mdl.out_channels,
         decoder_layers=mdl.decoder_layers, decoder_layer_size=mdl.decoder_layer_size,
         dimension=mdl.dimension, latent_channels=mdl.latent_channels,
         num_fno_layers=mdl.num_fno_layers,
@@ -85,13 +85,16 @@ def main():
     fno.eval()
 
     use_residual = bool(cfg.training.get("residual", False))
+    dt_aware = bool(cfg.model.get("dt_channel", False))
+    dt_ref = float(cfg.model.get("dt_ref_s", 2.592e6))
+    n_in = _resolve_in_channels(mdl)
     model = InferenceWrapper(fno, use_residual).to(device).eval()
 
     out_dir = os.path.dirname(os.path.abspath(args.out))
     base = os.path.splitext(os.path.basename(args.out))[0]
 
-    # --- 导出 ONNX (静态形状 1x2x64x256) ---
-    dummy = torch.randn(1, mdl.in_channels, dp.Ny_tot, dp.Nx_tot, device=device)
+    # --- 导出 ONNX (静态形状 1 x n_in x Ny_tot x Nx_tot; dt_aware 时 n_in=3, 第3通道=d̃=dt/dt_ref 常数场) ---
+    dummy = torch.randn(1, n_in, dp.Ny_tot, dp.Nx_tot, device=device)
     torch.onnx.export(
         model, (dummy,), args.out,
         input_names=["ch_in"], output_names=["ch_out"],
@@ -104,16 +107,19 @@ def main():
     p_hydro_path = os.path.join(out_dir, f"{base}_p_hydro.npy")
     meta_path = os.path.join(out_dir, f"{base}_meta.json")
     np.save(p_hydro_path, dp.p_hydro.cpu().numpy())
+    _in_desc = ("concat(c[0,1], h_normalized)" if not dt_aware
+                else "concat(c[0,1], h_normalized, d̃=dt/dt_ref 常数场)")
     meta = {
         "p_scale": float(dp.p_scale),
         "Ny_tot": int(dp.Ny_tot), "Nx_tot": int(dp.Nx_tot),
         "dt_macro_s": float(dp.dt_macro), "step_days": float(dp.dt_macro / 86400.0),
         "file_stride": int(dp.file_stride),
         "residual": use_residual,
-        "input": "ch_in [1,2,Ny_tot,Nx_tot] = concat(c[0,1], h_normalized), h=(P-p_hydro)/p_scale",
+        "dt_channel": dt_aware, "dt_ref_s": dt_ref, "in_channels": n_in,
+        "input": f"ch_in [1,{n_in},Ny_tot,Nx_tot] = {_in_desc}, h=(P-p_hydro)/p_scale",
         "output": "ch_out [1,2,Ny_tot,Nx_tot] = concat(c_{n+1}, h_{n+1}_normalized); P_{n+1}=h*p_scale+p_hydro",
         "p_hydro_file": os.path.basename(p_hydro_path),
-        "note": "h 是等淡水水头归一化; p_hydro=ρf·g·z 每行 (向下 z 增). c∈[0,1], P 单位 Pa.",
+        "note": "h 是等淡水水头归一化; p_hydro=ρf·g·z 每行 (向下 z 增). c∈[0,1], P 单位 Pa. dt_aware 时输入含第3通道 d̃=Δt/dt_ref_s。",
     }
     json.dump(meta, open(meta_path, "w"), indent=2, ensure_ascii=False)
     print(f"sidecar: {p_hydro_path}, {meta_path}")
