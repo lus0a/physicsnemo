@@ -54,12 +54,12 @@ from torch.optim import Adam
 from torch.optim.lr_scheduler import ExponentialLR
 
 from physicsnemo.distributed import DistributedManager
-from physicsnemo.models.fno import FNO
 from physicsnemo.utils import load_checkpoint, save_checkpoint
 from physicsnemo.utils.logging import LaunchLogger, PythonLogger
 
 from datapipe import ElderProblem2D
 from elder_residual_fv import ElderPhysics, form_function_elder
+from ufno import build_model
 from vts_dataset import VtsElderDataset
 from vtu_dataset import VtuElderDataset
 
@@ -74,19 +74,19 @@ def _enable_tf32() -> None:
 
 
 def _zero_init_last_linear(module: torch.nn.Module) -> None:
-    """把模块里最后一个 Linear 层的权重和偏置置零 (残差预测用)。
+    """把模块里最后一个 Linear 或 1x1 Conv2d 的权重和偏置置零 (残差预测用)。
 
-    残差模式下 FNO 输出应解释为增量 Δ; 零初始化 decoder 末层 => 初始 Δ=0 =>
+    残差模式下网络输出应解释为增量 Δ; 零初始化 decoder 末层 => 初始 Δ=0 =>
     c_{n+1}=c_n, h_{n+1}=h_n (即"不变"基线), 训练从此起步只会更好。
     """
-    last_lin = None
+    last = None
     for m in module.modules():
-        if isinstance(m, torch.nn.Linear):
-            last_lin = m
-    if last_lin is not None:
-        torch.nn.init.zeros_(last_lin.weight)
-        if last_lin.bias is not None:
-            torch.nn.init.zeros_(last_lin.bias)
+        if isinstance(m, (torch.nn.Linear, torch.nn.Conv2d)):
+            last = m
+    if last is not None:
+        torch.nn.init.zeros_(last.weight)
+        if last.bias is not None:
+            torch.nn.init.zeros_(last.bias)
 
 
 def _resolve_fno_modes(raw, datapipe, padding):
@@ -463,20 +463,17 @@ def main(cfg: DictConfig) -> None:
     p_scale = datapipe.p_scale                      # 水头归一化尺度 (经验 max|h| 或显式值)
 
     # --- model ---------------------------------------------------------------
-    model = FNO(
+    modes = _resolve_fno_modes(
+        OmegaConf.to_container(cfg.model, resolve=True)["num_fno_modes"],
+        datapipe, cfg.model.padding,
+    )
+    arch = str(cfg.model.get("arch", "fno")).lower()
+    model = build_model(
+        cfg.model,
+        num_fno_modes=modes,
         in_channels=_resolve_in_channels(cfg.model),
-        out_channels=cfg.model.out_channels,
-        decoder_layers=cfg.model.decoder_layers,
-        decoder_layer_size=cfg.model.decoder_layer_size,
-        dimension=cfg.model.dimension,
-        latent_channels=cfg.model.latent_channels,
-        num_fno_layers=cfg.model.num_fno_layers,
-        num_fno_modes=_resolve_fno_modes(
-            OmegaConf.to_container(cfg.model, resolve=True)["num_fno_modes"],
-            datapipe, cfg.model.padding,
-        ),
-        padding=cfg.model.padding,
     ).to(device)
+    log.info(f"model.arch={arch}  modes={modes}  in_ch={_resolve_in_channels(cfg.model)}")
 
     # 残差预测: 网络输出解释为增量 Δ, 重建 c_{n+1}=c_n+Δc / h_{n+1}=h_n+Δh。
     use_residual = bool(cfg.training.get("residual", False))

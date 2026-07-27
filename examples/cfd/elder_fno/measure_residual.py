@@ -34,9 +34,9 @@ import torch
 from omegaconf import OmegaConf
 
 from physicsnemo.distributed import DistributedManager
-from physicsnemo.models.fno import FNO
 from physicsnemo.utils import load_checkpoint
 
+from ufno import build_model
 from vtu_dataset import VtuElderDataset
 from train_elder_fno import (_resolve_fno_modes, _resolve_in_channels, build_invar,
                              _residuals_own_fd, _build_residual_mask)
@@ -45,15 +45,9 @@ from elder_residual_fv import ElderPhysics, form_function_elder
 
 def _build_model(cfg, dp, checkpoint, device):
     mdl = cfg.model
-    model = FNO(
-        in_channels=_resolve_in_channels(mdl), out_channels=mdl.out_channels,
-        decoder_layers=mdl.decoder_layers, decoder_layer_size=mdl.decoder_layer_size,
-        dimension=mdl.dimension, latent_channels=mdl.latent_channels,
-        num_fno_layers=mdl.num_fno_layers,
-        num_fno_modes=_resolve_fno_modes(
-            OmegaConf.to_container(mdl, resolve=True)["num_fno_modes"], dp, mdl.padding),
-        padding=mdl.padding,
-    ).to(device)
+    modes = _resolve_fno_modes(
+        OmegaConf.to_container(mdl, resolve=True)["num_fno_modes"], dp, mdl.padding)
+    model = build_model(mdl, num_fno_modes=modes, in_channels=_resolve_in_channels(mdl)).to(device)
     load_checkpoint(path=checkpoint, models=model, device=device)
     model.eval()
     return model

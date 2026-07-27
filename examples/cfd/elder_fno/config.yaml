@@ -18,7 +18,7 @@ hydra:
   job:
     chdir: True            # 让 hydra 把工作目录切到 run.dir (训练写出的文件都落到那里)
   run:
-    dir: ./outputs_elder_fno  # 固定 (不带时间戳) 的输出目录: checkpoint / val 图 / 日志都在此
+    dir: ./outputs_elder_ufno  # U-FNO 输出目录 (vanilla FNO ablation 可用 outputs_elder_fno)
 
 # PDE 参数 (SI 国际单位; 变密度、非 Boussinesq 的 Elder 问题, 原始变量 c 和 p,
 # 对应 UG4 Lua 的 non-Boussinesq elder 设置)。
@@ -62,9 +62,17 @@ data:
   train_dir: DataSet       # 真实数据目录; 优先 .vtu (unisolver 高精度), 次 .vts, 否则回退在线 datapipe
                            # 注意: resolution 仅在线 datapipe 路径用; .vtu/.vts 的网格尺寸来自文件本身
 
-# FNO 网络 (输入: c_n, h_n  ->  输出: c_{n+1}, h_{n+1}), 单网络联合预测 c 和 h
+# FNO / U-FNO 网络 (输入: c_n, h_n[, d̃]  ->  输出: c/h 或 residual Δ)
 model:
-  dt_channel: false        # true => 输入加第 3 通道 (归一化 dt 常数场), 模型变 3 通道、变步长 aware;
+  arch: ufno               # fno = PhysicsNeMo vanilla FNO
+                           # ufno = Wen et al. (2022) U-FNO: lift → Fourier×L → U-Fourier×M → project
+                           #   U-Fourier: σ(K(v)+U(v)+W(v)), U=two-step U-Net (see ufno.py).
+                           # 换架构后必须重新训练; 与旧 parallel-FNO+UNet 及 vanilla FNO 的 .mdlus 均不兼容。
+  # 可选: 显式 L/M; 默认各取 num_fno_layers 的一半 (论文推荐 half+half)
+  # num_fourier_layers: 2
+  # num_ufourier_layers: 2
+  coord_features: false    # ufno: 是否在 lift 前拼归一化 (x,y) 网格通道
+  dt_channel: true         # true => 输入加第 3 通道 (归一化 dt 常数场), 模型变 3 通道、变步长 aware;
                            # false => 原 2 通道 (c_n, h_n)。in_channels 由本开关派生 = 2 + int(dt_channel)。
   dt_ref_s: 3456000.0      # dt 归一化参考 (秒, =40 天 = 10~160 天几何中心); 第 3 通道填 d̃ = Δt/dt_ref_s ∈ {0.25,0.5,1,2,4}。
   out_channels: 2          # 输出通道: (c_{n+1}, h_{n+1})
@@ -72,7 +80,7 @@ model:
   decoder_layer_size: 64   # 解码器隐藏宽度
   dimension: 2             # 空间维数 (2D Elder)
   latent_channels: 64      # FNO 各 spectral conv 层的通道宽度 (容量主参数之一)
-  num_fno_layers: 4        # spectral conv 层数 (网络深度)
+  num_fno_layers: 4        # ufno: L+M 总层数 (默认 L=M=2); fno: spectral 层数
   num_fno_modes: 0.8       # 每轴保留的 Fourier 模数。float in (0,1] => 占可用模数的比例
                            # (随分辨率/padding 自动缩放); list of ints => 显式 [modes_y, modes_x]。
                            # 0.8 在 4:1 网格 (padded 26x74) 上解析为 [10, 29]

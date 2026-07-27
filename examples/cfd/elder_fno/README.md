@@ -65,7 +65,6 @@ FNO sees the walls directly.
 | `datapipe.py` | `ElderProblem2D` — online reference solver: variable-coefficient dense flow solve for the head `h`, non-periodic conservative finite-difference transport (full-upwind advection), trajectory sampling. |
 | `train_elder_fno.py` | PINO training loop (data + transport/continuity residual loss), validation, plotting. |
 | `config.yaml` | Hydra configuration. |
-| `elder_pde.py` | Symbolic transport + flow operators for the optional `phy_informer` backend (not used by the default `own_fd` path; kept as a reference). |
 | `_verify_solver.py` | Sanity checks: flow continuity residual, no-flow walls, buoyancy direction, CFL stability, IC/gauge. |
 
 ## Design notes
@@ -204,9 +203,51 @@ python train_elder_fno.py training.use_amp=true training.compile=true seed=42
 torchrun --nproc_per_node=4 train_elder_fno.py training.use_amp=true training.compile=true seed=42
 ```
 
+## Persistent inference (recommended for hybrid)
+
+Oneshot `fno_step.py` reloads the model every Newton step (slow on WSL CPU).
+Use a long-lived server instead:
+
+```bash
+# terminal 1 — start once after training (GPU server or local CPU)
+cd examples/cfd/elder_fno
+python fno_server.py --checkpoint outputs_elder_ufno/checkpoints --port 8765
+
+# terminal 2 — unisolver hybrid with FnoPredictor.mode = "persist"
+# host/port must match the server (see testElder.json)
+```
+
+Protocol: TCP `FNOQ` + `float64 dt` + `c,P` float32 fields → `FNOA` + preds.
+If the server is down, C++ falls back to oneshot `system(python fno_step.py)`.
+
+## U-FNO (Wen et al. 2022; default)
+
+`model.arch` in `config.yaml`:
+
+| value | backbone |
+|-------|----------|
+| `ufno` (default) | **Wen-style U-FNO** (`ufno.py`): lift → Fourier×L → U-Fourier×M → project. Each U-Fourier layer is σ(K+U+W) with two-step U-Net U (Adv. Water Resour. 2022 / arXiv:2109.03697). Default L=M=`num_fno_layers//2`. |
+| `fno` | vanilla PhysicsNeMo FNO only |
+
+Train (writes under `outputs_elder_ufno/`):
+
+```bash
+cd examples/cfd/elder_fno
+python train_elder_fno.py
+python train_elder_fno.py model.arch=fno hydra.run.dir=./outputs_elder_fno   # ablation
+```
+
+Inference / C++ hybrid (`fno_step.py`) reads `model.arch` from the same config
+and loads the latest `*.mdlus` under `--checkpoint`. **Retrain after switching
+arch** — old vanilla-FNO or parallel-FNO+UNet checkpoints are incompatible.
+
+Point unisolver `FnoPredictor.checkpoint` at e.g. `outputs_elder_ufno/checkpoints`
+once training finishes.
+
 ## References
 
 - Elder, J. W. (1967). Transient convection in a porous medium.
+- Wen et al. (2022). U-FNO—An enhanced Fourier neural operator-based deep-learning model for multiphase flow. Adv. Water Resour.
 - Ackerer, P., et al. — reformulated (concentration-Dirichlet) Elder benchmark.
 - Johannsen, K. / Kolditz, O. — variable-density Darcy flow forms of the Elder
   problem.

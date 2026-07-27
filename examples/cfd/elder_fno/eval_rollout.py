@@ -26,9 +26,9 @@ import torch
 from omegaconf import OmegaConf
 
 from physicsnemo.distributed import DistributedManager
-from physicsnemo.models.fno import FNO
 from physicsnemo.utils import load_checkpoint
 
+from ufno import build_model
 from vtu_dataset import VtuElderDataset
 from train_elder_fno import _resolve_fno_modes, _resolve_in_channels, build_invar
 
@@ -101,18 +101,12 @@ def main():
 
     # --- 模型 (结构必须与训练一致, 否则权重加载不上) ---
     mdl = cfg.model
-    model = FNO(
-        in_channels=_resolve_in_channels(mdl), out_channels=mdl.out_channels,
-        decoder_layers=mdl.decoder_layers, decoder_layer_size=mdl.decoder_layer_size,
-        dimension=mdl.dimension, latent_channels=mdl.latent_channels,
-        num_fno_layers=mdl.num_fno_layers,
-        num_fno_modes=_resolve_fno_modes(           # 同训练: 支持 float 分数自动解析
-            OmegaConf.to_container(mdl, resolve=True)["num_fno_modes"], dp, mdl.padding),
-        padding=mdl.padding,
-    ).to(device)
+    modes = _resolve_fno_modes(
+        OmegaConf.to_container(mdl, resolve=True)["num_fno_modes"], dp, mdl.padding)
+    model = build_model(mdl, num_fno_modes=modes, in_channels=_resolve_in_channels(mdl)).to(device)
     load_checkpoint(path=args.checkpoint, models=model, device=device)   # 加载训练好的权重
     model.eval()                                    # 推理模式
-    print(f"loaded checkpoint from {args.checkpoint}")
+    print(f"loaded checkpoint from {args.checkpoint} (arch={mdl.get('arch', 'fno')})")
 
     # --- 真值轨迹: VTU 快照 0..N (通道 0=c, 1=P), 每个 [1,1,Ny_tot,Nx_tot] ---
     true_c = [dp.data[t:t + 1, 0:1] for t in range(N + 1)]

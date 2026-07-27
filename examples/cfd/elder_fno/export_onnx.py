@@ -30,17 +30,17 @@ import torch
 from omegaconf import OmegaConf
 
 from physicsnemo.distributed import DistributedManager
-from physicsnemo.models.fno import FNO
 from physicsnemo.utils import load_checkpoint
 
+from ufno import build_model
 from vtu_dataset import VtuElderDataset
 from train_elder_fno import _resolve_fno_modes, _resolve_in_channels
 
 
 class InferenceWrapper(torch.nn.Module):
-    """把 FNO 包成"总是输出完整场"的算子 (残差模式自动重建), 简化宿主侧调用。"""
+    """把 FNO/U-FNO 包成"总是输出完整场"的算子 (残差模式自动重建), 简化宿主侧调用。"""
 
-    def __init__(self, fno: FNO, residual: bool):
+    def __init__(self, fno: torch.nn.Module, residual: bool):
         super().__init__()
         self.fno = fno
         self.residual = bool(residual)
@@ -72,15 +72,9 @@ def main():
         file_stride=int(cfg.data.get("file_stride", 1)),
     )
     mdl = cfg.model
-    fno = FNO(
-        in_channels=_resolve_in_channels(mdl), out_channels=mdl.out_channels,
-        decoder_layers=mdl.decoder_layers, decoder_layer_size=mdl.decoder_layer_size,
-        dimension=mdl.dimension, latent_channels=mdl.latent_channels,
-        num_fno_layers=mdl.num_fno_layers,
-        num_fno_modes=_resolve_fno_modes(
-            OmegaConf.to_container(mdl, resolve=True)["num_fno_modes"], dp, mdl.padding),
-        padding=mdl.padding,
-    ).to(device)
+    modes = _resolve_fno_modes(
+        OmegaConf.to_container(mdl, resolve=True)["num_fno_modes"], dp, mdl.padding)
+    fno = build_model(mdl, num_fno_modes=modes, in_channels=_resolve_in_channels(mdl)).to(device)
     load_checkpoint(path=args.checkpoint, models=fno, device=device)
     fno.eval()
 
