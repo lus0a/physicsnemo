@@ -44,9 +44,9 @@ data:
   resolution: 64           # 宽度方向内部网格数 Nx; 全网格 (含壁) 为 (Ny+2)x(Nx+2)
   source_frac: 0.5         # 顶部 c=1 源段占顶部宽度的比例 (居中)
   # U-FNO 比 vanilla FNO 更吃显存 (每层 U-Net skip + FFT)。
-  # 64×256 网格 + latent=64 + padding=8 时: 3090 24GB 建议 batch 8~16 (fp32) / 16~32 (AMP)。
-  # 旧 FNO 可用 64~128; OOM 时优先降 batch, 再开 training.use_amp=true。
-  batch_size: 16            # 每个 training step 的单步对数量
+  # 64×256 + latent=64 + pad=8, 3090 24GB 实测: B=16 ~7.5GiB → 可开到 32~48;
+  # B=128 会 OOM。OOM 时降 batch 或确认 use_amp=true。多 stride 时 B≥32 每档样本更够。
+  batch_size: 48            # 每个 training step 的单步对数量
   substeps: 4              # 输运子步数下限 (按 CFL 自动增大, 取 max(此值, CFL 需要))
   max_substeps: 4000       # 子步数上限 (稳定性 vs 计算量; 触顶说明 CFL 过严需调参)
   n_trajectories: 16       # 同时推进的独立轨迹数 (批处理求解, 互相错相提供多样性)
@@ -114,7 +114,7 @@ training:
   val_every: 5             # 每 N epoch 做一次验证并出 val 图
   save_every: 10           # checkpoint 保存频率 (epoch); 最后一个 epoch 必存。
                            # 每次写约 228MB (.pt + .mdlus), 故建议 >= 10
-  use_amp: false           # CUDA 上启用混合精度 (autocast + GradScaler)
+  use_amp: true            # CUDA 混合精度: 省显存/加速 (3090 推荐; CPU 无影响)
   tf32: true               # Ampere+ GPU 上允许 TF32 矩阵乘/卷积 (CPU 无影响)
   compile: false           # torch.compile FNO 前向 (CUDA 上加速; 首轮编译, 适合长训练)
   compile_mode: default    # "default" | "reduce-overhead" | "max-autotune"
