@@ -43,7 +43,10 @@ physics:
 data:
   resolution: 64           # 宽度方向内部网格数 Nx; 全网格 (含壁) 为 (Ny+2)x(Nx+2)
   source_frac: 0.5         # 顶部 c=1 源段占顶部宽度的比例 (居中)
-  batch_size: 128           # 每个 training step 的单步对数量
+  # U-FNO 比 vanilla FNO 更吃显存 (每层 U-Net skip + FFT)。
+  # 64×256 网格 + latent=64 + padding=8 时: 3090 24GB 建议 batch 8~16 (fp32) / 16~32 (AMP)。
+  # 旧 FNO 可用 64~128; OOM 时优先降 batch, 再开 training.use_amp=true。
+  batch_size: 16            # 每个 training step 的单步对数量
   substeps: 4              # 输运子步数下限 (按 CFL 自动增大, 取 max(此值, CFL 需要))
   max_substeps: 4000       # 子步数上限 (稳定性 vs 计算量; 触顶说明 CFL 过严需调参)
   n_trajectories: 16       # 同时推进的独立轨迹数 (批处理求解, 互相错相提供多样性)
