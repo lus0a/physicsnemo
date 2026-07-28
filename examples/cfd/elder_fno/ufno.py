@@ -88,23 +88,35 @@ class SpectralConv2d(nn.Module):
         return torch.einsum("bixy,ioxy->boxy", input, weights)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        b = x.shape[0]
-        h, w = x.shape[-2], x.shape[-1]
-        x_ft = torch.fft.rfft2(x, norm="ortho")
-        out_ft = torch.zeros(
-            b,
-            self.out_channels,
-            h,
-            w // 2 + 1,
-            dtype=torch.cfloat,
-            device=x.device,
-        )
-        m1 = min(self.modes1, h)
-        m2 = min(self.modes2, w // 2 + 1)
-        # top-left and bottom-left mode blocks (standard FNO-2d)
-        out_ft[:, :, :m1, :m2] = self._mul(x_ft[:, :, :m1, :m2], self.weights1[:, :, :m1, :m2])
-        out_ft[:, :, -m1:, :m2] = self._mul(x_ft[:, :, -m1:, :m2], self.weights2[:, :, :m1, :m2])
-        return torch.fft.irfft2(out_ft, s=(h, w), norm="ortho")
+        # cuFFT half/bfloat16 only allows power-of-two spatial sizes.
+        # Elder padded grids (e.g. 64x256 + pad8 → 80x272) are not; under AMP
+        # autocast would cast rfft2 to fp16 and crash. Always run FFT path in fp32.
+        orig_dtype = x.dtype
+        device_type = "cuda" if x.is_cuda else "cpu"
+        with torch.autocast(device_type=device_type, enabled=False):
+            x32 = x.float()
+            b = x32.shape[0]
+            h, w = x32.shape[-2], x32.shape[-1]
+            x_ft = torch.fft.rfft2(x32, norm="ortho")
+            out_ft = torch.zeros(
+                b,
+                self.out_channels,
+                h,
+                w // 2 + 1,
+                dtype=torch.cfloat,
+                device=x32.device,
+            )
+            m1 = min(self.modes1, h)
+            m2 = min(self.modes2, w // 2 + 1)
+            # top-left and bottom-left mode blocks (standard FNO-2d)
+            out_ft[:, :, :m1, :m2] = self._mul(
+                x_ft[:, :, :m1, :m2], self.weights1[:, :, :m1, :m2]
+            )
+            out_ft[:, :, -m1:, :m2] = self._mul(
+                x_ft[:, :, -m1:, :m2], self.weights2[:, :, :m1, :m2]
+            )
+            out = torch.fft.irfft2(out_ft, s=(h, w), norm="ortho")
+        return out.to(dtype=orig_dtype)
 
 
 class TwoStepUNet(nn.Module):
