@@ -74,13 +74,19 @@ class SpectralConv2d(nn.Module):
         self.modes1 = modes1
         self.modes2 = modes2
         scale = 1.0 / (in_channels * out_channels)
-        # low-frequency corners (rfft2 layout)
+        # Store as real (..., 2) = (re, im).  Not torch.cfloat Parameters:
+        # GradScaler / AMP unscale does not support ComplexFloat grads.
         self.weights1 = nn.Parameter(
-            scale * torch.rand(in_channels, out_channels, modes1, modes2, dtype=torch.cfloat)
+            scale * torch.rand(in_channels, out_channels, modes1, modes2, 2)
         )
         self.weights2 = nn.Parameter(
-            scale * torch.rand(in_channels, out_channels, modes1, modes2, dtype=torch.cfloat)
+            scale * torch.rand(in_channels, out_channels, modes1, modes2, 2)
         )
+
+    @staticmethod
+    def _as_complex(w: torch.Tensor) -> torch.Tensor:
+        # w: (..., 2) real → complex64
+        return torch.view_as_complex(w.float().contiguous())
 
     @staticmethod
     def _mul(input: torch.Tensor, weights: torch.Tensor) -> torch.Tensor:
@@ -108,12 +114,14 @@ class SpectralConv2d(nn.Module):
             )
             m1 = min(self.modes1, h)
             m2 = min(self.modes2, w // 2 + 1)
+            w1 = self._as_complex(self.weights1)
+            w2 = self._as_complex(self.weights2)
             # top-left and bottom-left mode blocks (standard FNO-2d)
             out_ft[:, :, :m1, :m2] = self._mul(
-                x_ft[:, :, :m1, :m2], self.weights1[:, :, :m1, :m2]
+                x_ft[:, :, :m1, :m2], w1[:, :, :m1, :m2]
             )
             out_ft[:, :, -m1:, :m2] = self._mul(
-                x_ft[:, :, -m1:, :m2], self.weights2[:, :, :m1, :m2]
+                x_ft[:, :, -m1:, :m2], w2[:, :, :m1, :m2]
             )
             out = torch.fft.irfft2(out_ft, s=(h, w), norm="ortho")
         return out.to(dtype=orig_dtype)
