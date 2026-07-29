@@ -67,7 +67,7 @@ data:
 
 # FNO / U-FNO 网络 (输入: c_n, h_n[, d̃]  ->  输出: c/h 或 residual Δ)
 model:
-  arch: ufno               # fno = PhysicsNeMo vanilla FNO
+  arch: fno                # fno = PhysicsNeMo vanilla FNO
                            # ufno = Wen et al. (2022) U-FNO: lift → Fourier×L → U-Fourier×M → project
                            #   U-Fourier: σ(K(v)+U(v)+W(v)), U=two-step U-Net (see ufno.py).
                            # 换架构后必须重新训练; 与旧 parallel-FNO+UNet 及 vanilla FNO 的 .mdlus 均不兼容。
