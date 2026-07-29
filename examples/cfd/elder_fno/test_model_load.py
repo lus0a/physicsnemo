@@ -46,17 +46,26 @@ ckpt_dirs = [
     "outputs_elder_fno/checkpoints",
     "outputs_baseline30days/checkpoints",
 ]
-mdlus = []
+def _epoch_of(f):
+    try:
+        return int(os.path.basename(f).rsplit(".", 2)[-2])
+    except ValueError:
+        return -1                   # 非数字名 (如 best) 不参与 epoch 排序
+
+chosen = None
 for d in ckpt_dirs:
-    mdlus = sorted(glob.glob(os.path.join(d, "*.mdlus")))
-    if mdlus:
-        break
-if not mdlus:
+    found = sorted(glob.glob(os.path.join(d, "*.mdlus")))
+    if not found:
+        continue
+    # 优先 val-best (*.best.mdlus); 否则取最大 epoch 的常规 ckpt
+    best = [f for f in found if ".best." in os.path.basename(f)]
+    chosen = best[-1] if best else max(found, key=_epoch_of)
+    break
+if chosen is None:
     raise SystemExit("no *.mdlus found under outputs_*/checkpoints")
 
-mdlus.sort(key=lambda f: int(os.path.basename(f).rsplit(".", 2)[-2]))
-print("loading", mdlus[-1], "arch=", mdl.get("arch", "fno"))
-model.load(mdlus[-1])
+print("loading", chosen, "arch=", mdl.get("arch", "fno"))
+model.load(chosen)
 model.eval()
 
 c_n = dp.data[0:1, 0:1]

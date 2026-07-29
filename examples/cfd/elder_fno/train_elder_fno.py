@@ -556,6 +556,11 @@ def main(cfg: DictConfig) -> None:
     train_history = [h for h in train_history if h[0] <= start_epoch]
     val_history = [h for h in val_history if h[0] <= start_epoch]
 
+    # best-val 跟踪: 续训时从历史恢复当前最优 (全新 run 取 +inf)。仅在 val 创新低时存一份纯模型权重
+    # (checkpoints/<Model>.best.mdlus, 覆盖式), 末 epoch 踩尖峰不会覆盖最优 — Newton warm-start 直接用它。
+    best_val_loss = min((h[1] for h in val_history), default=float("inf"))
+    ckpt_dir = os.path.join(out_dir, "checkpoints")
+
     if start_epoch == 0:
         log.success("Training started...")
     else:
@@ -648,6 +653,14 @@ def main(cfg: DictConfig) -> None:
                     residual=use_residual, dt_aware=dt_aware, dt_ref=dt_ref,
                 )
                 logger.log_epoch({"Validation error": val_loss})
+
+                # best-val 自动存盘: val 创新低则覆盖存一份纯模型权重 (warm-start/部署用, 不含优化器状态)。
+                if val_loss < best_val_loss:
+                    best_val_loss = val_loss
+                    os.makedirs(ckpt_dir, exist_ok=True)
+                    best_path = os.path.join(ckpt_dir, f"{type(model).__name__}.best.mdlus")
+                    model.save(best_path)
+                    log.success(f"val_loss={val_loss:.4e} 创新低 -> 存 best 模型: {best_path}")
 
         # 大文件 checkpoint 每 save_every epoch 存一次 (+ 最后一 epoch); loss 历史每 epoch 都存。
         if epoch % int(cfg.training.get("save_every", 10)) == 0 or epoch == cfg.training.max_epochs:

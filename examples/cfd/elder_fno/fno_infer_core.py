@@ -77,6 +77,13 @@ def _load_or_build_norm(cfg, device):
 def _load_model_weights(model, checkpoint: str, device) -> str:
     import glob as _glob
 
+    # 优先 val-best (*.best.mdlus, 训练侧 val 创新低时覆盖存); 没有则回退最大 epoch 的常规 ckpt
+    _best = sorted(_glob.glob(os.path.join(checkpoint, "*.best.mdlus")))
+    if _best:
+        path = _best[-1]
+        model.load(path)
+        return path
+
     _mdlus = sorted(_glob.glob(os.path.join(checkpoint, "*.mdlus")))
     if _mdlus:
 
