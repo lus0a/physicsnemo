@@ -18,7 +18,7 @@ hydra:
   job:
     chdir: True            # 让 hydra 把工作目录切到 run.dir (训练写出的文件都落到那里)
   run:
-    dir: ./outputs_elder_ufno  # U-FNO 输出目录 (vanilla FNO ablation 可用 outputs_elder_fno)
+    dir: ./outputs_elder_${model.arch}  # 随 arch 自动切换: fno→outputs_elder_fno, ufno→outputs_elder_ufno
 
 # PDE 参数 (SI 国际单位; 变密度、非 Boussinesq 的 Elder 问题, 原始变量 c 和 p,
 # 对应 UG4 Lua 的 non-Boussinesq elder 设置)。
