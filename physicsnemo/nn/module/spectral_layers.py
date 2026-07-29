@@ -164,35 +164,43 @@ class SpectralConv2d(nn.Module):
     def forward(
         self, x: Float[Tensor, "batch in_channels h w"]
     ) -> Float[Tensor, "batch out_channels h w"]:
-        x_ft = torch.fft.rfft2(x)  # (batch, in_channels, h, w//2+1) complex
-        h, w = x_ft.size(-2), x_ft.size(-1)  # h=h, w=w//2+1
+        # AMP fix: cuFFT in half precision requires power-of-2 signal sizes, which
+        # fails on non-power-of-2 grids (e.g. padded 72x264). Disable autocast and
+        # run the whole spectral conv in fp32, then cast the result back so the rest
+        # of the network keeps running in fp16 under AMP.
+        orig_dtype = x.dtype
+        with torch.autocast(device_type=x.device.type, enabled=False):
+            x = x.float()
+            x_ft = torch.fft.rfft2(x)  # (batch, in_channels, h, w//2+1) complex
+            h, w = x_ft.size(-2), x_ft.size(-1)  # h=h, w=w//2+1
 
-        # Initialize output in frequency space
-        out_ft = torch.zeros(
-            x.size(0), self.out_channels, h, w, dtype=torch.cfloat, device=x.device
-        )  # (batch, out_channels, h, w) complex
+            # Initialize output in frequency space
+            out_ft = torch.zeros(
+                x.size(0), self.out_channels, h, w, dtype=torch.cfloat, device=x.device
+            )  # (batch, out_channels, h, w) complex
 
-        # Accumulate Fourier modes. Use .contiguous() on sliced complex tensors and
-        # padding (not slice assignment) for torch.compile compatibility.
-        # Slice assignment causes gradient stride issues in the Inductor backward pass.
-        # Pad format: (left, right, top, bottom) for last 2 dims
-        out_ft = out_ft + F.pad(
-            self.compl_mul2d(
-                x_ft[:, :, : self.modes1, : self.modes2].contiguous(), self.weights1
-            ),
-            (0, w - self.modes2, 0, h - self.modes1),
-        )
-        out_ft = out_ft + F.pad(
-            self.compl_mul2d(
-                x_ft[:, :, -self.modes1 :, : self.modes2].contiguous(), self.weights2
-            ),
-            (0, w - self.modes2, h - self.modes1, 0),
-        )
+            # Accumulate Fourier modes. Use .contiguous() on sliced complex tensors and
+            # padding (not slice assignment) for torch.compile compatibility.
+            # Slice assignment causes gradient stride issues in the Inductor backward pass.
+            # Pad format: (left, right, top, bottom) for last 2 dims
+            out_ft = out_ft + F.pad(
+                self.compl_mul2d(
+                    x_ft[:, :, : self.modes1, : self.modes2].contiguous(), self.weights1
+                ),
+                (0, w - self.modes2, 0, h - self.modes1),
+            )
+            out_ft = out_ft + F.pad(
+                self.compl_mul2d(
+                    x_ft[:, :, -self.modes1 :, : self.modes2].contiguous(), self.weights2
+                ),
+                (0, w - self.modes2, h - self.modes1, 0),
+            )
 
-        # Return to physical space
-        return torch.fft.irfft2(
-            out_ft, s=(x.size(-2), x.size(-1))
-        )  # (batch, out_channels, h, w) real
+            # Return to physical space
+            out = torch.fft.irfft2(
+                out_ft, s=(x.size(-2), x.size(-1))
+            )  # (batch, out_channels, h, w) real
+        return out.to(orig_dtype)
 
     def reset_parameters(self):
         """Reset spectral weights with distribution scale*U(0,1)"""
