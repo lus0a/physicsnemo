@@ -57,8 +57,8 @@ data:
   file_strides: [1, 2, 4, 8, 16]  # 变步长训练: 2× 几何等距 (10/20/40/80/160 天), 对齐 Newton 步长 2× 增长。
                            # 仅 dt_channel=true 时数据集使用; dt_channel=false 或缺失则回退 [file_stride] 单步长。
   val_frac: 0.2            # VTU/VTS 真实数据留出验证比例 (val 快照占总数比例)。
-  n_val_blocks: 6          # val 拆成多少块, 均匀散布在时间轴上 (覆盖早/中/晚多时段, 避免单段集中)。
-                           # 块少 => gap 缓冲区少 => 纯 train 快照多, 大 stride (16) 的训练对更容易凑齐。
+  n_val_blocks: 4          # val 块数。块宽 w = total//n_val_blocks; 需 w >= max(stride)+1=17 才能容下 stride-16(160d) val 对。
+                           # 6 块时 w=12 放不进 16; 4 块时 w=18 可放 (8 个 160d val 对)。块少 => 每块宽、大 stride 能进 val。
   val_gap: 4               # val 块两侧缓冲 (快照数, ~40 天)。不必 = max(stride): _select_pairs 的端点检查已防跨边界泄漏,
                            # 这里只是相似度缓冲 (端点别太靠近 val 快照)。设太大 (=max stride) 会吃掉过多训练数据。
                            # 仅 train_dir 路径生效; 在线 datapipe 用独立轨迹作 val。

@@ -78,6 +78,11 @@ def main() -> None:
         default="outputs_elder_ufno/checkpoints",
         help="checkpoint dir (latest .mdlus) or path used by load_checkpoint",
     )
+    ap.add_argument(
+        "--arch",
+        default=None,
+        help="fno | ufno (覆盖 config.yaml model.arch; 不传则用 config)",
+    )
     ap.add_argument("--host", default="127.0.0.1")
     ap.add_argument("--port", type=int, default=8765)
     ap.add_argument(
@@ -89,10 +94,12 @@ def main() -> None:
 
     print(
         f"fno_server: loading model (once) config={args.config} "
-        f"checkpoint={args.checkpoint} ...",
+        f"arch={args.arch} checkpoint={args.checkpoint} ...",
         flush=True,
     )
-    engine = FnoEngine.load(args.config, args.checkpoint, device=args.device)
+    engine = FnoEngine.load(
+        args.config, args.checkpoint, device=args.device, arch=args.arch
+    )
 
     srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)

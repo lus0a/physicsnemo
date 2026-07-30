@@ -127,12 +127,15 @@ class FnoEngine:
         config: str = "config.yaml",
         checkpoint: str = "outputs_elder_ufno/checkpoints",
         device: Optional[str] = None,
+        arch: Optional[str] = None,
     ) -> "FnoEngine":
         warnings.filterwarnings(
             "ignore",
             message="Could not initialize using ENV, SLURM or OPENMPI methods",
         )
         cfg = OmegaConf.load(config)
+        if arch is not None:
+            cfg.model.arch = arch  # CLI 覆盖 config.yaml (由 C++ --arch 传入)
         if device is None:
             dev = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         else:

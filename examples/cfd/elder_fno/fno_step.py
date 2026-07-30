@@ -33,6 +33,11 @@ def main():
         help="checkpoint 目录 (取最新 .mdlus) 或 load_checkpoint 路径",
     )
     ap.add_argument(
+        "--arch",
+        default=None,
+        help="fno | ufno (覆盖 config.yaml model.arch; 不传则用 config)",
+    )
+    ap.add_argument(
         "--dt",
         type=float,
         default=None,
@@ -41,7 +46,9 @@ def main():
     ap.add_argument("--device", default=None, help="cuda|cpu|auto")
     args = ap.parse_args()
 
-    engine = FnoEngine.load(args.config, args.checkpoint, device=args.device)
+    engine = FnoEngine.load(
+        args.config, args.checkpoint, device=args.device, arch=args.arch
+    )
     if engine.dt_aware and args.dt is None:
         raise SystemExit("fno_step: dt_channel=true 需要 --dt <秒>")
     engine.predict_files(args.inp, args.out, float(args.dt if args.dt is not None else 0.0))
