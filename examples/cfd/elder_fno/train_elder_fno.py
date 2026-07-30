@@ -57,6 +57,8 @@ from physicsnemo.distributed import DistributedManager
 from physicsnemo.utils import load_checkpoint, save_checkpoint
 from physicsnemo.utils.logging import LaunchLogger, PythonLogger
 
+import patch_spectral_amp  # AMP: 给安装版 physicsnemo SpectralConv 打 fp32-FFT 补丁 (导入即生效; arch=fno 必需)
+
 from datapipe import ElderProblem2D
 from elder_residual_fv import ElderPhysics, form_function_elder
 from ufno import build_model

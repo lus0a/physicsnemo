@@ -114,7 +114,8 @@ training:
   val_every: 5             # 每 N epoch 做一次验证并出 val 图
   save_every: 10           # checkpoint 保存频率 (epoch); 最后一个 epoch 必存。
                            # 每次写约 228MB (.pt + .mdlus), 故建议 >= 10
-  use_amp: true            # CUDA 混合精度 (需先给 physicsnemo SpectralConv2d 打 patch_spectral_amp.py; 否则 vanilla FNO 在非 2^N 网格上 cuFFT 报错)
+  use_amp: true            # CUDA 混合精度 (省显存/加速)。安装版 physicsnemo 的 SpectralConv 在非 2^N 网格 + AMP 下会 cuFFT 报错;
+                           # patch_spectral_amp.py 已在 train_elder_fno.py 顶部自动 import 修复 (arch=fno 必需, arch=ufno 不受影响)。
   tf32: true               # Ampere+ GPU 上允许 TF32 矩阵乘/卷积 (CPU 无影响)
   compile: false           # torch.compile FNO 前向 (CUDA 上加速; 首轮编译, 适合长训练)
   compile_mode: default    # "default" | "reduce-overhead" | "max-autotune"
